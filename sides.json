@@ -1,0 +1,24 @@
+{
+  "mirror": {
+    "r": "l",
+    "l": "r",
+    "L": "R",
+    "R": "L",
+    "right": "left",
+    "left": "right",
+    "Left": "Right",
+    "Right": "Left"
+  },
+
+  "sides": {
+    "r": "right",
+    "l": "left",
+    "R": "Right",
+    "L": "Left",
+    "right": "r",
+    "left": "l",
+    "Right": "R",
+    "Left": "L"
+  }
+
+}
