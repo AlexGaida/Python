@@ -1,3 +1,7 @@
+"""
+Manipulating and traversing the Maya scene objects and connections.
+"""
+
 # import maya modules
 from maya import cmds
 from maya import OpenMaya as om

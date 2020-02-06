@@ -1,5 +1,5 @@
 """
-Animation tools using OpenMaya.
+Animation data tools, manipulating animation settings.
 """
 # import maya modules
 from maya import cmds

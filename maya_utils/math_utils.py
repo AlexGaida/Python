@@ -1,3 +1,7 @@
+"""
+Standard math functions and manipulating vector operations.
+"""
+
 # import maya modules
 from maya.OpenMaya import MVector, MMatrix, MPoint
 from maya import cmds

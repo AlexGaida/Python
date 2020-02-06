@@ -1,5 +1,5 @@
 """
-Attribute module for finding, creating and setting attributes
+Attribute module for finding, creating and setting transform attributes.
 """
 
 # import maya modules
