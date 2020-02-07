@@ -223,16 +223,14 @@ def get_anim_connections(object_name=""):
 
     for cur_node in n_gen:
         if cur_node.hasFn(om.MFn.kBlendWeighted):
-            plugs = object_utils.get_plugs(cur_node, source=False)
+            plugs = object_utils.get_plugs(
+                cur_node, source=False, ignore_nodes=['kBlendWeighted', 'kUnitConversion', 'kNodeGraphEditorInfo'])
 
             if "targets" not in found_nodes:
                 found_nodes["targets"] = []
 
-            u_conversion_nodes = filter(lambda x: x.startswith('unitConversion'), plugs)
-
             # get plug nodes
-            n_plugs = set(plugs) - set(u_conversion_nodes)
-            found_nodes["targets"].extend(n_plugs)
+            found_nodes["targets"].extend(plugs)
 
         # find what the curve nodes are attached to.
         if cur_node.hasFn(om.MFn.kAnimCurve):
@@ -272,14 +270,11 @@ def get_animation_data_from_node(object_node=""):
         object_node = object_node.name()
 
     # get connections
-    source_attr = object_utils.get_plugs(object_node, source=True)
-    destination_attr = object_utils.get_plugs(object_node, source=False, ignore_unit_nodes=True)
-
-    if destination_attr:
-        if destination_attr[0].startswith('blendWeighted'):
-            node_gen = connections_gen(destination_attr[0], ftype='kUnitConversion')
-            for g_node in node_gen:
-                destination_attr = g_node.destination_plugs()
+    source_attr = object_utils.get_plugs(
+        object_node, source=True)
+    destination_attr = object_utils.get_plugs(
+        object_node, source=False,
+        ignore_nodes=['kUnitConversion', 'kBlendWeighted', 'kNodeGraphEditorInfo'])
 
     # get the time from the keys supplied
     number_of_keys = o_anim.numKeys()

@@ -13,6 +13,7 @@ import transform_utils
 
 # define global variables
 __node_types = {'nurbsCurve': om.MFn.kNurbsCurve, 'locator': om.MFn.kLocator}
+check_fn = lambda node, node_type: node.hasFn(eval("om.MFn." + node_type))
 
 
 def get_nice_name(object_name=''):
@@ -797,12 +798,14 @@ def mirror_object(control_name="", mirror_obj_name=""):
     return True
 
 
-def get_plugs(o_node=None, source=True, ignore_unit_nodes=False):
+def get_plugs(o_node=None, source=True, ignore_nodes=[], ignore_attrs=[]):
     """
     get plugs
     :param o_node: <OpenMaya.MObject>, <str> object to find plugs from.
     :param source: <bool> if true, get the source plug connections.
-    :param ignore_unit_nodes: <bool> ignores unit nodes if it encounters them.
+    :param ignore_nodes: <bool> ignores select nodes and continues with the loop.
+    :param ignore_attrs: <bool> ignores these attributes,
+                                so no MayaNodeEditorSavedTabsInfo.tabGraphInfo[1].nodeInfo[49].dependNode
     :return:
     """
     if not isinstance(o_node, om.MObject):
@@ -811,18 +814,25 @@ def get_plugs(o_node=None, source=True, ignore_unit_nodes=False):
     plug_names = []
     for i in range(node_fn.attributeCount()):
         a_obj = node_fn.attribute(i)
-        m_plug_array = om.MPlugArray()
         m_plug = om.MPlug(o_node, a_obj)
+        m_plug_name = m_plug.name()
+        if ignore_attrs:
+            if [a for a in ignore_attrs if a in m_plug_name]:
+                continue
+        m_plug_array = om.MPlugArray()
         m_plug.connectedTo(m_plug_array, source, not source)
         plug_array_len = m_plug_array.length()
         for idx in range(plug_array_len):
             plug = m_plug_array[idx]
             plug_name = plug.name()
-            if not ignore_unit_nodes:
+            plug_node = plug.node()
+            if not ignore_nodes:
                 plug_names.append(plug_name)
-            elif ignore_unit_nodes:
-                if plug_name.startswith('unitConversion') or plug_name.startswith('blendWeighted'):
-                    plug_names.extend(get_plugs(plug_name, source=source))
+            elif ignore_nodes:
+                if [ig for ig in ignore_nodes if check_fn(plug_node, ig)]:
+                    plug_names.extend(get_plugs(plug_name, source=source, ignore_nodes=ignore_nodes))
+                else:
+                    plug_names.append(plug_name)
     return plug_names
 
 
@@ -839,5 +849,5 @@ class Item(om.MObject):
     def source_plugs(self):
         return get_plugs(self, source=True)
 
-    def destination_plugs(self):
-        return get_plugs(self, source=False)
+    def destination_plugs(self, ignore=[]):
+        return get_plugs(self, source=False, ignore=ignore)
