@@ -68,6 +68,38 @@ def extract_side_index_from_string(in_string="", side="", start=False, end=False
     return in_string.find(side)
 
 
+class Sides(object):
+    SIDES = read_file()["sides"]
+
+    def __init__(self):
+        self.update_class()
+
+    def update_class(self):
+        """
+        updates the current class with keys and values
+        """
+        for k, v in self.SIDES.items():
+            self.__dict__[k] = v
+
+    def side_from_string(self, in_string=""):
+        return extract_side_from_string(self.SIDES, in_string)
+
+    def sides(self):
+        return self.SIDES
+
+    def items(self):
+        return self.SIDES.items()
+
+    def __getitem__(self, item):
+        return self.__dict__[item]
+
+    def __repr__(self):
+        return str(self.SIDES)
+
+    def __iter__(self):
+        return iter(self.SIDES)
+
+
 class MirrorSides(object):
     MIRROR_SIDES = read_file()["mirror"]
     SIDES = Sides()
@@ -103,17 +135,11 @@ class MirrorSides(object):
         # see if there is a side to check first.
         if stripped_side_name in self.__dict__:
             mirror_side_name = side.replace(stripped_side_name, self[stripped_side_name])
-            mid_index = len(in_string) / 2
-
-            if index >= mid_index:
-                index_str = in_string[mid_index:]
-                replaced_side_name = index_str.replace(side, mirror_side_name)
-                return in_string.replace(index_str, replaced_side_name)
-
-            elif index <= mid_index:
-                index_str = in_string[:mid_index]
-                replaced_side_name = index_str.replace(side, mirror_side_name)
-                return in_string.replace(index_str, replaced_side_name)
+            split_str = list(in_string.partition(side))
+            if split_str.count(side):
+                split_index = split_str.index(side)
+                split_str[split_index] = split_str[split_index].replace(side, mirror_side_name)
+                return ''.join(split_str)
         return in_string
 
     def sides(self):
@@ -130,36 +156,3 @@ class MirrorSides(object):
 
     def __iter__(self):
         return iter(self.MIRROR_SIDES)
-
-
-class Sides(object):
-    SIDES = read_file()["sides"]
-
-    def __init__(self):
-        self.update_class()
-
-    def update_class(self):
-        """
-        updates the current class with keys and values
-        """
-        for k, v in self.SIDES.items():
-            self.__dict__[k] = v
-
-    def side_from_string(self, in_string=""):
-        return extract_side_from_string(self.SIDES, in_string)
-
-    def sides(self):
-        return self.SIDES
-
-    def items(self):
-        return self.SIDES.items()
-
-    def __getitem__(self, item):
-        return self.__dict__[item]
-
-    def __repr__(self):
-        return str(self.SIDES)
-
-    def __iter__(self):
-        return iter(self.SIDES)
-

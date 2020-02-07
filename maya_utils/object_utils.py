@@ -29,6 +29,19 @@ def get_float_3_ptr():
     return util.asFloat3Ptr()
 
 
+class ScriptUtil(om.MScriptUtil):
+    def __init__(self, *args):
+        super(ScriptUtil, self).__init__(*args)
+        self.float_ptr = None
+
+    def get_float_ptr(self):
+        self.float_ptr = self.asFloatPtr()
+        return self.float_ptr
+
+    def as_float(self):
+        return self.asFloat()
+
+
 def get_unsigned_int_ptr(int_num=None):
     """
     returns an unsigned integer pointer object.
@@ -115,7 +128,7 @@ def get_m_anim_from_sel(object_node="", as_strings=False):
     anim_nodes = {}
     anim_curve_nodes = get_connected_nodes(
             object_name=object_node, find_node_type=om.MFn.kAnimCurve, as_strings=as_strings,
-            down_stream=False, up_stream=True, plug_level=True, node_level=False)
+            down_stream=False, up_stream=True)
     for anim in anim_curve_nodes:
         if as_strings:
             anim_nodes[anim] = get_m_obj(anim)

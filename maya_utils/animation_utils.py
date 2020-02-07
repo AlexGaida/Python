@@ -1,6 +1,9 @@
 """
 Animation data tools, manipulating animation settings.
 """
+# import standard modules
+from math import acos
+
 # import maya modules
 from maya import cmds
 from maya import mel
@@ -9,11 +12,14 @@ from maya import OpenMayaAnim as oma
 
 # import custom modules
 import object_utils
+from object_utils import ScriptUtil
+
 
 # define local variables
 __version__ = '1.0.0'
 __verbosity__ = 0
 __m_util = om.MScriptUtil()
+_float_ptr = ScriptUtil()
 
 
 def set_key():
@@ -169,48 +175,6 @@ def set_anim_data(anim_data={}, rounded=False):
     return True
 
 
-def get_animation_data_from_node(object_node=""):
-    """
-    get the animation data from the node specified.
-    :param object_node: <str> the object to check the data from.
-    :return: <dict> key data.
-    """
-    if not object_node:
-        return False
-
-    o_anim = None
-    if isinstance(object_node, (str, unicode)):
-        m_object = object_utils.get_m_obj(object_node)
-        o_anim = oma.MFnAnimCurve(m_object)
-
-    if isinstance(object_node, oma.MFnAnimCurve):
-        o_anim = object_node
-        object_node = object_node.name()
-
-    # get connections
-    source_attr = object_utils.get_plugs(object_node, source=True)
-    destination_attr = object_utils.get_plugs(object_node, source=False, ignore_unit_nodes=True)
-
-    if destination_attr:
-        if destination_attr[0].startswith('blendWeighted'):
-            node_gen = connections_gen(destination_attr[0], ftype='kUnitConversion')
-            for g_node in node_gen:
-                destination_attr = g_node.destination_plugs()
-
-    # get the time from the keys supplied
-    number_of_keys = o_anim.numKeys()
-    anim_data = {}
-    if number_of_keys > 1:
-        anim_data[object_node] = {'data': {},
-                                  'sourceAttr': source_attr,
-                                  'targetAttr': destination_attr
-                                  }
-        for i_key in xrange(number_of_keys):
-            v_float = o_anim.value(i_key)
-            anim_data[object_node]['data'][i_key] = v_float
-    return anim_data
-
-
 def connections_gen(object_name="", direction='kDownstream', level='kPlugLevel', ftype=''):
     """
     get plug connections
@@ -287,3 +251,72 @@ def get_anim_connections(object_name=""):
                 anim_node = om.MFnDependencyNode(cur_node).name()
                 found_nodes["animNodes"].update(get_animation_data_from_node(anim_node))
     return found_nodes
+
+
+def get_animation_data_from_node(object_node=""):
+    """
+    get the animation data from the node specified.
+    :param object_node: <str> the object to check the data from.
+    :return: <dict> key data.
+    """
+    if not object_node:
+        return False
+
+    o_anim = None
+    if isinstance(object_node, (str, unicode)):
+        m_object = object_utils.get_m_obj(object_node)
+        o_anim = oma.MFnAnimCurve(m_object)
+
+    if isinstance(object_node, oma.MFnAnimCurve):
+        o_anim = object_node
+        object_node = object_node.name()
+
+    # get connections
+    source_attr = object_utils.get_plugs(object_node, source=True)
+    destination_attr = object_utils.get_plugs(object_node, source=False, ignore_unit_nodes=True)
+
+    if destination_attr:
+        if destination_attr[0].startswith('blendWeighted'):
+            node_gen = connections_gen(destination_attr[0], ftype='kUnitConversion')
+            for g_node in node_gen:
+                destination_attr = g_node.destination_plugs()
+
+    # get the time from the keys supplied
+    number_of_keys = o_anim.numKeys()
+    anim_data = {}
+    if number_of_keys > 1:
+        anim_data[object_node] = {'data': {},
+                                  'tangents': {},
+                                  'sourceAttr': source_attr,
+                                  'targetAttr': destination_attr
+                                  }
+        for i_key in xrange(number_of_keys):
+            # this is a lie
+            # i_x = _float_ptr.get_float_ptr()
+            # i_y = _float_ptr.get_float_ptr()
+            #
+            # o_x = _float_ptr.get_float_ptr()
+            # o_y = _float_ptr.get_float_ptr()
+            #
+            # o_anim.getTangent(i_key, i_x, i_y, True)
+            # o_anim.getTangent(i_key, o_x, o_y, True)
+            # this is a lie
+            # v_float = o_anim.value(i_key)
+
+            # this will get me the values that I want.
+            # anim_data[object_node]['tangents'][i_key] = (ScriptUtil(i_x).asFloat(), ScriptUtil(i_y).asFloat(),
+            #                                              ScriptUtil(o_x).asFloat(), ScriptUtil(o_y).asFloat())
+            # anim_data[object_node]['tangents'][i_key] = (ScriptUtil(o_x).asFloat(), ScriptUtil(o_y).asFloat())
+
+            # get the information the standard way
+            v_float = cmds.keyframe(object_node, q=1, vc=1)[i_key]
+            o_x = cmds.getAttr('{}.keyTanOutX[{}]'.format(object_node, i_key))
+            o_y = cmds.getAttr('{}.keyTanOutY[{}]'.format(object_node, i_key))
+            i_x = cmds.getAttr('{}.keyTanInX[{}]'.format(object_node, i_key))
+            i_y = cmds.getAttr('{}.keyTanInY[{}]'.format(object_node, i_key))
+
+            # save the information
+            anim_data[object_node]['tangents'][i_key] = {'out': (o_x, o_y),
+                                                         'in': (i_x, i_y)}
+            anim_data[object_node]['data'][i_key] = v_float
+    return anim_data
