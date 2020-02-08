@@ -48,6 +48,19 @@ def verbose(message=""):
         print(message)
 
 
+def inspect_interface_attributes():
+    """
+    prints the selected controller attributes.
+    :return: <bool> True for success.
+    """
+    s_ctrls = object_utils.get_selected_node(single=False)
+    for f_ctrl in s_ctrls:
+        face_loc = find_face_system_controller(f_ctrl)
+        attr = attribute_utils.Attributes(face_loc[0], custom=1, keyable=True)
+        print(f_ctrl, ">>", attr.__dict__())
+    return True
+
+
 def get_face_attributes(object_node="", non_zero=False):
     """
     gets the face attributes from the controller specified.
@@ -177,12 +190,12 @@ def __set_key(controller_node, driven_node, driven_attr, face_attr, driven_value
     )
 
 
-def delete_keys():
+def delete_keys(object_node=""):
     """
     Removes all keys from selected.
     :return: <bool> True for success.
     """
-    anim_nodes = object_utils.get_m_anim_from_sel()
+    anim_nodes = object_utils.get_m_anim_from_sel(object_node=object_node)
     cmds.delete(anim_nodes.keys())
     return True
 
@@ -648,6 +661,19 @@ class MirrorList(object):
         return __temp
 
 
+def delete_keys_on_controller(controller_name="", interface_ctrl=""):
+    """
+    delete keys on the selected controller.
+    :param controller_name: <str> controller name to delete keys from.
+    :param interface_ctrl: <str> interface controller name.
+    :return: <bool> True for success.
+    """
+    copy_to_node = _get_interface_grp_name([controller_name, interface_ctrl])
+    print('deleting keys on: {}'.format(copy_to_node))
+    delete_keys(object_node=copy_to_node)
+    return True
+
+
 def copy_keys_on_selected(selected_object="", copy_to_object="", copy_to_interface_ctrl="", mirror=False):
     """
     mirrors the keys on selected objects. The connections must be there to begin with.
@@ -659,6 +685,7 @@ def copy_keys_on_selected(selected_object="", copy_to_object="", copy_to_interfa
     """
     __tmp_data = None
     __mirror_performed = []
+    __tmp_driver_data = []
 
     if not selected_object:
         selected_object = object_utils.get_selected_node(single=False)
@@ -671,12 +698,12 @@ def copy_keys_on_selected(selected_object="", copy_to_object="", copy_to_interfa
     if not copy_to_interface_ctrl:
         raise ValueError("[CopyKeysOnSelected] :: Parameter copy_to_interface_ctrl is not provided.")
 
+    # get animation dictionary data from object selected
+    anim_data = get_anim_data(selected_object)
+
     # zero all controllers
     zero_interface_controls()
     object_utils.zero_all_controllers()
-
-    # get animation dictionary data from object selected
-    anim_data = get_anim_data(selected_object)
 
     # get the copy to interface control system controller
     copy_to_system_control = find_face_system_controller(copy_to_interface_ctrl)[0]
@@ -686,6 +713,8 @@ def copy_keys_on_selected(selected_object="", copy_to_object="", copy_to_interfa
         __tmp_data = MirrorList(anim_data)
 
     # set the keys
+    print('\n\n')
+    print(selected_object)
     for driven_node, data in anim_data.items():
         copy_to_node = _get_interface_grp_name([copy_to_object, copy_to_interface_ctrl])
 
@@ -694,7 +723,6 @@ def copy_keys_on_selected(selected_object="", copy_to_object="", copy_to_interfa
             driven_attr_name = curve_data['targetAttr'][0]
             driver_attr_name = curve_data['sourceAttr'][0]
             time_curves = curve_data['data']
-            print driven_attr_name
             driven_object, driven_attr = driven_attr_name.split(".")
             driver_object, driver_attr = driver_attr_name.split(".")
 
@@ -707,94 +735,49 @@ def copy_keys_on_selected(selected_object="", copy_to_object="", copy_to_interfa
 
             if mirror:
                 mirror_driver_attr = _cls_mirror.replace_side_string(driver_attr)
-                # get the data from the mirror
-                if "translateX" in driven_attr:
-                    if mirror_driver_attr in __mirror_performed:
-                        continue
-                    translate_data = __tmp_data.find(driven_attr)
-                    __tmp_driver_data = MirrorList(translate_data)
-                    __temp_attributes = __tmp_driver_data.find(driver_attr, attribute=True)
-                    print driver_attr, mirror_driver_attr, __temp_attributes
-                    time_curves = __temp_attributes[0][-1]
+                if mirror_driver_attr in __mirror_performed:
+                    continue
 
+                # # get the data from the mirror
+                if driven_attr in ["translateX", "rotateZ", "rotateY"]:
+                    driver_data = __tmp_data.find(driven_attr)
+                    __tmp_driver_data = MirrorList(driver_data)
+                    __temp_attributes = __tmp_driver_data.find(mirror_driver_attr, attribute=True)
+                    temp_time_curves = __temp_attributes[0][-1]
+
+                    # invert the translation
+                    # for k, v in __temp_attributes[0][-1].items():
+                    #     if "translateX" in driven_attr:
+                    #         temp_time_curves[k] = v * -1
+                    #     if "rotateY" in driven_attr:
+                    #         temp_time_curves[k] = v * -1
+                    #     if "rotateZ" in driven_attr:
+                    #         temp_time_curves[k] = v * -1
+
+                    # print(driver_attr, mirror_driver_attr, driven_attr)
+                    # print('original: ', time_curves)
+                    # print('mirror: ', temp_time_curves)
+
+                    # set the driven keyframes
                     animation_utils.__verbosity__ = 0
-                    for driver_value, driven_value in time_curves.items():
+                    for driver_value, driven_value in temp_time_curves.items():
+                        print('[{}]'.format(copy_to_node), driver_attr, driven_attr, driven_value)
                         animation_utils.set_driven_key(
-                            driver_node=copy_to_system_control, driver_attr=mirror_driver_attr,
+                            driver_node=copy_to_system_control, driver_attr=driver_attr,
                             driven_node=copy_to_node, driven_attr=driven_attr,
                             driven_value=driven_value, driver_value=driver_value
                         )
                     __mirror_performed.append(driven_attr)
                     __mirror_performed.append(mirror_driver_attr)
 
-                    # if ".translateX" in driven_attr:
-                    #     driven_attr *= -1
-                    # if ".rotateY" in driven_attr:
-                    #     driven_attr *= -1
-                    # if ".rotateZ" in driven_attr:
-                    #     driven_attr *= -1
-            else:
-                animation_utils.__verbosity__ = 0
-                for driver_value, driven_value in time_curves.items():
-                    animation_utils.set_driven_key(
-                        driver_node=copy_to_system_control, driver_attr=driver_attr,
-                        driven_node=copy_to_node, driven_attr=driven_attr,
-                        driven_value=driven_value, driver_value=driver_value
-                    )
+            # else continue with regular values for the driven key setup
+            animation_utils.__verbosity__ = 0
+            for driver_value, driven_value in time_curves.items():
+                print('[{}]'.format(copy_to_node), driver_attr, driven_attr, driven_value)
+                animation_utils.set_driven_key(
+                    driver_node=copy_to_system_control, driver_attr=driver_attr,
+                    driven_node=copy_to_node, driven_attr=driven_attr,
+                    driven_value=driven_value, driver_value=driver_value
+                )
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    # if mirror:
-    #     temp_dict = {}
-    #     for driven_node, data in anim_data.items():
-    #         # copy_to_node = driven_node.replace(selected_object, copy_to_object)
-    #         copy_to_node = _get_interface_grp_name([copy_to_object, copy_to_interface_ctrl])
-    #
-    #         for anim_curve_node, curve_data in data['animNodes'].items():
-    #             verbose("\n---------------")
-    #             driven_attr_name = curve_data['targetAttr'][0]
-    #             driver_attr_name = curve_data['sourceAttr'][0]
-    #             time_curves = curve_data['data']
-    #
-    #             driven_object, driven_attr = driven_attr_name.split(".")
-    #             driver_object, driver_attr = driver_attr_name.split(".")
-    #
-    #             verbose("[Input driver attr] :: {}".format(driver_attr))
-    #
-    #             verbose("[Time curves] :: {}".format(time_curves))
-    #             verbose("[Driver node] :: {}.{}".format(copy_to_system_control, driver_attr))
-    #             verbose("[Driven node] :: {}.{}".format(copy_to_node, driven_attr))
-    #             verbose("\n---------------")
-    #
-    #             # convert the left side to the right side and vice versa
-    #             mirror_driver_attr = _cls_mirror.replace_side_string(driver_attr)
-    #             print "---> ", mirror_driver_attr
-    #
-    #             # now we need to find the value for the mirror attribute, with the corresponding right driven attribute
-
-            # if mirror is set to true, adjust the following values:
-            # .translateX *-1
-            # .rotateY * -1
-            # .rotateZ * -1
-            # if ".translateX" in driven_attr:
-            #     driven_attr *= -1
-            # if ".rotateY" in driven_attr:
-            #     driven_attr *= -1
-            # if ".rotateZ" in driven_attr:
-            #     driven_attr *= -1
     return True

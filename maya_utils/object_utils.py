@@ -1,6 +1,31 @@
 """
 Manipulating and traversing the Maya scene objects and connections.
+Lesson in data science:
+    # everything up to but not including index 3
+    print(z[:3])
+
+    # index 1 to end of list
+    print(z[1:])
+
+line = re.sub(r'''
+  (?x) # Use free-spacing mode.
+  <    # Match a literal '<'
+  /?   # Optionally match a '/'
+  \[   # Match a literal '['
+  \d+  # Match one or more digits
+  >    # Match a literal '>'
+  .    # Match any single character except '\n'
+  ^    # Match if string starts with a character
+  $    # Match of string ends with a character
+  *    # Match a pattern of zero or more occurrences
+  +    # Match one or more occurrences of a pattern at the left
+  ?    # Match zero or one occurrence of the patter at the left
+  |    # Alternation "or" operator
+  ()   # Grouping sub-patterns, match any strings inside parentheses
+  ''', '', line)
 """
+# import standard modules
+import re
 
 # import maya modules
 from maya import cmds
@@ -14,6 +39,7 @@ import transform_utils
 # define global variables
 __node_types = {'nurbsCurve': om.MFn.kNurbsCurve, 'locator': om.MFn.kLocator}
 check_fn = lambda node, node_type: node.hasFn(eval("om.MFn." + node_type))
+__re_brackets_pattern = r'\[|]'
 
 
 def get_nice_name(object_name=''):
@@ -680,9 +706,18 @@ def create_locators():
     create locators on position
     """
     for sl in cmds.ls(sl=1):
-        locator_name = sl + '_loc'
+        if '.' in sl:
+            name, dot, num = sl.partition('.')
+            matrix = False
+            translate = True
+            name += '_{}'.format(re.sub(__re_brackets_pattern, '', num))
+        else:
+            matrix = True
+            translate = False
+            name = sl
+        locator_name = name + '_loc'
         cmds.createNode('locator', name=locator_name + 'Shape')
-        snap_to_transform(locator_name, sl, matrix=True)
+        snap_to_transform(locator_name, sl, matrix=matrix, translate=translate)
     return True
 
 
