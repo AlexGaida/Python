@@ -719,65 +719,52 @@ def copy_keys_on_selected(selected_object="", copy_to_object="", copy_to_interfa
         copy_to_node = _get_interface_grp_name([copy_to_object, copy_to_interface_ctrl])
 
         for anim_curve_node, curve_data in data['animNodes'].items():
-            verbose("\n---------------")
             driven_attr_name = curve_data['targetAttr'][0]
             driver_attr_name = curve_data['sourceAttr'][0]
             time_curves = curve_data['data']
             driven_object, driven_attr = driven_attr_name.split(".")
             driver_object, driver_attr = driver_attr_name.split(".")
 
-            verbose("[Input driver attr] :: {}".format(driver_attr))
-
-            verbose("[Time curves] :: {}".format(time_curves))
-            verbose("[Driver node] :: {}.{}".format(copy_to_system_control, driver_attr))
-            verbose("[Driven node] :: {}.{}".format(copy_to_node, driven_attr))
-            verbose("\n---------------")
-
             if mirror:
-                mirror_driver_attr = _cls_mirror.replace_side_string(driver_attr)
-                if mirror_driver_attr in __mirror_performed:
+                # mirror_driver_attr = _cls_mirror.replace_side_string(driver_attr)
+                if (driver_attr, driven_attr) in __mirror_performed:
                     continue
 
                 # # get the data from the mirror
                 if driven_attr in ["translateX", "rotateZ", "rotateY"]:
                     driver_data = __tmp_data.find(driven_attr)
                     __tmp_driver_data = MirrorList(driver_data)
-                    __temp_attributes = __tmp_driver_data.find(mirror_driver_attr, attribute=True)
+                    __temp_attributes = __tmp_driver_data.find(driver_attr, attribute=True)
                     temp_time_curves = __temp_attributes[0][-1]
 
                     # invert the translation
-                    # for k, v in __temp_attributes[0][-1].items():
-                    #     if "translateX" in driven_attr:
-                    #         temp_time_curves[k] = v * -1
-                    #     if "rotateY" in driven_attr:
-                    #         temp_time_curves[k] = v * -1
-                    #     if "rotateZ" in driven_attr:
-                    #         temp_time_curves[k] = v * -1
-
-                    # print(driver_attr, mirror_driver_attr, driven_attr)
-                    # print('original: ', time_curves)
-                    # print('mirror: ', temp_time_curves)
+                    for k, v in __temp_attributes[0][-1].items():
+                        if "translateX" in driven_attr:
+                            temp_time_curves[k] = v * -1
+                        if "rotateY" in driven_attr:
+                            temp_time_curves[k] = v * -1
+                        if "rotateZ" in driven_attr:
+                            temp_time_curves[k] = v * -1
 
                     # set the driven keyframes
                     animation_utils.__verbosity__ = 0
                     for driver_value, driven_value in temp_time_curves.items():
-                        print('[{}]'.format(copy_to_node), driver_attr, driven_attr, driven_value)
+                        verbose('[{}]'.format(copy_to_node), driver_attr, driven_attr, driven_value)
                         animation_utils.set_driven_key(
                             driver_node=copy_to_system_control, driver_attr=driver_attr,
                             driven_node=copy_to_node, driven_attr=driven_attr,
                             driven_value=driven_value, driver_value=driver_value
                         )
-                    __mirror_performed.append(driven_attr)
-                    __mirror_performed.append(mirror_driver_attr)
+                    __mirror_performed.append((driver_attr, driven_attr))
 
             # else continue with regular values for the driven key setup
             animation_utils.__verbosity__ = 0
             for driver_value, driven_value in time_curves.items():
-                print('[{}]'.format(copy_to_node), driver_attr, driven_attr, driven_value)
+                verbose('[{}]'.format(copy_to_node), driver_attr, driven_attr, driven_value)
                 animation_utils.set_driven_key(
                     driver_node=copy_to_system_control, driver_attr=driver_attr,
                     driven_node=copy_to_node, driven_attr=driven_attr,
                     driven_value=driven_value, driver_value=driver_value
                 )
-
+    verbose("\n---------------")
     return True
