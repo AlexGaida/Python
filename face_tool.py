@@ -48,6 +48,16 @@ def verbose(message=""):
         print(message)
 
 
+def delete_keys_on_selected():
+    s_ctrls = object_utils.get_selected_node(single=False)
+    selected_ctrls = s_ctrls[:-1]
+    interface_ctrl = s_ctrls[-1]
+    print(selected_ctrls, interface_ctrl)
+    for c_ctrl in selected_ctrls:
+        delete_keys_on_controller(c_ctrl, interface_ctrl)
+    return True
+
+
 def inspect_interface_attributes():
     """
     prints the selected controller attributes.

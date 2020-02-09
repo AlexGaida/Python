@@ -59,7 +59,7 @@ def get_float_3_ptr():
 
 class ScriptUtil(om.MScriptUtil):
     ptr = None
-    MATRIX = om.Matrix()
+    MATRIX = om.MMatrix()
 
     def __init__(self, *a, **kw):
         super(ScriptUtil, self).__init__(*a)
@@ -826,7 +826,7 @@ def set_joint_labels():
     return True
 
 
-def mirror_object(control_name="", mirror_obj_name=""):
+def mirror_object(control_name="", mirror_obj_name="", invert_rotate=True):
     """
     mirrors the selected object. If mirror object is not supplied, then mirror the supplied object directly.
     :param control_name: <str> controller object to get transformational values from.
@@ -843,11 +843,12 @@ def mirror_object(control_name="", mirror_obj_name=""):
     w_matrix = c_transform.world_matrix_list()
     mir_matrix = c_transform.mirror_matrix(w_matrix)
     rotation_values = cmds.xform(control_name, ro=1, q=1)
-    # mirror rotate y
-    rotation_values[1] *= -1
+    if invert_rotate:
+        # mirror rotate y
+        rotation_values[1] *= -1
 
-    # mirror rotate z
-    rotation_values[2] *= -1
+        # mirror rotate z
+        rotation_values[2] *= -1
 
     if not mirror_obj_name:
         cmds.xform(control_name, m=mir_matrix, ws=1)
