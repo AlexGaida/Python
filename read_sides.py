@@ -89,6 +89,9 @@ class Sides(object):
     def side_from_string(self, in_string=""):
         return extract_side_from_string(self.SIDES, in_string)
 
+    def split(self):
+        return filter(lambda x: '_' in x, self.SIDES)
+
     def sides(self):
         return self.SIDES
 

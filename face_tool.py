@@ -28,10 +28,11 @@ reload(transform_utils)
 reload(animation_utils)
 reload(object_utils)
 reload(math_utils)
+reload(read_sides)
 
-# define global variables
+# define private variables
 __version__ = "1.0.0"
-__verbosity__ = 0
+__verbosity__ = 1
 _cls_mirror = read_sides.MirrorSides()
 __default_attribute_values = attribute_utils.Attributes.DEFAULT_ATTR_VALUES
 _k_transform = object_utils.om.MFn.kTransform
@@ -39,13 +40,19 @@ _k_locator = object_utils.om.MFn.kLocator
 __interface_ctrls = []
 __on_face_ctrls = []
 
+# define global variables
+SIDES = read_sides.Sides()
+MIRROR_SIDES = read_sides.MirrorSides()
+AXES = read_sides.Axes()
+
+
 if not cmds.objExists('on_face_control_grp'):
     cmds.warning("[ObjectDoesNotExist] :: on_face_control_grp")
 
 
-def verbose(message=""):
+def verbose(args):
     if __verbosity__:
-        print(message)
+        print(''.join(*args))
 
 
 def delete_keys_on_selected():
@@ -71,6 +78,19 @@ def inspect_interface_attributes():
     return True
 
 
+def get_object_node(object_node):
+    """
+    grabs the object node.
+    :param object_node: <str> object node
+    :return:
+    """
+    if not object_node:
+        object_node = object_utils.get_selected_node()
+    if isinstance(object_node, (list, tuple)):
+        object_node = object_node[0]
+    return object_node
+
+
 def get_face_attributes(object_node="", non_zero=False):
     """
     gets the face attributes from the controller specified.
@@ -79,10 +99,7 @@ def get_face_attributes(object_node="", non_zero=False):
     :param non_zero: <bool> get non zero face attributes.
     :return: <list> face attributes.
     """
-    if not object_node:
-        object_node = object_utils.get_selected_node()
-    if isinstance(object_node, (list, tuple)):
-        object_node = object_node[0]
+    object_node = get_object_node(object_node)
     attrs = attribute_utils.Attributes(object_node, custom=True)
     a_data = {}
     if attrs:
@@ -91,6 +108,25 @@ def get_face_attributes(object_node="", non_zero=False):
         else:
             a_data = attrs.items()
     return dict(filter(lambda a: a[0].startswith('face_'), a_data))
+
+
+def filter_face_attributes(object_node="", non_zero=True):
+    """
+    filters the attributes on the contriller node.
+    :param object_node: <str> maya object node.
+    :param non_zero: <bool> get non zero face attributes.
+    :return: <list> face attributes.
+    """
+    object_node = get_object_node(object_node)
+    attribute_dict = get_face_attributes(object_node, non_zero)
+    collection = {}
+    for attr, val in attribute_dict.items():
+        if filter(lambda x: x == attr.partition('_')[-1], AXES.split()):
+            collection[attr] = val
+    if collection:
+        return collection
+    else:
+        return attribute_dict
 
 
 def get_offset_scale_attr(scale_attr=""):
@@ -363,8 +399,9 @@ def apply_key_on_face_control(selected_on_face_ctrl='', interface_ctrl=""):
         drn_custom_attr = attribute_utils.Attributes(driven_object, custom=True)
 
         # check for non-zero attributes on the interface controllers
-        interface_attrs = attribute_utils.Attributes(interface_ctrl, keyable=True)
-        interface_non_zero = interface_attrs.non_zero_attributes()
+        # interface_attrs = attribute_utils.Attributes(interface_ctrl, keyable=True)
+        interface_non_zero = filter_face_attributes(interface_ctrl, non_zero=True)
+        # interface_non_zero = interface_attrs.non_zero_attributes()
         if __verbosity__:
             print("[ApplyKeyOnFace] :: Driver: {}, {};\nDriven: {};".format(
                 interface_ctrl, interface_non_zero, driven_object))
@@ -467,7 +504,9 @@ def set_keys_on_face_controller(selected_node='', interface_ctrl="", driven_node
 
     # get the attributes
     driven_attr_cls = attribute_utils.Attributes(driven_object, keyable=1)
-    face_attrs = get_face_attributes(interface_node, non_zero=True)
+    # face_attrs = get_face_attributes(interface_node, non_zero=True)
+    # grabs the lateral axes face attribute
+    face_attrs = filter_face_attributes(interface_node, non_zero=True)
     driven_attrs = driven_attr_cls.non_zero_attributes()
 
     if not face_attrs:
@@ -476,6 +515,7 @@ def set_keys_on_face_controller(selected_node='', interface_ctrl="", driven_node
     # set the key on the controller and the driven
     for face_attr, face_value in face_attrs.items():
         for driven_attr, driven_val in driven_attrs.items():
+
             # change the scale attribute
             if 'scale' in driven_attr:
                 driven_attr = get_offset_scale_attr(driven_attr)
@@ -631,6 +671,9 @@ def get_anim_data(nodes=[]):
 
 
 class MirrorList(object):
+    """
+    Class object for data mining the animation data attributes for mirror operations.
+    """
     def __init__(self, anim_data=None):
         self.temp_mirror_list = []
         self.temp_anim_data = {}

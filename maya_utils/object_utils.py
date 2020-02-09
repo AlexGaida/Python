@@ -386,7 +386,7 @@ def get_transform_relatives(object_name='', find_parent=False, find_child=False,
 
 def get_connected_nodes(object_name="", find_node_type=om.MFn.kAnimCurve,
                         as_strings=False, find_attr="", down_stream=True,
-                        up_stream=False, with_shape=None, plugs=False):
+                        up_stream=False, with_shape=None):
     """
     get connected nodes from node provided.
     :param object_name: <str> string object to use for searching from.
@@ -751,7 +751,7 @@ def snap_control_to_selected_locator():
             continue
         ctrl_name = sl.rpartition('_loc')[0]
         x_mat = cmds.xform(sl, m=1, q=1, ws=1)
-        print(ctrl_name)
+
         cmds.xform(ctrl_name, m=x_mat, ws=1)
     return True
 

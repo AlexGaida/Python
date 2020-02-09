@@ -1,3 +1,7 @@
+"""
+module for dealing with deformers in Maya.
+"""
+# import maya modules
 from maya import cmds
 
 

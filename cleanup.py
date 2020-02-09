@@ -1,10 +1,14 @@
+"""
+This is the cleanup module for clearing the Maya scene with stuff we don't want.
+"""
+# import maya modules
 from maya import cmds
 
-
+# import local modules
 from maya_utils import object_utils
 
-
-functions = ['normalize_skin_weights',
+# define global variables
+FUNCTIONS = ['normalize_skin_weights',
              'zero_controls']
 
 
@@ -20,6 +24,6 @@ def zero_controls():
 
 
 def run_cleanup_functions():
-    for clean_func in functions:
+    for clean_func in FUNCTIONS:
         eval(clean_func)()
-        return True
+    return True
