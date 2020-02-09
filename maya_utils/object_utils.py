@@ -745,6 +745,17 @@ def create_locators():
     return True
 
 
+def snap_control_to_selected_locator():
+    for sl in cmds.ls(sl=1, type='transform'):
+        if '_loc' not in sl:
+            continue
+        ctrl_name = sl.rpartition('_loc')[0]
+        x_mat = cmds.xform(sl, m=1, q=1, ws=1)
+        print(ctrl_name)
+        cmds.xform(ctrl_name, m=x_mat, ws=1)
+    return True
+
+
 def get_driver_object(object_name="", plugs=False):
     """
     return the driver object.

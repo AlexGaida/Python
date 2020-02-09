@@ -19,6 +19,16 @@
     "left": "l",
     "Right": "R",
     "Left": "L"
-  }
+  },
 
+  "axes": [
+    "right",
+    "left",
+    "top",
+    "bottom",
+    "right_top",
+    "right_bottom",
+    "left_top",
+    "left_bottom"
+  ]
 }

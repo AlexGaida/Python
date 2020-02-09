@@ -447,15 +447,24 @@ class Transform(om.MFnTransform):
         return self.mirror_matrix(self.matrix_values(world=True, flatten=True))
 
     def mirror_rotation_matrix(self):
-        world_matrix = self.world_matrix_list()
-        mirror_matrix = self.mirror_matrix(world_matrix)
-        m_xform = om.MTransformationMatrix(mirror_matrix)
-        euler_angles = self.convert_euler_to_angle(m_xform.rotation().asEulerRotation())
+        # world_matrix = self.world_matrix_list()
+        # mirror_matrix = self.mirror_matrix(world_matrix)
+        m_xform = om.MTransformationMatrix(object_utils.ScriptUtil().matrix_from_list(self.inclusive_matrix_list()))
+        xform_euler = m_xform.rotation().asEulerRotation()
+        euler_angles = self.convert_euler_to_angle(xform_euler)
+
+        # mirror axis Y
         euler_angles[1] *= -1
+        # mirror axis Z
         euler_angles[2] *= -1
 
-        # self.quaternion_rotation()
+        quat = om.MQuaternion()
+        quat += self.quaternion_rotation(euler_angles[0], 'X')
+        quat += self.quaternion_rotation(euler_angles[0], 'Y')
+        quat += self.quaternion_rotation(euler_angles[0], 'Z')
+        return quat.asEulerRotation().asMatrix()
 
+        # convert the angles back to eulers
     def print_decomposed_matrix(self):
         print('[Translation] :: {}'.format(self.get_translation_list()))
         print('[Rotation] :: {}'.format(self.get_euler_angles()))

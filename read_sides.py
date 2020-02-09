@@ -69,9 +69,14 @@ def extract_side_index_from_string(in_string="", side="", start=False, end=False
 
 
 class Sides(object):
-    SIDES = read_file()["sides"]
+    KEY = "sides"
+    SIDES = {}
+    START = 0
+    LENGTH = 0
 
     def __init__(self):
+        self.SIDES = read_file()[self.KEY]
+        self.LENGTH = len(self.SIDES)
         self.update_class()
 
     def update_class(self):
@@ -97,22 +102,42 @@ class Sides(object):
         return str(self.SIDES)
 
     def __iter__(self):
-        return iter(self.SIDES)
+        return self
+
+    def next(self):
+        num = self.START
+        self.START += 1
+        if num < self.LENGTH:
+            return self.SIDES[self.SIDES.keys()[num]]
+        else:
+            raise StopIteration("[Sides] :: Max length reached.")
 
 
-class MirrorSides(object):
-    MIRROR_SIDES = read_file()["mirror"]
-    SIDES = Sides()
+class Axes(Sides):
+    KEY = "axes"
+    SIDES = []
 
     def __init__(self):
-        self.update_class()
+        super(Axes, self).__init__()
 
     def update_class(self):
-        """
-        updates the current class with keys and values
-        """
-        for k, v in self.MIRROR_SIDES.items():
-            self.__dict__[k] = v
+        for k in self.SIDES:
+            self.__dict__[k] = None
+
+    def next(self):
+        num = self.START
+        self.START += 1
+        if num < self.LENGTH:
+            return self.SIDES[num]
+        else:
+            raise StopIteration("[Axes] :: Max length reached.")
+
+
+class MirrorSides(Sides):
+    KEY = "mirror"
+
+    def __init__(self):
+        super(MirrorSides, self).__init__()
 
     def side_from_string(self, in_string="", index=False):
         """
@@ -141,18 +166,3 @@ class MirrorSides(object):
                 split_str[split_index] = split_str[split_index].replace(side, mirror_side_name)
                 return ''.join(split_str)
         return in_string
-
-    def sides(self):
-        return self.MIRROR_SIDES
-
-    def items(self):
-        return self.MIRROR_SIDES.items()
-
-    def __getitem__(self, item):
-        return self.__dict__[item]
-
-    def __repr__(self):
-        return str(self.MIRROR_SIDES)
-
-    def __iter__(self):
-        return iter(self.MIRROR_SIDES)
