@@ -1,9 +1,12 @@
 """
 Transform module for finding, creating and setting attributes
 """
+# import standard modules
+import math
 
 # import maya modules
 from maya import OpenMaya as om
+from maya import cmds
 
 # import local modules
 import object_utils
@@ -19,12 +22,24 @@ class Transform(om.MFnTransform):
     WORLD_SPACE = om.MSpace.kWorld
     OBJECT_SPACE = om.MSpace.kObject
 
+    ROTATION_ORDER_NAMES = {1: 'kXYZ',
+                            2: 'kYZX',
+                            3: 'kZXY',
+                            4: 'kXZY',
+                            5: 'kYXZ',
+                            6: 'kZYX'}
+
     ROTATE_ORDER_XYZ = om.MTransformationMatrix.kXYZ
     ROTATE_ORDER_YZX = om.MTransformationMatrix.kYZX
     ROTATE_ORDER_ZXY = om.MTransformationMatrix.kZXY
+    ROTATE_ORDER_XZY = om.MTransformationMatrix.kXZY
     ROTATE_ORDER_YXZ = om.MTransformationMatrix.kYXZ
     ROTATE_ORDER_ZYX = om.MTransformationMatrix.kZYX
     ROTATE_ORDER_INVALID = om.MTransformationMatrix.kInvalid
+
+    X = om.MVector(1, 0, 0)
+    Y = om.MVector(0, 1, 0)
+    Z = om.MVector(0, 0, 1)
 
     def __init__(self, maya_node=""):
         self.MAYA_STR_OBJECT = maya_node
@@ -66,6 +81,21 @@ class Transform(om.MFnTransform):
         else:
             return m_vector
 
+    def get_translation(self, world=True):
+        if world:
+            return self.transformation().translation(self.WORLD_SPACE)
+        else:
+            return self.transformation().translation(self.OBJECT_SPACE)
+
+    def get_translation_list(self):
+        return [self.get_translation()[t] for t in range(3)]
+
+    def get_world_translation_list(self):
+        return [self.get_translation(world=True)[t] for t in range(3)]
+
+    def get_rotation_order_name(self, idx=0):
+        return self.ROTATION_ORDER_NAMES[idx]
+
     def rotate_values(self, world=False, as_m_vector=False):
         """
         return the rotate attribute values
@@ -96,31 +126,96 @@ class Transform(om.MFnTransform):
         m_matrix.get(m_double)
         return None
 
+    def crash_maya_1(self):
+        """
+        deliberately crash Maya by returning a list object of the euler rotation.
+        :return: <None>
+        """
+        return list(self.euler_rotation())
+
     def matrix_values(self, world=False, flatten=False):
         """
         returns row column float items.
         :param world: <bool> return the matrix in world space.
-        :param flatten: <bool> flatten the returning list of tuple matrices.
+        :param flatten: <bool> flatten the matrix and return row, column of tuple items.
         :return: <list> matrix.
         """
-        m_matrix_transform = self.transformation()
-        m_matrix = m_matrix_transform.asMatrix()
-
-        print(self.matrix_list(m_matrix, flatten=flatten))
-
         if world:
-            return self.matrix_list(m_matrix_transform.asMatrixInverse(), flatten=flatten)
+            return self.matrix_list(self.world_matrix(), flatten=flatten)
         else:
             # return row, column tuple items
-            return self.matrix_list(m_matrix, flatten=flatten)
+            return self.matrix_list(self.matrix(), flatten=flatten)
 
-    def world_matrix(self):
+    def world_transform_matrix(self):
+        return om.MTransformationMatrix(self.world_matrix())
+
+    def world_matrix_list(self):
         """
         returns the world matrix
         :return: <list> world matrix values.
         """
-        matrix = self.MAYA_M_DAG_PATH.inclusiveMatrix()
-        return self.matrix_list(matrix, flatten=True)
+        return self.matrix_list(self.world_matrix_from_plug(), flatten=True)
+
+    def inclusive_matrix_list(self):
+        return self.matrix_list(self.inclusive_matrix(), flatten=True)
+
+    def inclusive_matrix(self):
+        return self.MAYA_M_DAG_PATH.inclusiveMatrix()
+
+    def world_matrix(self):
+        return self.world_matrix_from_plug()
+
+    def matrix(self):
+        return self.transformation().asMatrix()
+
+    def inverse_matrix(self):
+        return self.transformation().asMatrixInverse()
+
+    def world_to_local_matrix(self):
+        return self.world_matrix_from_plug() * self.inverse_matrix()
+
+    def world_matrix_from_plug(self):
+        """
+        grabs the world matrix from plug.
+        :return: <OpenMaya.MMatrix> world matrix object.
+        """
+        return self.matrix_data_fn(
+            self.m_attr_index(
+                self.m_attr_plug(
+                    self.world_matrix_attr()), 0)).matrix()
+
+    def world_matrix_attr(self):
+        return self.MAYA_MFN_OBJECT.attribute('worldMatrix')
+
+    def m_attr_plug(self, attr):
+        return om.MPlug(self.MAYA_M_OBJECT, attr)
+
+    def m_attr_index(self, m_plug, idx):
+        return m_plug.elementByLogicalIndex(idx)
+
+    def matrix_data_fn(self, m_plug):
+        return om.MFnMatrixData(m_plug.asMObject())
+
+    def get_transformatrion_matrix(self, matrix=None):
+        if matrix:
+            return om.MTransformationMatrix(matrix)
+        else:
+            return self.transformation()
+
+    def rotation_order_name(self):
+        """
+        returns kInvalid
+                kXYZ
+                kYZX
+                kZXY
+                kXZY
+                kYXZ
+                kZYX
+                kLast
+        :param matrix: <OpenMaya.MMatrix>
+        :return: <OpenMaya.MTransformationMatrix.RotationOrder>
+        """
+        return self.get_rotation_order_name(self.rotationOrder())
 
     def matrix_list(self, m_matrix=om.MMatrix, flatten=False):
         """
@@ -185,6 +280,92 @@ class Transform(om.MFnTransform):
         self.M_SCRIPT_UTIL.setDoubleArray(matrix[3], 2, matrix_list[3][2])
         return matrix
 
+    def matrix_from_list(self, mat_list=[]):
+        return object_utils.ScriptUtil(mat_list, matrix_from_list=True).matrix_from_list()
+
+    def set_relative_rotation_x(self, degree=0):
+        self.rotateBy(self.quaternion_rotation(degree, axis='X'))
+
+    def set_relative_rotation_y(self, degree=0):
+        self.rotateBy(self.quaternion_rotation(degree, axis='Y'))
+
+    def set_relative_rotation_z(self, degree=0):
+        self.rotateBy(self.quaternion_rotation(degree, axis='Z'))
+
+    def slerp(self, q_rotation=None, identity=True):
+        """
+        interpolating between the two rotations by using Spherical Linear Interpolation
+        """
+        if identity:
+            return om.MQuaternion.slerp(om.MQuaternion.kIdentity, q_rotation, 0.1)
+
+    def get_quaternion_rotation(self, normalize=True):
+        if not normalize:
+            return self.transformation().rotation()
+        else:
+            return self.transformation().rotation().normalizeIt()
+
+    def quaternion_list(self):
+        return [self.get_quaternion_rotation()[x] for x in range(4)]
+
+    def reset_rotation(self):
+        self.setRotation(self.get_quaternion_rotation(), self.OBJECT_SPACE)
+
+    def set_rotation(self, q_list=[]):
+        self.setRotationComponents(q_list, self.OBJECT_SPACE, asQuaternion=True)
+
+    def set_rotation_identity(self):
+        self.setRotation(om.MQuaternion.kIdentity, self.OBJECT_SPACE)
+
+    def set_euler_rotation_order(self, rotation_order="kXYZ"):
+        return self.euler_rotation().reorderIt(eval('om.MTransformationMatrix.{}'.format(rotation_order)))
+
+    def get_euler_rotation(self):
+        return self.transformation().rotation().asEulerRotation()
+
+    def euler_rotation_as_list(self):
+        return [self.get_euler_rotation()[r] for r in range(3)]
+
+    def euler_rotation(self, as_list=False):
+        if not as_list:
+            return self.get_euler_rotation()
+        else:
+            return self.euler_rotation_as_list()
+
+    @staticmethod
+    def convert_euler_to_angle(m_euler):
+        return [m_euler[r] for r in range(3)]
+
+    def get_euler_angles(self):
+        return [math.degrees(angle) for angle in self.euler_rotation(as_list=True)]
+
+    def get_euler_radians(self):
+        return [math.radians(angle) for angle in self.euler_rotation(as_list=True)]
+
+    def get_world_scale(self):
+        return map(self.world_scale_double_ptr.double_array_item, range(3))
+
+    def get_object_scale(self):
+        return map(self.object_scale_double_ptr.double_array_item, range(3))
+
+    @property
+    def object_scale_double_ptr(self):
+        """
+        get the double pointer script util class instance.
+        :return: <MScriptUtil> scale attribute double pointer
+        """
+        return object_utils.ScriptUtil(as_double_ptr=True,
+                                       function=(self.transformation().getScale, self.OBJECT_SPACE))
+
+    @property
+    def world_scale_double_ptr(self):
+        """
+        get the double pointer script util class instance.
+        :return: <MScriptUtil> scale attribute double pointer
+        """
+        return object_utils.ScriptUtil(as_double_ptr=True,
+                                       function=(self.transformation().getScale, self.WORLD_SPACE))
+
     @staticmethod
     def mirror_matrix(matrix_list, across='YZ', behaviour=False,
                       invert_rotate_x=False, invert_rotate_y=False, invert_rotate_z=False):
@@ -241,13 +422,44 @@ class Transform(om.MFnTransform):
             matrix_list[2:11:4] = rz
         return matrix_list
 
+    def mirror_euler_rotation(self, m_euler=None, mirror_x=False, mirror_y=False, mirror_z=False):
+        """
+        mirror euler rotations
+        :param m_euler: <OpenMaya.MEuler>
+        :param mirror_x: <bool> mirrors rotation x axis
+        :param mirror_y: <bool> mirrors rotation y axis
+        :param mirror_z: <bool> mirrors rotation z axis
+        """
+        angles = self.get_euler_angles(m_euler=m_euler)
+        if mirror_x:
+            angles[0] *= -1
+        if mirror_y:
+            angles[1] *= -1
+        if mirror_z:
+            angles[2] *= -1
+        return angles
+
     def mirror_world_matrix(self):
         """
         mirrors world matrix.
         :return: <list> mirrored world matrix list matrix values.
         """
-        w_matrix = self.world_matrix()
-        return self.mirror_matrix(w_matrix)
+        return self.mirror_matrix(self.matrix_values(world=True, flatten=True))
+
+    def mirror_rotation_matrix(self):
+        world_matrix = self.world_matrix_list()
+        mirror_matrix = self.mirror_matrix(world_matrix)
+        m_xform = om.MTransformationMatrix(mirror_matrix)
+        euler_angles = self.convert_euler_to_angle(m_xform.rotation().asEulerRotation())
+        euler_angles[1] *= -1
+        euler_angles[2] *= -1
+
+        # self.quaternion_rotation()
+
+    def print_decomposed_matrix(self):
+        print('[Translation] :: {}'.format(self.get_translation_list()))
+        print('[Rotation] :: {}'.format(self.get_euler_angles()))
+        print('[Scale] :: {}'.format(self.get_world_scale()))
 
     @staticmethod
     def get_matrix_rotations(matrix_list=None):
@@ -259,3 +471,19 @@ class Transform(om.MFnTransform):
         ry = matrix_list[1:10:4]
         rz = matrix_list[2:11:4]
         return rx, ry, rz
+
+    def quaternion_rotation(self, degree=0, axis='Y'):
+        if axis == 'X':
+            return om.MQuaternion(math.radians(degree), self.X)
+        if axis == 'Y':
+            return om.MQuaternion(math.radians(degree), self.Y)
+        if axis == 'Z':
+            return om.MQuaternion(math.radians(degree), self.Z)
+
+    def rotate_by_quaternion(self, quat):
+        """
+        rotate by quaternion.
+        :param quat: <OpenMaya,MQuaternion>
+        :return: <OpenMaya.MStatus>
+        """
+        return self.rotateByQuaternion(quat.x, quat.y, quat.z, quat.w, om.MSpace.kPreTransform)

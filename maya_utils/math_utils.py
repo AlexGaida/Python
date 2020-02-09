@@ -10,13 +10,17 @@ from maya import cmds
 import math
 import decimal
 
+# define global variables
+M_PI = 3.14159265358979323846
+EXP = 2.718281
+
 
 def power(x, n):
     return x ** n
 
 
 def exponential(x):
-    return 2.718281**x
+    return EXP**x
 
 
 def gaussian(x, x0, sigma):
@@ -27,6 +31,14 @@ def float_range(start, stop, step):
     while start <= stop:
         yield float(start)
         start += step
+
+
+def degrees_to_radians(degrees):
+    return degrees * (M_PI / 180.0)
+
+
+def radians_to_degrees(radians):
+    return radians * (180.0 / M_PI)
 
 
 def round_to_step(x, parts=4):

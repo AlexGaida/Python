@@ -494,7 +494,7 @@ def set_key_on_selected():
 def set_key_default_on_selected(create_driver_groups=False):
     """
     set the default keys on selected.
-    **Important: Select the driver interface controller last!
+    !!Important: Select the driver interface controller last!
     :return: <bool> True for success, <bool> False for failure.
     """
     # setup the driver nodes
@@ -545,12 +545,15 @@ def mirror_face_controllers(control_name=""):
             opposite_control_name = control_name.replace('_l_', '_r_')
         if '_r_' in control_name:
             opposite_control_name = control_name.replace('_r_', '_l_')
-        if not opposite_control_name:
-            print ValueError('[NoMirrorControllerFoundError] :: No matching mirror controller has been found.')
-            continue
 
-        # mirror the world matrix
-        object_utils.mirror_object(control_name, opposite_control_name)
+        if opposite_control_name:
+            # mirror the world matrix
+            print(control_name, '-->', opposite_control_name)
+            object_utils.mirror_object(control_name, opposite_control_name)
+        else:
+            # mirror the world matrix
+            print(control_name, '-->', control_name)
+            object_utils.mirror_object(control_name)
     return True
 
 

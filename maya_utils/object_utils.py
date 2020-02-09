@@ -26,6 +26,7 @@ line = re.sub(r'''
 """
 # import standard modules
 import re
+import types
 
 # import maya modules
 from maya import cmds
@@ -57,16 +58,39 @@ def get_float_3_ptr():
 
 
 class ScriptUtil(om.MScriptUtil):
-    def __init__(self, *args):
-        super(ScriptUtil, self).__init__(*args)
-        self.float_ptr = None
+    ptr = None
+    MATRIX = om.Matrix()
 
-    def get_float_ptr(self):
-        self.float_ptr = self.asFloatPtr()
-        return self.float_ptr
+    def __init__(self, *a, **kw):
+        super(ScriptUtil, self).__init__(*a)
+        if 'as_double_ptr' in kw:
+            self.createFromList([0.0, 0.0, 0.0], 3)
+            self.ptr = self.asDoublePtr()
+        if 'as_float_ptr' in kw:
+            self.ptr = self.asFloatPtr()
+        if 'as_double3_ptr' in kw:
+            self.ptr = self.asDouble3Ptr()
+        if 'matrix_from_list' in kw:
+            self.matrix_from_list(*a)
+        if 'function' in kw:
+            if callable(kw['function'][0]):
+                self.execute(kw['function'])
+
+    def execute(self, function=()):
+        function[0](*[self.ptr] + list(function[1:]))
 
     def as_float(self):
-        return self.asFloat()
+        return self.ptr.asFloat()
+
+    def as_double(self):
+        return self.ptr.asDouble()
+
+    def double_array_item(self, idx=0):
+        return self.getDoubleArrayItem(self.ptr, idx)
+
+    def matrix_from_list(self, matrix_list=[]):
+        self.createMatrixFromList(matrix_list, self.MATRIX)
+        return self.MATRIX
 
 
 def get_unsigned_int_ptr(int_num=None):
@@ -816,9 +840,8 @@ def mirror_object(control_name="", mirror_obj_name=""):
 
     # mirror the world matrix
     c_transform = transform_utils.Transform(control_name)
-    w_matrix = c_transform.world_matrix()
+    w_matrix = c_transform.world_matrix_list()
     mir_matrix = c_transform.mirror_matrix(w_matrix)
-    cmds.xform(control_name, m=mir_matrix, ws=1)
     rotation_values = cmds.xform(control_name, ro=1, q=1)
     # mirror rotate y
     rotation_values[1] *= -1
@@ -827,8 +850,10 @@ def mirror_object(control_name="", mirror_obj_name=""):
     rotation_values[2] *= -1
 
     if not mirror_obj_name:
+        cmds.xform(control_name, m=mir_matrix, ws=1)
         cmds.xform(control_name, ro=rotation_values)
     else:
+        cmds.xform(mirror_obj_name, m=mir_matrix, ws=1)
         cmds.xform(mirror_obj_name, ro=rotation_values)
     return True
 
@@ -884,5 +909,5 @@ class Item(om.MObject):
     def source_plugs(self):
         return get_plugs(self, source=True)
 
-    def destination_plugs(self, ignore=[]):
-        return get_plugs(self, source=False, ignore=ignore)
+    def destination_plugs(self, ignore_nodes=[]):
+        return get_plugs(self, source=False, ignore_nodes=ignore_nodes)

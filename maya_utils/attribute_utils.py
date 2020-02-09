@@ -482,8 +482,8 @@ class Attributes(om.MDagModifier):
         source_tfm = transform_utils.Transform(self.MAYA_STR_OBJECT)
 
         if match_world_space:
-            if source_tfm.world_matrix() != target_tfm.world_matrix():
-                cmds.xform(self.MAYA_STR_OBJECT, m=target_tfm.world_matrix(), ws=1)
+            if source_tfm.world_matrix_list() != target_tfm.world_matrix_list():
+                cmds.xform(self.MAYA_STR_OBJECT, m=target_tfm.world_matrix_list(), ws=1)
 
         # if the world spaces match, perform the operation to copy attributes.
         else:
