@@ -334,6 +334,8 @@ def get_blend_weighted_values(node_name="", target_attr=""):
     """
     node_attr = node_name + '.' + target_attr
     node = object_utils.get_plugs(node_name, attr_name=node_attr, ignore_nodes=['kUnitConversion'])
+    if not node:
+        return []
     if object_utils.check_object_type(node, 'blendWeighted'):
         node_name, node_attr = node[0].split('.')
         return cmds.getAttr(node_name + '.input')

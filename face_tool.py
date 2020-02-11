@@ -79,9 +79,8 @@ def get_keyable_object_attributes(driven_object):
     driven_attr_cls = attribute_utils.Attributes(driven_object, keyable=1)
 
     # grabs the driven attributes
-    driven_attrs = driven_attr_cls.non_zero_attributes()
-    if not driven_attrs:
-        driven_attrs = driven_attr_cls.__dict__()
+    # driven_attrs = driven_attr_cls.non_zero_attributes()
+    driven_attrs = driven_attr_cls.__dict__()
     return driven_attrs
 
 
@@ -434,6 +433,7 @@ def apply_key_on_face_control(selected_on_face_ctrl='', interface_ctrl=""):
         # get the attributes on the driven object
         drn_attr = attribute_utils.Attributes(driven_object, keyable=True)
         drn_custom_attr = attribute_utils.Attributes(driven_object, custom=True)
+        drn_all_attrs = attribute_utils.Attributes(driven_object, all_attrs=True)
 
         # copy the attributes from the on-face control to the driver group node
         drn_attr.copy_attr(on_face_attrs, match_world_space=True)
@@ -452,7 +452,7 @@ def apply_key_on_face_control(selected_on_face_ctrl='', interface_ctrl=""):
         set_keys_on_face_controller(selected_node=selected_on_face_ctrl,
                                     interface_ctrl=interface_ctrl,
                                     driven_node=driven_object,
-                                    original_data=on_face_attrs)
+                                    original_data=drn_all_attrs)
     return True
 
 
@@ -845,15 +845,14 @@ def set_keys_on_face_controller(selected_node='', interface_ctrl="", driven_node
 
     # get the keyable driven attributes
     driven_attrs = get_keyable_object_attributes(driven_object)
-
+    print(driven_attrs)
     # set the key on the controller and the driven
     for face_attr, face_value in face_attrs.items():
         for driven_attr, driven_val in driven_attrs.items():
             weighted_sum = animation_utils.get_blend_weighted_sum(node_name=driven_object, target_attr=driven_attr)
-
             # skip the attributes that already have original values on them
-            if original_data[driven_attr] == weighted_sum:
-                continue
+            # if original_data[driven_attr] == weighted_sum:
+            #     continue
 
             # skip the offset_ attributes
             if 'offset_' in driven_attr:
@@ -864,25 +863,23 @@ def set_keys_on_face_controller(selected_node='', interface_ctrl="", driven_node
                 driven_attr = get_offset_scale_attr(driven_attr)
                 driven_val += -1
 
-            # find the weighted value corresponding to the driven attribute name
-            original_weighted_value = get_original_weight_value(driven_object, driven_attr, interface_node, face_attr)
-            if original_weighted_value != weighted_sum:
-                print('The driven value will be blended.\n')
-                print('driven value, ')
-                print(driven_val, original_weighted_value, weighted_sum)
-                driven_val += weighted_sum - original_weighted_value
+            # grab the original data
+            original_driven_value = original_data[driven_attr]
 
-            # calculate the difference between the weighted sum and the driven value
-            # if driven_val in non_zero_data:
-            # print(driven_attr, driven_val, weighted_sum)
-            # driven_val -= (weighted_sum - driven_val)
-            # driven_val = -1 * (weighted_sum - driven_val)
-            # driven_val = weighted_sum - driven_val
-            # driven_val = weighted_sum - driven_val
+            # find the weighted value corresponding to the driven attribute name
+            driven_weighted_value = get_original_weight_value(driven_object, driven_attr, interface_node, face_attr)
+            driven_value_difference = original_driven_value - driven_val
+
+            if weighted_sum and weighted_sum != original_driven_value:
+                print('The driven value will be blended.\n')
+                driven_val = driven_weighted_value - driven_value_difference
 
             # set the key at the current space location
             face_value = math_utils.round_to_step(face_value)
             print('\n')
+            print('[OriginalDrivenValue] :: {}, {}'.format(driven_attr, original_driven_value))
+            print('[OriginalDrivenWeightedValue] :: {}, {}'.format(driven_attr, driven_weighted_value))
+            print('[DrivenWeightedValueDifference] :: {}, {}'.format(driven_attr, driven_value_difference))
             print('[DrivenValue] :: {}, {}'.format(driven_attr, driven_val))
             print('[FaceValue] :: {}, {}'.format(face_attr, face_value))
             print('\n')
