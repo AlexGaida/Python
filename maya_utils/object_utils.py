@@ -43,6 +43,10 @@ check_fn = lambda node, node_type: node.hasFn(eval("om.MFn." + node_type))
 __re_brackets_pattern = r'\[|]'
 
 
+def check_object_type(object_name="", object_type=""):
+    return cmds.objectType(object_name) == object_type
+
+
 def get_nice_name(object_name=''):
     """
     return a nice name from the object specified.
@@ -147,6 +151,14 @@ def get_selected_node(single=True):
         except IndexError:
             return ''
     return cmds.ls(sl=1)
+
+
+def get_connections_source(object_name=""):
+    return cmds.listConnections(object_name, source=True, destination=False, plugs=True)
+
+
+def get_connections_destination(object_name=""):
+    return cmds.listConnections(object_name, source=False, destination=True, plugs=True)
 
 
 def _get_m_object_name(m_object=om.MObject):
@@ -870,7 +882,7 @@ def mirror_object(control_name="", mirror_obj_name="", invert_rotate=True):
     return True
 
 
-def get_plugs(o_node=None, source=True, ignore_nodes=[], ignore_attrs=[]):
+def get_plugs(o_node=None, source=True, ignore_nodes=[], ignore_attrs=[], attr_name=""):
     """
     get plugs
     :param o_node: <OpenMaya.MObject>, <str> object to find plugs from.
@@ -878,6 +890,7 @@ def get_plugs(o_node=None, source=True, ignore_nodes=[], ignore_attrs=[]):
     :param ignore_nodes: <bool> ignores select nodes and continues with the loop.
     :param ignore_attrs: <bool> ignores these attributes,
                                 so no MayaNodeEditorSavedTabsInfo.tabGraphInfo[1].nodeInfo[49].dependNode
+    :param attr_name: <str> get connection from this attribute only.
     :return:
     """
     if not isinstance(o_node, om.MObject):
@@ -887,7 +900,11 @@ def get_plugs(o_node=None, source=True, ignore_nodes=[], ignore_attrs=[]):
     for i in range(node_fn.attributeCount()):
         a_obj = node_fn.attribute(i)
         m_plug = om.MPlug(o_node, a_obj)
+        # m_plug_type_name = a_obj.apiTypeStr()
         m_plug_name = m_plug.name()
+        if attr_name:
+            if attr_name not in m_plug_name:
+                continue
         if ignore_attrs:
             if [a for a in ignore_attrs if a in m_plug_name]:
                 continue

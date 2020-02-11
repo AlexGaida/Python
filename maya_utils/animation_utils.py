@@ -13,17 +13,25 @@ from maya import OpenMayaAnim as oma
 # import custom modules
 import object_utils
 from object_utils import ScriptUtil
+from maya_utils import math_utils
 
 
-# define local variables
+# define private variables
 __version__ = '1.0.0'
 __verbosity__ = 0
 __m_util = om.MScriptUtil()
 _float_ptr = ScriptUtil()
 
 
-def set_key():
-    pass
+def get_mfn_anim_node(object_node):
+    if isinstance(object_node, (str, unicode)):
+        return oma.MFnAnimCurve(object_utils.get_m_obj(object_node))
+
+
+def get_name_from_mfn_anim_node(object_node):
+    if isinstance(object_node, oma.MFnAnimCurve):
+        return object_node.name()
+    return object_node
 
 
 def set_driven_key(driver_node='',
@@ -91,53 +99,46 @@ def get_selected_timeslider_anim():
     return cmds.timeControl(a_time_slider, q=True, rangeArray=True)
 
 
-def get_anim_data(object_node=""):
+def get_value_from_time(a_node="", idx=0):
+    """
+    gets the value from the time supplied.
+    :param a_node: MFn.kAnimCurve node.
+    :param idx: <int> the time index.
+    :return: <tuple> data.
+    """
+    return om.MTime(a_node.time(idx).value(), om.MTime.kSeconds).value(), a_node.value(idx),
+
+
+def get_tangents_from_time(a_node="", idx=0):
+    """
+    gets the value from the time supplied.
+    :param a_node: MFn.kAnimCurve node.
+    :param idx: <int> the time index.
+    :return: <tuple> data.
+    """
+    i_x = __m_util.asDoublePtr()
+    o_x = __m_util.asDoublePtr()
+    i_y = __m_util.asDoublePtr()
+    o_y = __m_util.asDoublePtr()
+    a_node.getTangent(idx, i_x, i_y, True)
+    a_node.getTangent(idx, o_x, o_y, False)
+    return __m_util.getFloat(i_x), __m_util.getFloat(i_y), __m_util.getFloat(o_x), __m_util.getFloat(o_y),
+
+
+def get_anim_fn_data(a_node=""):
     """
     get animation data from MFnAnimCurve nodes.
-    :param object_node: <str> maya object node to check for keys from.
     :return: <dict> animCurve data. <bool> False for failure.
     """
-    anim_nodes = object_utils.get_m_anim_from_sel(object_node=object_node)
-    if not anim_nodes:
-        return False
+    k_len = a_node.numKeys()
+    collection = []
+    for i in xrange(k_len):
+        collection.append(get_value_from_time(a_node, i))
+    return collection
 
-    anim_data = {}
-    for a_name, a_node in anim_nodes.items():
-        k_len = a_node.numKeys()
 
-        if not k_len:
-            continue
-
-        anim_data[a_name] = {}
-        anim_data[a_name]["num_keys"] = k_len
-        anim_data[a_name]["anim_values"] = []
-
-        # iterate through the key values
-        for i in xrange(k_len):
-            # cmds.keyframe('animCurveUL4', valueChange=1, q=1)
-            # for whatever reason, this gives a more accurate time result than MTime.value()
-            a_time = cmds.keyframe('animCurveUL4', floatChange=1, q=1)[i]
-            m_time = a_node.time(i).value()
-            a_val = a_node.value(i)
-
-            i_x = om.MAngle()
-            o_x = om.MAngle()
-            i_y = __m_util.asDoublePtr()
-            o_y = __m_util.asDoublePtr()
-            a_node.getTangent(i, i_x, i_y, True)
-            a_node.getTangent(i, o_x, o_y, False)
-            i_y = __m_util.getDouble(i_y)
-            o_y = __m_util.getDouble(o_y)
-            anim_data[a_name]["anim_values"].append((a_time, a_val))
-
-            if __verbosity__:
-                print("time: {}".format(m_time))
-                print("value: {}".format(a_val))
-                print("tangent_ix: {}".format(i_x.asDegrees()))
-                print("tangent_ox: {}".format(o_x.asDegrees()))
-                print("InTangent: {}".format(i_y))
-                print("OutTangent: {}".format(o_y))
-    return anim_data
+def get_anim_curve_data(object_name=""):
+    return get_anim_fn_data(get_mfn_anim_node(object_name))
 
 
 def __round(x):
@@ -315,3 +316,44 @@ def get_animation_data_from_node(object_node=""):
                                                          'in': (i_x, i_y)}
             anim_data[object_node]['data'][i_key] = v_float
     return anim_data
+
+
+def get_weight_value_from_attribute(node_name="", target_attr="", driver_attr=""):
+    """
+    grabs the weighted value form the connected attribute.
+    :return: <float> weight value.
+    """
+
+
+def get_blend_weighted_values(node_name="", target_attr=""):
+    """
+    get the values of the blendWeighted node and calculate the new difference value.
+    :param node_name: <str> the name of the node to get the plug connections from
+    :param target_attr: find the blendWeighted node from the target attribute.
+    :return: <float> difference value.
+    """
+    node_attr = node_name + '.' + target_attr
+    node = object_utils.get_plugs(node_name, attr_name=node_attr, ignore_nodes=['kUnitConversion'])
+    if object_utils.check_object_type(node, 'blendWeighted'):
+        node_name, node_attr = node[0].split('.')
+        return cmds.getAttr(node_name + '.input')
+    return []
+
+
+def get_sum(value_data=[]):
+    """
+    gets the difference in values.
+    :param value_data: <list> the values to get the
+    :return: <float> sum of numbers.
+    """
+    return math_utils.get_sum(value_data)
+
+
+def get_blend_weighted_sum(node_name="", target_attr=""):
+    """
+    get the sum of all values given by the blend weighted node found from the parameters given.
+    :param node_name: <str> the node name to get the blend weighted node from.
+    :param target_attr: <str> the attribute to get blendWeighted values from.
+    :return: <float> the sum of all values.
+    """
+    return get_sum(get_blend_weighted_values(node_name, target_attr))

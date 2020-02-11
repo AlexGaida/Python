@@ -1,6 +1,8 @@
 """
 Standard math functions and manipulating vector operations.
 """
+# import standard modules
+from collections import Iterable
 
 # import maya modules
 from maya.OpenMaya import MVector, MMatrix, MPoint
@@ -13,6 +15,29 @@ import decimal
 # define global variables
 M_PI = 3.14159265358979323846
 EXP = 2.718281
+
+
+def flatten_list(list_data=[]):
+    """
+    flatten the nested lists into one list.
+    :param list_data: <list> the list of lists to flatten.
+    :return: <list> flattened list.
+    """
+    for x in list_data:
+        if isinstance(x, Iterable) and not isinstance(x, (str, bytes)):
+            for sub_x in flatten_list(x):
+                yield sub_x
+        else:
+            yield x
+
+
+def get_sum(value_data=[]):
+    """
+    gets the sum of all values inside a list object.
+    :param value_data: <list> the values to get the
+    :return: <float> the sum of all values.
+    """
+    return sum(flatten_list(value_data))
 
 
 def power(x, n):

@@ -270,7 +270,11 @@ class Attributes(om.MDagModifier):
                 except RuntimeError:
                     print("[Attribute] :: {}, {} is invalid.".format(attrib, p_type_str))
                     continue
-                self.attr_data[attrib] = round(attr_value, 4)
+
+                try:
+                    self.attr_data[attrib] = round(attr_value, 4)
+                except TypeError:
+                    self.attr_data[attrib] = attr_value
         return True
 
     def __get_attr_value(self, attr_obj=None, api_type=None, attr_plug=None):
@@ -389,7 +393,6 @@ class Attributes(om.MDagModifier):
         """
         connected = []
         for attr_name in self.keys:
-            print(attr_name)
             full_attr_name = '{}.{}'.format(self.MAYA_STR_OBJECT, attr_name)
             connection = cmds.listConnections(full_attr_name, s=1, d=0)
             if connection:

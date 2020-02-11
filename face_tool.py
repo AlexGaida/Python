@@ -32,7 +32,7 @@ reload(read_sides)
 
 # define private variables
 __version__ = "1.0.0"
-__verbosity__ = 1
+__verbosity__ = 0
 _cls_mirror = read_sides.MirrorSides()
 __default_attribute_values = attribute_utils.Attributes.DEFAULT_ATTR_VALUES
 _k_transform = object_utils.om.MFn.kTransform
@@ -55,11 +55,45 @@ def verbose(args):
         print(''.join(*args))
 
 
+def get_list_index(ls_object=[], find_str=""):
+    return ls_object.index(find_str)
+
+
+def get_weighted_values_length(driven_object, driven_attr):
+    weighted_values = animation_utils.get_blend_weighted_values(
+        node_name=driven_object, target_attr=driven_attr)[0]
+    return len(filter(None, weighted_values))
+
+
+def get_original_weight_value(driven_object, driven_attr, interface_node, face_attr):
+    weighted_values = animation_utils.get_blend_weighted_values(
+        node_name=driven_object, target_attr=driven_attr)[0]
+    blend_node = object_utils.get_plugs(driven_object, attr_name=driven_attr)[0]
+    anim_data = animation_utils.get_anim_connections(blend_node)
+    index = get_list_index(anim_data['source'], '{}.{}'.format(interface_node, face_attr))
+    return weighted_values[index]
+
+
+def get_keyable_object_attributes(driven_object):
+    # get the attributes
+    driven_attr_cls = attribute_utils.Attributes(driven_object, keyable=1)
+
+    # grabs the driven attributes
+    driven_attrs = driven_attr_cls.non_zero_attributes()
+    if not driven_attrs:
+        driven_attrs = driven_attr_cls.__dict__()
+    return driven_attrs
+
+
+def check_if_selected_is_control(object_name=""):
+    return cmds.objectType(object_name) == 'transform' and object_name.endswith('_ctrl')
+
+
 def delete_keys_on_selected():
     s_ctrls = object_utils.get_selected_node(single=False)
     selected_ctrls = s_ctrls[:-1]
     interface_ctrl = s_ctrls[-1]
-    print(selected_ctrls, interface_ctrl)
+    print('--->', selected_ctrls, interface_ctrl)
     for c_ctrl in selected_ctrls:
         delete_keys_on_controller(c_ctrl, interface_ctrl)
     return True
@@ -74,7 +108,7 @@ def inspect_interface_attributes():
     for f_ctrl in s_ctrls:
         face_loc = find_face_system_controller(f_ctrl)
         attr = attribute_utils.Attributes(face_loc[0], custom=1, keyable=True)
-        print(f_ctrl, ">>", attr.__dict__())
+        print(f_ctrl, face_loc, ">>", attr.__dict__())
     return True
 
 
@@ -100,7 +134,7 @@ def get_face_attributes(object_node="", non_zero=False):
     :return: <list> face attributes.
     """
     object_node = get_object_node(object_node)
-    attrs = attribute_utils.Attributes(object_node, custom=True)
+    attrs = attribute_utils.Attributes(object_node, custom=True, keyable=True)
     a_data = {}
     if attrs:
         if non_zero:
@@ -118,6 +152,7 @@ def filter_face_attributes(object_node="", non_zero=True):
     :return: <list> face attributes.
     """
     object_node = get_object_node(object_node)
+    object_node = find_face_system_controller(object_node)
     attribute_dict = get_face_attributes(object_node, non_zero)
     collection = {}
     for attr, val in attribute_dict.items():
@@ -266,7 +301,9 @@ def find_face_system_controller(object_node=""):
         object_node = object_utils.get_selected_node()
     if not object_node:
         raise ValueError("[FindFaceSystemController] :: no valid object parameter given.")
-
+    face_attrs = get_face_attributes(object_node)
+    if face_attrs:
+        return object_node
     return object_utils.get_connected_nodes(object_node,
                                             find_node_type=_k_transform,
                                             find_attr="face_",
@@ -367,7 +404,7 @@ def check_non_zero(control_name=''):
 
 def apply_key_on_face_control(selected_on_face_ctrl='', interface_ctrl=""):
     """
-    apply a set driven key frame belonging to this face controller.
+    prepare the controllers and their respective groups before setting the keys.
     will look for any transformation values for each interface controller.
     :return: <bool> True for success.
     """
@@ -398,14 +435,6 @@ def apply_key_on_face_control(selected_on_face_ctrl='', interface_ctrl=""):
         drn_attr = attribute_utils.Attributes(driven_object, keyable=True)
         drn_custom_attr = attribute_utils.Attributes(driven_object, custom=True)
 
-        # check for non-zero attributes on the interface controllers
-        # interface_attrs = attribute_utils.Attributes(interface_ctrl, keyable=True)
-        interface_non_zero = filter_face_attributes(interface_ctrl, non_zero=True)
-        # interface_non_zero = interface_attrs.non_zero_attributes()
-        if __verbosity__:
-            print("[ApplyKeyOnFace] :: Driver: {}, {};\nDriven: {};".format(
-                interface_ctrl, interface_non_zero, driven_object))
-
         # copy the attributes from the on-face control to the driver group node
         drn_attr.copy_attr(on_face_attrs, match_world_space=True)
 
@@ -422,7 +451,8 @@ def apply_key_on_face_control(selected_on_face_ctrl='', interface_ctrl=""):
         # set the key on that driven group object
         set_keys_on_face_controller(selected_node=selected_on_face_ctrl,
                                     interface_ctrl=interface_ctrl,
-                                    driven_node=driven_object)
+                                    driven_node=driven_object,
+                                    original_data=on_face_attrs)
     return True
 
 
@@ -485,48 +515,6 @@ def set_default_key_values(selected_on_face_ctrl="", interface_ctrl="", attr_nam
     return True
 
 
-def set_keys_on_face_controller(selected_node='', interface_ctrl="", driven_node=""):
-    """
-    Identify the selected face controller and set the driven key.
-    :param selected_node: <str> selected node to get attributes from.
-    :param interface_ctrl: <str> the controller maya object node which has the custom face_attributes.
-    :param driven_node: <str> the driven maya object node.
-    :return: <bool> True for success. <bool> False for failure.
-    """
-    if not driven_node:
-        driven_node = object_utils.get_selected_node()
-    if not interface_ctrl:
-        raise ValueError("[SetFaceKey :: parameter controller_node is empty.]")
-
-    # grab the driven object name
-    driven_object = _get_interface_grp_name([selected_node, interface_ctrl])
-    interface_node = find_face_system_controller(interface_ctrl)[0]
-
-    # get the attributes
-    driven_attr_cls = attribute_utils.Attributes(driven_object, keyable=1)
-    # face_attrs = get_face_attributes(interface_node, non_zero=True)
-    # grabs the lateral axes face attribute
-    face_attrs = filter_face_attributes(interface_node, non_zero=True)
-    driven_attrs = driven_attr_cls.non_zero_attributes()
-
-    if not face_attrs:
-        raise RuntimeError("[SetKeysOnFaceControllerError] :: Cannot set key to this controller.")
-
-    # set the key on the controller and the driven
-    for face_attr, face_value in face_attrs.items():
-        for driven_attr, driven_val in driven_attrs.items():
-
-            # change the scale attribute
-            if 'scale' in driven_attr:
-                driven_attr = get_offset_scale_attr(driven_attr)
-                driven_val += -1
-
-            # set the key at the current space location
-            face_value = math_utils.round_to_step(face_value)
-            __set_key(interface_node, driven_node, driven_attr, face_attr, driven_val, face_value)
-    return True
-
-
 def set_key_on_selected():
     """
     set the driven keys on selected controller.
@@ -536,7 +524,8 @@ def set_key_on_selected():
     if not get_selection:
         return False
     for f_ctrl in get_selection:
-        print(f_ctrl)
+        if not check_if_selected_is_control(f_ctrl):
+            continue
         apply_key_on_face_control(f_ctrl)
     return True
 
@@ -823,4 +812,79 @@ def copy_keys_on_selected(selected_object="", copy_to_object="", copy_to_interfa
                     driven_value=driven_value, driver_value=driver_value
                 )
     verbose("\n---------------")
+    return True
+
+
+def set_keys_on_face_controller(selected_node='', interface_ctrl="", driven_node="", original_data={}):
+    """
+    Identify the selected face controller and set the driven key.
+    :param selected_node: <str> selected node to get attributes from.
+    :param interface_ctrl: <str> the controller maya object node which has the custom face_attributes.
+    :param driven_node: <str> the driven maya object node.
+    :param original_data: <dict> get the original attributes to get the difference of values from.
+    :return: <bool> True for success. <bool> False for failure.
+    """
+    if not driven_node:
+        driven_node = object_utils.get_selected_node()
+    if not interface_ctrl:
+        raise ValueError("[SetFaceKey :: parameter controller_node is empty.]")
+
+    # get the face system controller with the driver attributes
+    interface_node = find_face_system_controller(interface_ctrl)[0]
+
+    # grabs only one driving attribute.
+    face_attrs = filter_face_attributes(interface_node, non_zero=True)
+
+    if not face_attrs:
+        raise RuntimeError("[NoFaceAttributeFoundError] :: Cannot use this face controller: {}.".format(
+            interface_node
+        ))
+
+    # grab the driven object name
+    driven_object = _get_interface_grp_name([selected_node, interface_ctrl])
+
+    # get the keyable driven attributes
+    driven_attrs = get_keyable_object_attributes(driven_object)
+
+    # set the key on the controller and the driven
+    for face_attr, face_value in face_attrs.items():
+        for driven_attr, driven_val in driven_attrs.items():
+            weighted_sum = animation_utils.get_blend_weighted_sum(node_name=driven_object, target_attr=driven_attr)
+
+            # skip the attributes that already have original values on them
+            if original_data[driven_attr] == weighted_sum:
+                continue
+
+            # skip the offset_ attributes
+            if 'offset_' in driven_attr:
+                continue
+
+            # change the driven scale attribute name
+            if 'scale' in driven_attr:
+                driven_attr = get_offset_scale_attr(driven_attr)
+                driven_val += -1
+
+            # find the weighted value corresponding to the driven attribute name
+            original_weighted_value = get_original_weight_value(driven_object, driven_attr, interface_node, face_attr)
+            if original_weighted_value != weighted_sum:
+                print('The driven value will be blended.\n')
+                print('driven value, ')
+                print(driven_val, original_weighted_value, weighted_sum)
+                driven_val += weighted_sum - original_weighted_value
+
+            # calculate the difference between the weighted sum and the driven value
+            # if driven_val in non_zero_data:
+            # print(driven_attr, driven_val, weighted_sum)
+            # driven_val -= (weighted_sum - driven_val)
+            # driven_val = -1 * (weighted_sum - driven_val)
+            # driven_val = weighted_sum - driven_val
+            # driven_val = weighted_sum - driven_val
+
+            # set the key at the current space location
+            face_value = math_utils.round_to_step(face_value)
+            print('\n')
+            print('[DrivenValue] :: {}, {}'.format(driven_attr, driven_val))
+            print('[FaceValue] :: {}, {}'.format(face_attr, face_value))
+            print('\n')
+            __set_key(interface_node, driven_node, driven_attr, face_attr, driven_val, face_value)
     return True
