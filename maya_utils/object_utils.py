@@ -154,11 +154,21 @@ def get_selected_node(single=True):
 
 
 def get_connections_source(object_name=""):
-    return cmds.listConnections(object_name, source=True, destination=False, plugs=True)
+    """
+    get a list of source connections from the object specified.
+    :param object_name:
+    :return:
+    """
+    return tuple(cmds.listConnections(object_name, source=True, destination=False, plugs=True))
 
 
 def get_connections_destination(object_name=""):
-    return cmds.listConnections(object_name, source=False, destination=True, plugs=True)
+    """
+    get a list of destination connections from the object specified.
+    :param object_name:
+    :return:
+    """
+    return tuple(cmds.listConnections(object_name, source=False, destination=True, plugs=True))
 
 
 def _get_m_object_name(m_object=om.MObject):
@@ -239,7 +249,7 @@ def get_scene_objects(name='', as_strings=False, node_type=''):
             else:
                 items.append(cur_item)
         scene_it.next()
-    return items
+    return tuple(items)
 
 
 def _confirm_fn_shape(m_object=None, m_type=None):
@@ -429,7 +439,7 @@ def get_connected_nodes(object_name="", find_node_type=om.MFn.kAnimCurve,
         cur_name = cur_fn.name()
 
         if find_attr:
-            attrs = attribute_utils.Attributes(cur_item, custom=1)
+            attrs = attribute_utils.Attributes(cur_name, custom=1)
             if attrs:
                 find_relevant_attr = filter(lambda x: find_attr in x, attrs.keys)
                 if find_relevant_attr:
@@ -459,7 +469,7 @@ def get_connected_nodes(object_name="", find_node_type=om.MFn.kAnimCurve,
                 else:
                     found_nodes.append(cur_item)
         dag_iter.next()
-    return found_nodes
+    return tuple(found_nodes)
 
 
 def get_connected_anim(object_name=""):
@@ -603,7 +613,7 @@ def get_mesh_fn(target):
     """
     get mesh function set for the given target
     :param target: dag path of the mesh
-    :return MFnMesh
+    :return <OpenMaya.MFnMesh>, mesh shape fn, <OpenMaya.MObject> shape object, <OpenMaya.MDagPath> the dag path.
     """
 
     if isinstance(target, str) or isinstance(target, unicode):
@@ -819,8 +829,7 @@ def zero_all_controllers():
     zeroes out all the scene controllers.
     :return: <bool> True for success.
     """
-    all_controllers = cmds.ls('*_ctrl')
-    for ctrl_name in all_controllers:
+    for ctrl_name in iter(cmds.ls('*_ctrl')):
         c_attr = attribute_utils.Attributes(ctrl_name, keyable=True)
         if c_attr.non_zero_attributes():
             c_attr.zero_attributes()

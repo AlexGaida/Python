@@ -149,7 +149,7 @@ class MirrorSides(Sides):
         :param index: <bool> if true, extract the position where the side string came from.
         :return: <str> the side string value.
         """
-        return extract_side_from_string(self.SIDES.__dict__, in_string, index=index)
+        return extract_side_from_string(self.SIDES, in_string, index=index)
 
     def replace_side_string(self, in_string=""):
         """

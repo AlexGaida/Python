@@ -37,8 +37,6 @@ _cls_mirror = read_sides.MirrorSides()
 __default_attribute_values = attribute_utils.Attributes.DEFAULT_ATTR_VALUES
 _k_transform = object_utils.om.MFn.kTransform
 _k_locator = object_utils.om.MFn.kLocator
-__interface_ctrls = []
-__on_face_ctrls = []
 
 # define global variables
 SIDES = read_sides.Sides()
@@ -50,52 +48,205 @@ if not cmds.objExists('on_face_control_grp'):
     cmds.warning("[ObjectDoesNotExist] :: on_face_control_grp")
 
 
-def verbose(args):
+def verbose(*args):
     if __verbosity__:
-        print(''.join(*args))
+        if isinstance(args, (unicode, str)):
+            print(''.join(args))
+        else:
+            print(' '.join(args))
+
+
+def get_selected_objects_gen():
+    return iter(object_utils.get_selected_node(single=False))
+
+
+def evaluate_blend_weighted_node(node_name, target_attr):
+    cmds.dgeval(animation_utils.get_connected_blend_weighted_node(node_name, target_attr))
+
+
+def math_get_sign(number=0.0):
+    if number < 0:
+        return -1
+    else:
+        return 1
+
+
+def do_corrective():
+    pass
+
+
+def copy_keys_left_to_right(interface_ctrl="", mirror_interface=True):
+    """
+    copy the keys from left to right. Please specify which interface driver controller the copy neecs to go to.
+    :param interface_ctrl: <bool> the driver interface.
+    :param mirror_interface: <bool> mirror the interface controller as well.
+    :return: <bool> True for success. <bool> False for failure.
+    """
+    if mirror_interface:
+        mirror_interface_ctrl = MIRROR_SIDES.replace_side_string(interface_ctrl)
+    else:
+        mirror_interface_ctrl = interface_ctrl
+
+    for sel_obj in get_selected_objects_gen():
+        # get the opposing side string
+        mirror_sel_obj = MIRROR_SIDES.replace_side_string(sel_obj)
+
+        # trim anim data
+        driven_object = _get_interface_grp_name([sel_obj, interface_ctrl])
+        anim_data = get_anim_data(sel_obj)
+        if driven_object not in anim_data:
+            continue
+
+        # copy the animation data
+        copy_keys_on_selected(
+            selected_object=sel_obj,
+            copy_to_object=mirror_sel_obj,
+            copy_to_interface_ctrl=mirror_interface_ctrl,
+            anim_data=anim_data[driven_object],
+            mirror=True)
+    print('[MirrorKeys] :: Done.')
+    return True
+
+
+def find_non_zero_on_face_controllers():
+    """
+    return a tuple list of all available controllers.
+    :return: <tuple> list of all available controllers
+    """
+    ctrl_names = []
+    controllers = find_face_controls(on_face=True)
+    for ctrl_name in controllers:
+        attrs = attribute_utils.Attributes(ctrl_name, keyable=True)
+        if attrs.non_zero_attributes():
+            ctrl_names.append(ctrl_name)
+    return tuple(ctrl_names)
+
+
+def find_non_zero_interface_controllers():
+    """
+    return a tuple list of all available controllers.
+    :return: <tuple> list of all available controllers
+    """
+    ctrl_names = []
+    controllers = find_face_controls(interface=True)
+    for ctrl_name in controllers:
+        attrs = attribute_utils.Attributes(ctrl_name, keyable=True)
+        if attrs.non_zero_attributes():
+            ctrl_names.append(ctrl_name)
+    return tuple(ctrl_names)
 
 
 def get_list_index(ls_object=[], find_str=""):
-    return ls_object.index(find_str)
+    """
+    find a string index from list provided.
+    :param ls_object: <list> the list to find the string from.
+    :param find_str: <str> the string to find inside the list.
+    :return: <int> the found index. -1 if not found.
+    """
+    try:
+        return ls_object.index(find_str)
+    except ValueError:
+        return -1
+
+
+def get_blend_weighted_items(driven_object, driven_attr):
+    return map(lambda x: round(x, 4), animation_utils.get_blend_weighted_values(
+        node_name=driven_object, target_attr=driven_attr)[0])
 
 
 def get_weighted_values_length(driven_object, driven_attr):
+    """
+    Get the length of all non-zero weighted values.
+    :param driven_object: <str> the driven object to get connections from.
+    :param driven_attr: <str> the driven attribute to get the weighted values from.
+    :return: <list> blend weighted values.
+    """
+    rounder = lambda x: round(x, 4)
     weighted_values = animation_utils.get_blend_weighted_values(
         node_name=driven_object, target_attr=driven_attr)[0]
-    return len(filter(None, weighted_values))
+    # return len(tuple(filter(lambda x: round(x, 4) != 0.0, weighted_values)))
+    return len(filter(None, map(rounder, weighted_values)))
 
 
 def get_original_weight_value(driven_object, driven_attr, interface_node, face_attr):
+    """
+    get the weight value from the blend weighted node. If no blendWeighted node is found, return default 0.0
+    :param driven_object: <str> the driven object to get connections from.
+    :param driven_attr: <str> the driven attribute to get the weighted values from.
+    :param interface_node: <str> the driver interface controller.
+    :param face_attr: <str> the face driver attribute.
+    :return: <float> the weighted float value.
+    """
     weighted_values = animation_utils.get_blend_weighted_values(
-        node_name=driven_object, target_attr=driven_attr)[0]
+        node_name=driven_object, target_attr=driven_attr)
+    if not weighted_values:
+        return 0.0
     blend_node = object_utils.get_plugs(driven_object, attr_name=driven_attr)[0]
     anim_data = animation_utils.get_anim_connections(blend_node)
     index = get_list_index(anim_data['source'], '{}.{}'.format(interface_node, face_attr))
-    return weighted_values[index]
+    return weighted_values[0][index]
 
 
 def get_keyable_object_attributes(driven_object):
-    # get the attributes
-    driven_attr_cls = attribute_utils.Attributes(driven_object, keyable=1)
+    """
+    from the object provided, return the driven keyable attributes names and values in dictionary format.
+    :param driven_object: <str> the driven object to get keyable attributes from.
+    :return: <dict> all keyable attributes with values.
+    """
+    return attribute_utils.Attributes(driven_object, keyable=1).__dict__()
 
-    # grabs the driven attributes
-    # driven_attrs = driven_attr_cls.non_zero_attributes()
-    driven_attrs = driven_attr_cls.__dict__()
-    return driven_attrs
+
+def get_keyable_non_zero_attributes(driven_object):
+    """
+    from the object provided, return the driven keyable attributes names and values in dictionary format.
+    :param driven_object: <str> the driven object to get keyable attributes from.
+    :return: <dict> all keyable attributes with values.
+    """
+    return attribute_utils.Attributes(driven_object, keyable=1).non_zero_attributes()
 
 
-def check_if_selected_is_control(object_name=""):
+def check_if_object_is_control(object_name=""):
+    """
+    checks if the object name provided is a valid control transform.
+    :param object_name: <str> the object name to check if it's a valid control item.
+    :return: <bool> True if the object provided is a valid controller object.
+            <bool> False else it's not a valid controller object.
+    """
     return cmds.objectType(object_name) == 'transform' and object_name.endswith('_ctrl')
 
 
 def delete_keys_on_selected():
+    """
+    deletes set driven keys from selected controllers.
+    :return: <bool> True for success.
+    """
     s_ctrls = object_utils.get_selected_node(single=False)
+    if not s_ctrls:
+        raise IndexError("[DeleteKeysOnSelectedError] :: No controllers are selected.")
     selected_ctrls = s_ctrls[:-1]
     interface_ctrl = s_ctrls[-1]
-    print('--->', selected_ctrls, interface_ctrl)
     for c_ctrl in selected_ctrls:
+        if not check_if_object_is_control(c_ctrl):
+            continue
+        print('[DeleteKeysOnSelected] :: Deleting keys on {}.'.format(c_ctrl))
         delete_keys_on_controller(c_ctrl, interface_ctrl)
     return True
+
+
+def on_face_controllers_gen():
+    """
+    on face controller generator.
+    :return: <listiterator object> list iterator.
+    """
+    return iter(find_face_controls(on_face=True))
+
+
+def interface_controllers_gen():
+    """
+    interface controller generator.
+    :return: <listiterator object> list iterator.
+    """
+    return iter(find_face_controls(interface=True))
 
 
 def inspect_interface_attributes():
@@ -307,6 +458,8 @@ def find_face_system_controller(object_node=""):
                                             find_node_type=_k_transform,
                                             find_attr="face_",
                                             as_strings=True,
+                                            up_stream=False,
+                                            down_stream=True,
                                             with_shape=_k_locator)
 
 
@@ -319,8 +472,8 @@ def find_face_controls(interface=False, on_face=False):
         raise ValueError("[FindFaceControls] :: Please specify boolean parameters for interface or on_face.")
 
     face_controls = cmds.ls('face_*', type='transform') + cmds.ls('*:face_*', type='transform')
-    if __verbosity__:
-        print("interface controllers have been identified.")
+    verbose("interface controllers have been identified.")
+
     if not face_controls:
         return ValueError("[FindFaceControls] :: No face controllers have been found.")
 
@@ -355,6 +508,7 @@ def _make_driver_grp_from_interface(selected_on_face_ctrl='', interface_name='')
     :return: <str> grp name.
     """
     grp_name = _get_interface_grp_name([selected_on_face_ctrl, interface_name])
+    verbose(selected_on_face_ctrl, grp_name)
     return object_utils.insert_transform(selected_on_face_ctrl, name=grp_name)
 
 
@@ -363,25 +517,15 @@ def create_face_driver_grps():
     create face driver groups for the on-face controllers.
     :return: <bool> True for success.
     """
-    global __interface_ctrls
-    global __on_face_ctrls
-
-    # get the controllers on the interface
-    if not __interface_ctrls:
-        __interface_ctrls = find_face_controls(interface=True)
-
-    # find the controllers on the face
-    __on_face_ctrls = find_face_controls(on_face=True)
-
     # create interface control group
-    for on_face_ctrl in __on_face_ctrls:
+    for on_face_ctrl in on_face_controllers_gen():
         # zero out the attributes on the face controllers first.
         attrs = attribute_utils.Attributes(on_face_ctrl, keyable=True)
         if attrs.non_zero_attributes():
             attrs.zero_attributes()
 
         # then build the parent transforms
-        for interface_name in __interface_ctrls:
+        for interface_name in interface_controllers_gen():
             driver_grp = _make_driver_grp_from_interface(on_face_ctrl, interface_name)
             # create the offset scale attribute for easier setting set driven keys on scale attributes
             setup_scale(driver_grp)
@@ -399,61 +543,6 @@ def check_non_zero(control_name=''):
     if interface_non_zero:
         return True
     return False
-
-
-def apply_key_on_face_control(selected_on_face_ctrl='', interface_ctrl=""):
-    """
-    prepare the controllers and their respective groups before setting the keys.
-    will look for any transformation values for each interface controller.
-    :return: <bool> True for success.
-    """
-    global __interface_ctrls
-
-    if not selected_on_face_ctrl:
-        return ValueError("[ApplyKeyOnFaceControl] :: selected_on_face_ctrl parameter is empty.")
-
-    on_face_attrs = attribute_utils.Attributes(selected_on_face_ctrl, keyable=True)
-
-    if not __interface_ctrls:
-        if __verbosity__:
-            print("interface controllers have been identified.")
-        __interface_ctrls = find_face_controls(interface=True)
-
-    # iterate through the interface controllers and apply key on any non-zero keys.
-    # filter the list for any controller with non zero keys
-    if not interface_ctrl:
-        interface_controllers = filter(check_non_zero, __interface_ctrls)
-    else:
-        interface_controllers = [interface_ctrl]
-
-    for interface_ctrl in interface_controllers:
-        # grab the driven object name
-        driven_object = _get_interface_grp_name([selected_on_face_ctrl, interface_ctrl])
-
-        # get the attributes on the driven object
-        drn_attr = attribute_utils.Attributes(driven_object, keyable=True)
-        drn_custom_attr = attribute_utils.Attributes(driven_object, custom=True)
-        drn_all_attrs = attribute_utils.Attributes(driven_object, all_attrs=True)
-
-        # copy the attributes from the on-face control to the driver group node
-        drn_attr.copy_attr(on_face_attrs, match_world_space=True)
-
-        # copy the scale attributes to the custom scale attribute
-        for s_attr, s_val in on_face_attrs.scale_attr().items():
-            for c_attr in drn_custom_attr:
-                if s_attr in c_attr:
-                    scale_value = round(s_val + -1.0, 4)
-                    cmds.setAttr('{}.{}'.format(driven_object, c_attr), scale_value)
-
-        # zero out the driver attribute
-        on_face_attrs.zero_attributes()
-
-        # set the key on that driven group object
-        set_keys_on_face_controller(selected_node=selected_on_face_ctrl,
-                                    interface_ctrl=interface_ctrl,
-                                    driven_node=driven_object,
-                                    original_data=drn_all_attrs)
-    return True
 
 
 def set_default_key_values(selected_on_face_ctrl="", interface_ctrl="", attr_name="", driver_value=0.0):
@@ -524,7 +613,7 @@ def set_key_on_selected():
     if not get_selection:
         return False
     for f_ctrl in get_selection:
-        if not check_if_selected_is_control(f_ctrl):
+        if not check_if_object_is_control(f_ctrl):
             continue
         apply_key_on_face_control(f_ctrl)
     return True
@@ -548,7 +637,7 @@ def set_key_default_on_selected(create_driver_groups=False):
     on_face_ctrl = get_selection[:-1]
     interface_ctrl = get_selection[-1]
     for f_ctrl in on_face_ctrl:
-        print("[SetDefaultKeyOnSelected] :: Setting defaults on, {}.".format(f_ctrl))
+        verbose("[SetDefaultKeyOnSelected] :: Setting defaults on, {}.".format(f_ctrl))
         set_default_key_values(f_ctrl, interface_ctrl)
     return True
 
@@ -587,11 +676,11 @@ def mirror_face_controllers(control_name=""):
 
         if opposite_control_name:
             # mirror the world matrix
-            print(control_name, '-->', opposite_control_name)
+            verbose(control_name, '-->', opposite_control_name)
             object_utils.mirror_object(control_name, opposite_control_name)
         else:
             # mirror the world matrix
-            print(control_name, '-->', control_name)
+            verbose(control_name, '-->', control_name)
             object_utils.mirror_object(control_name)
     return True
 
@@ -601,13 +690,9 @@ def zero_interface_controls():
     zero out the interface controllers.
     :return: <bool> True for success. <bool> False for failure.
     """
-    face_ctrls = find_face_controls(interface=True)
-    if not face_ctrls:
-        return False
-    for face_ctrl in face_ctrls:
+    for face_ctrl in iter(find_non_zero_interface_controllers()):
         f_attr = attribute_utils.Attributes(face_ctrl, keyable=True)
-        if f_attr.non_zero_attributes():
-            f_attr.zero_attributes()
+        f_attr.zero_attributes()
     return True
 
 
@@ -660,6 +745,7 @@ def get_anim_data(nodes=[]):
 
 
 class MirrorList(object):
+    Mirror_Sides = read_sides.MirrorSides()
     """
     Class object for data mining the animation data attributes for mirror operations.
     """
@@ -675,12 +761,11 @@ class MirrorList(object):
 
     def get_mirror_list(self):
         # we need the data in list form for easier access.
-        for driven_node, data in self.temp_anim_data.items():
-            for anim_curve_node, curve_data in data['animNodes'].items():
-                driven_attr_name = curve_data['targetAttr'][0]
-                driver_attr_name = curve_data['sourceAttr'][0]
-                time_curves = curve_data['data']
-                self.temp_mirror_list.append(tuple([driver_attr_name, driven_attr_name, time_curves]))
+        for anim_curve_node, curve_data in self.temp_anim_data['animNodes'].items():
+            driven_attr_name = curve_data['targetAttr'][0]
+            driver_attr_name = curve_data['sourceAttr'][0]
+            time_curves = curve_data['data']
+            self.temp_mirror_list.append(tuple([driver_attr_name, driven_attr_name, time_curves]))
 
     def find(self, search_str="", attribute=False):
         # find the driver in the list
@@ -714,17 +799,18 @@ def delete_keys_on_controller(controller_name="", interface_ctrl=""):
     :return: <bool> True for success.
     """
     copy_to_node = _get_interface_grp_name([controller_name, interface_ctrl])
-    print('deleting keys on: {}'.format(copy_to_node))
+    verbose('deleting keys on: {}'.format(copy_to_node))
     delete_keys(object_node=copy_to_node)
     return True
 
 
-def copy_keys_on_selected(selected_object="", copy_to_object="", copy_to_interface_ctrl="", mirror=False):
+def copy_keys_on_selected(selected_object="", copy_to_object="", copy_to_interface_ctrl="", anim_data={}, mirror=False):
     """
     mirrors the keys on selected objects. The connections must be there to begin with.
     :param selected_object: <str> the original controller with animation data.
     :param copy_to_object: <str> copy the animation to this object.
     :param copy_to_interface_ctrl: <str> interface controller to use as the driver for the copied control.
+    :param anim_data: <dict> use this anim data instead. Otherwise the copy will loop through all the data.
     :param mirror: <bool> mirror the animation data from left to right. will follow certain rules.
     :return: <bool> True for success. <bool> False for failure.
     """
@@ -744,7 +830,8 @@ def copy_keys_on_selected(selected_object="", copy_to_object="", copy_to_interfa
         raise ValueError("[CopyKeysOnSelected] :: Parameter copy_to_interface_ctrl is not provided.")
 
     # get animation dictionary data from object selected
-    anim_data = get_anim_data(selected_object)
+    if not anim_data:
+        anim_data = get_anim_data(selected_object)
 
     # zero all controllers
     zero_interface_controls()
@@ -758,60 +845,106 @@ def copy_keys_on_selected(selected_object="", copy_to_object="", copy_to_interfa
         __tmp_data = MirrorList(anim_data)
 
     # set the keys
-    print('\n\n')
-    print(selected_object)
-    for driven_node, data in anim_data.items():
-        copy_to_node = _get_interface_grp_name([copy_to_object, copy_to_interface_ctrl])
+    verbose('\n\n')
+    verbose(selected_object)
+    copy_to_node = _get_interface_grp_name([copy_to_object, copy_to_interface_ctrl])
+    for anim_curve_node, curve_data in anim_data['animNodes'].items():
+        driven_attr_name = curve_data['targetAttr'][0]
+        driver_attr_name = curve_data['sourceAttr'][0]
+        time_curves = curve_data['data']
+        driven_object, driven_attr = driven_attr_name.split(".")
+        driver_object, driver_attr = driver_attr_name.split(".")
 
-        for anim_curve_node, curve_data in data['animNodes'].items():
-            driven_attr_name = curve_data['targetAttr'][0]
-            driver_attr_name = curve_data['sourceAttr'][0]
-            time_curves = curve_data['data']
-            driven_object, driven_attr = driven_attr_name.split(".")
-            driver_object, driver_attr = driver_attr_name.split(".")
+        if mirror:
+            # mirror_driver_attr = _cls_mirror.replace_side_string(driver_attr)
+            if (driver_attr, driven_attr) in __mirror_performed:
+                continue
 
-            if mirror:
-                # mirror_driver_attr = _cls_mirror.replace_side_string(driver_attr)
-                if (driver_attr, driven_attr) in __mirror_performed:
-                    continue
+            # # get the data from the mirror
+            if driven_attr in ["translateX", "rotateZ", "rotateY"]:
+                driver_data = __tmp_data.find(driven_attr)
+                __tmp_driver_data = MirrorList(driver_data)
+                __temp_attributes = __tmp_driver_data.find(driver_attr, attribute=True)
+                temp_time_curves = __temp_attributes[0][-1]
 
-                # # get the data from the mirror
-                if driven_attr in ["translateX", "rotateZ", "rotateY"]:
-                    driver_data = __tmp_data.find(driven_attr)
-                    __tmp_driver_data = MirrorList(driver_data)
-                    __temp_attributes = __tmp_driver_data.find(driver_attr, attribute=True)
-                    temp_time_curves = __temp_attributes[0][-1]
+                # invert the translation
+                for k, v in __temp_attributes[0][-1].items():
+                    if "translateX" in driven_attr:
+                        temp_time_curves[k] = v * -1
+                    if "rotateY" in driven_attr:
+                        temp_time_curves[k] = v * -1
+                    if "rotateZ" in driven_attr:
+                        temp_time_curves[k] = v * -1
 
-                    # invert the translation
-                    for k, v in __temp_attributes[0][-1].items():
-                        if "translateX" in driven_attr:
-                            temp_time_curves[k] = v * -1
-                        if "rotateY" in driven_attr:
-                            temp_time_curves[k] = v * -1
-                        if "rotateZ" in driven_attr:
-                            temp_time_curves[k] = v * -1
+                # set the driven keyframes
+                animation_utils.__verbosity__ = 0
+                for driver_value, driven_value in temp_time_curves.items():
+                    verbose('[{}]'.format(copy_to_node), driver_attr, driven_attr, driven_value)
+                    animation_utils.set_driven_key(
+                        driver_node=copy_to_system_control, driver_attr=driver_attr,
+                        driven_node=copy_to_node, driven_attr=driven_attr,
+                        driven_value=driven_value, driver_value=driver_value
+                    )
+                __mirror_performed.append((driver_attr, driven_attr))
 
-                    # set the driven keyframes
-                    animation_utils.__verbosity__ = 0
-                    for driver_value, driven_value in temp_time_curves.items():
-                        verbose('[{}]'.format(copy_to_node), driver_attr, driven_attr, driven_value)
-                        animation_utils.set_driven_key(
-                            driver_node=copy_to_system_control, driver_attr=driver_attr,
-                            driven_node=copy_to_node, driven_attr=driven_attr,
-                            driven_value=driven_value, driver_value=driver_value
-                        )
-                    __mirror_performed.append((driver_attr, driven_attr))
-
-            # else continue with regular values for the driven key setup
-            animation_utils.__verbosity__ = 0
-            for driver_value, driven_value in time_curves.items():
-                verbose('[{}]'.format(copy_to_node), driver_attr, driven_attr, driven_value)
-                animation_utils.set_driven_key(
-                    driver_node=copy_to_system_control, driver_attr=driver_attr,
-                    driven_node=copy_to_node, driven_attr=driven_attr,
-                    driven_value=driven_value, driver_value=driver_value
-                )
+        # else continue with regular values for the driven key setup
+        animation_utils.__verbosity__ = 0
+        for driver_value, driven_value in time_curves.items():
+            verbose('[{}]'.format(copy_to_node), driver_attr, driven_attr, driven_value)
+            animation_utils.set_driven_key(
+                driver_node=copy_to_system_control, driver_attr=driver_attr,
+                driven_node=copy_to_node, driven_attr=driven_attr,
+                driven_value=driven_value, driver_value=driver_value
+            )
     verbose("\n---------------")
+    return True
+
+
+def apply_key_on_face_control(selected_on_face_ctrl='', interface_ctrl=""):
+    """
+    prepare the controllers and their respective groups before setting the keys.
+    will look for any transformation values for each interface controller.
+    :return: <bool> True for success.
+    """
+    if not selected_on_face_ctrl:
+        return ValueError("[ApplyKeyOnFaceControl] :: selected_on_face_ctrl parameter is empty.")
+
+    on_face_attrs = attribute_utils.Attributes(selected_on_face_ctrl, keyable=True)
+
+    # iterate through the interface controllers and apply key on any non-zero keys.
+    # filter the list for any controller with non zero keys
+    if not interface_ctrl:
+        interface_controllers = find_non_zero_interface_controllers()
+    else:
+        interface_controllers = [interface_ctrl]
+
+    for interface_ctrl in interface_controllers:
+        # grab the driven object name
+        driven_object = _get_interface_grp_name([selected_on_face_ctrl, interface_ctrl])
+
+        # get the attributes on the driven object
+        drn_attr = attribute_utils.Attributes(driven_object, keyable=True)
+        # original_attributes = drn_attr.__dict__()
+        drn_custom_attr = attribute_utils.Attributes(driven_object, custom=True)
+
+        # copy the attributes from the on-face control to the driver group node
+        drn_attr.copy_attr(on_face_attrs, match_world_space=True)
+
+        # copy the scale attributes to the custom scale attribute
+        for s_attr, s_val in on_face_attrs.scale_attr().items():
+            for c_attr in drn_custom_attr:
+                if s_attr in c_attr:
+                    scale_value = round(s_val + -1.0, 4)
+                    cmds.setAttr('{}.{}'.format(driven_object, c_attr), scale_value)
+
+        # zero out the driver attribute
+        on_face_attrs.zero_attributes()
+
+        # set the key on that driven group object
+        set_keys_on_face_controller(selected_node=selected_on_face_ctrl,
+                                    interface_ctrl=interface_ctrl,
+                                    driven_node=driven_object,
+                                    original_data=on_face_attrs.__dict__())
     return True
 
 
@@ -844,15 +977,20 @@ def set_keys_on_face_controller(selected_node='', interface_ctrl="", driven_node
     driven_object = _get_interface_grp_name([selected_node, interface_ctrl])
 
     # get the keyable driven attributes
+    # driven_attrs = get_keyable_object_attributes(driven_object)
     driven_attrs = get_keyable_object_attributes(driven_object)
-    print(driven_attrs)
+
+    print('[SetKeys] :: {}, {}, {}'.format(selected_node, face_attrs, driven_attrs))
+
     # set the key on the controller and the driven
     for face_attr, face_value in face_attrs.items():
         for driven_attr, driven_val in driven_attrs.items():
             weighted_sum = animation_utils.get_blend_weighted_sum(node_name=driven_object, target_attr=driven_attr)
             # skip the attributes that already have original values on them
-            # if original_data[driven_attr] == weighted_sum:
+            # if original_data[driven_attr] != 0.0 and original_data[driven_attr] == weighted_sum:
             #     continue
+            if 'visibility' in driven_attr:
+                continue
 
             # skip the offset_ attributes
             if 'offset_' in driven_attr:
@@ -863,25 +1001,42 @@ def set_keys_on_face_controller(selected_node='', interface_ctrl="", driven_node
                 driven_attr = get_offset_scale_attr(driven_attr)
                 driven_val += -1
 
+            # evaluate the blend weighted node
+            # evaluate_blend_weighted_node(driven_object, driven_attr)
+
             # grab the original data
-            original_driven_value = original_data[driven_attr]
+            if driven_attr in original_data:
+                original_driven_value = original_data[driven_attr]
+            else:
+                original_driven_value = 0.0
 
             # find the weighted value corresponding to the driven attribute name
             driven_weighted_value = get_original_weight_value(driven_object, driven_attr, interface_node, face_attr)
-            driven_value_difference = original_driven_value - driven_val
 
-            if weighted_sum and weighted_sum != original_driven_value:
-                print('The driven value will be blended.\n')
-                driven_val = driven_weighted_value - driven_value_difference
+            # driven_val = driven_weighted_value - driven_value_difference
+
+            if get_weighted_values_length(driven_object, driven_attr) > 0:
+                print('The driven value will be blended.\n{}'.format(driven_attr))
+                print(driven_weighted_value, get_weighted_values_length(driven_object, driven_attr), driven_val)
+                driven_val = (original_driven_value + driven_weighted_value)
+                print('New: ', driven_val)
+            # print("[DrivenValue] :: {}".format(driven_val))
+            # print("[DrivenValue] :: {}".format(driven_val))
+            # print("[DrivenValue] :: {}".format(driven_val))
+            # print("[DrivenValue] :: {}".format(driven_val))
+            # print("[DrivenValue] :: {}".format(driven_val))
+            # print("[DrivenValue] :: {}".format(driven_val))
+            # print("[DrivenValue] :: {}".format(driven_val))
+            # print("[DrivenValue] :: {}".format(driven_val))
 
             # set the key at the current space location
             face_value = math_utils.round_to_step(face_value)
-            print('\n')
-            print('[OriginalDrivenValue] :: {}, {}'.format(driven_attr, original_driven_value))
-            print('[OriginalDrivenWeightedValue] :: {}, {}'.format(driven_attr, driven_weighted_value))
-            print('[DrivenWeightedValueDifference] :: {}, {}'.format(driven_attr, driven_value_difference))
-            print('[DrivenValue] :: {}, {}'.format(driven_attr, driven_val))
-            print('[FaceValue] :: {}, {}'.format(face_attr, face_value))
-            print('\n')
+            verbose('\n')
+            verbose('[WeightedSum] :: {}'.format(weighted_sum))
+            verbose('[OriginalDrivenValue] :: {}, {}'.format(driven_attr, original_driven_value))
+            verbose('[OriginalDrivenWeightedValue] :: {}, {}'.format(driven_attr, driven_weighted_value))
+            verbose('[DrivenValue] :: {}, {}'.format(driven_attr, driven_val))
+            verbose('[FaceValue] :: {}, {}'.format(face_attr, face_value))
+            verbose('\n')
             __set_key(interface_node, driven_node, driven_attr, face_attr, driven_val, face_value)
     return True

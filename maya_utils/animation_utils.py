@@ -24,11 +24,21 @@ _float_ptr = ScriptUtil()
 
 
 def get_mfn_anim_node(object_node):
+    """
+    returns an OpenMaya.MFnAnimCurve object from the object specified.
+    :param object_node: <str> object node.
+    :return: <OpenMaya.MFnAnimCurve> maya object.
+    """
     if isinstance(object_node, (str, unicode)):
         return oma.MFnAnimCurve(object_utils.get_m_obj(object_node))
 
 
 def get_name_from_mfn_anim_node(object_node):
+    """
+    returns a name of the MFnAnimCurve node.
+    :param object_node: <OpenMaya.MFnAnimCurve> maya object.
+    :return: <str> curve node name.
+    """
     if isinstance(object_node, oma.MFnAnimCurve):
         return object_node.name()
     return object_node
@@ -72,6 +82,9 @@ def set_driven_key(driver_node='',
                            driverValue=driver_value, value=driven_value,
                            inTangentType=in_tangent, outTangentType=out_tangent,
                            insertBlend=insert_blend)
+    # print('cmds.setDrivenKeyframe("{}", cd="{}", driverValue={}, '
+    #       'value={}, inTangentType="{}", outTangentType="{}", insertBlend={})'.format(
+    #     driven_str, driver_str, driver_value, driven_value, in_tangent, out_tangent, insert_blend))
     if __verbosity__:
         print("[Set Driven Key] :: {}: {} >> {}: {}".format(driver_str, driver_value, driven_str, driven_value))
     return True
@@ -249,6 +262,13 @@ def get_anim_connections(object_name=""):
             if anim_fn.numKeys():
                 anim_node = om.MFnDependencyNode(cur_node).name()
                 found_nodes["animNodes"].update(get_animation_data_from_node(anim_node))
+    # change the lists into tuples
+    if "source" in found_nodes:
+        if found_nodes["source"]:
+            found_nodes["source"] = tuple(found_nodes["source"])
+    if "targets" in found_nodes:
+        if found_nodes["targets"]:
+            found_nodes["targets"] = tuple(found_nodes["targets"])
     return found_nodes
 
 
@@ -305,24 +325,28 @@ def get_animation_data_from_node(object_node=""):
             # anim_data[object_node]['tangents'][i_key] = (ScriptUtil(o_x).asFloat(), ScriptUtil(o_y).asFloat())
 
             # get the information the standard way
-            v_float = cmds.keyframe(object_node, q=1, vc=1)[i_key]
+            v_float = cmds.keyframe(object_node, q=1, valueChange=1)[i_key]
+            t_float = cmds.keyframe(object_node, floatChange=1, q=1)[i_key]
             o_x = cmds.getAttr('{}.keyTanOutX[{}]'.format(object_node, i_key))
             o_y = cmds.getAttr('{}.keyTanOutY[{}]'.format(object_node, i_key))
             i_x = cmds.getAttr('{}.keyTanInX[{}]'.format(object_node, i_key))
             i_y = cmds.getAttr('{}.keyTanInY[{}]'.format(object_node, i_key))
 
             # save the information
-            anim_data[object_node]['tangents'][i_key] = {'out': (o_x, o_y),
-                                                         'in': (i_x, i_y)}
-            anim_data[object_node]['data'][i_key] = v_float
+            anim_data[object_node]['tangents'][t_float] = {'out': (o_x, o_y),
+                                                           'in': (i_x, i_y),
+                                                           'keyNum': i_key}
+            anim_data[object_node]['data'][t_float] = v_float
     return anim_data
 
 
-def get_weight_value_from_attribute(node_name="", target_attr="", driver_attr=""):
-    """
-    grabs the weighted value form the connected attribute.
-    :return: <float> weight value.
-    """
+def attribute_name(node_name, target_attr):
+    return node_name + '.' + target_attr
+
+
+def get_connected_blend_weighted_node(node_name="", target_attr=""):
+    node_attr = attribute_name(node_name, target_attr)
+    return object_utils.get_plugs(node_name, attr_name=node_attr, ignore_nodes=['kUnitConversion'])
 
 
 def get_blend_weighted_values(node_name="", target_attr=""):
@@ -332,8 +356,8 @@ def get_blend_weighted_values(node_name="", target_attr=""):
     :param target_attr: find the blendWeighted node from the target attribute.
     :return: <float> difference value.
     """
-    node_attr = node_name + '.' + target_attr
-    node = object_utils.get_plugs(node_name, attr_name=node_attr, ignore_nodes=['kUnitConversion'])
+    # get the blendWeighted node.
+    node = get_connected_blend_weighted_node(node_name, target_attr)
     if not node:
         return []
     if object_utils.check_object_type(node, 'blendWeighted'):

@@ -14,6 +14,25 @@ import transform_utils
 __version__ = "1.0.0"
 
 
+class ImmutableDict(dict):
+    def __setitem__(self, key, value):
+        raise TypeError("%r object does not support item assignment" % type(self).__name__)
+
+    def __delitem__(self, key):
+        raise TypeError("%r object does not support item deletion" % type(self).__name__)
+
+    def __getattribute__(self, attribute):
+        if attribute in ('clear', 'update', 'pop', 'popitem', 'setdefault'):
+            raise AttributeError("%r object has no attribute %r" % (type(self).__name__, attribute))
+        return dict.__getattribute__(self, attribute)
+
+    def __hash__(self):
+        return hash(tuple(sorted(self.iteritems())))
+
+    def fromkeys(self, sequence, v):
+        return type(self)(dict(self).fromkeys(sequence, v))
+
+
 class Attributes(om.MDagModifier):
     MAYA_STR_OBJECT = None
     SCALE_ATTRS = ['scaleX', 'scaleY', 'scaleZ']
@@ -46,14 +65,15 @@ class Attributes(om.MDagModifier):
 
     def __init__(self, maya_node="", all_attrs=False, keyable=False, custom=False, connected=False):
         super(Attributes, self).__init__()
-        self.MAYA_STR_OBJECT = maya_node
         self.MAYA_M_OBJECT = object_utils.get_m_obj(maya_node)
         self.MAYA_MFN_OBJECT = object_utils.get_mfn_obj(maya_node)
         self.OBJECT_NODE_TYPE = self.MAYA_MFN_OBJECT.typeName()
+        self.MAYA_STR_OBJECT = self.MAYA_MFN_OBJECT.name()
+        # self.MAYA_STR_OBJECT = maya_node
         self.attr_data = {}
+        self._hash = None
 
-        self.DEFAULT_ATTRS = self.__get_reference_attributes()
-
+        self.DEFAULT_ATTRS = self.get_attribute_list()
         self.get_attributes(all_attrs=all_attrs, keyable=keyable, custom=custom, connected=connected)
 
         # get only the keyable custom attributes
@@ -63,6 +83,12 @@ class Attributes(om.MDagModifier):
                 if self.is_attr_keyable(a_name):
                     new_data[a_name] = self.attr_data[a_name]
             self.attr_data = new_data
+
+    def get_attribute_list(self):
+        try:
+            return tuple(set(cmds.listAttr(self.MAYA_STR_OBJECT)) - set(cmds.listAttr(self.MAYA_STR_OBJECT, ud=True)))
+        except TypeError:
+            return tuple(cmds.listAttr(self.MAYA_STR_OBJECT))
 
     def __get_reference_attributes(self):
         """
@@ -359,6 +385,9 @@ class Attributes(om.MDagModifier):
             print(attr_node, plug_name, api_type, attr_obj.apiTypeStr())
         return p_value
 
+    def freeze(self):
+        return hash(tuple((k, self.attr_data[k]) for k in sorted(self.attr_data.keys())))
+
     @property
     def keys(self):
         return self.attr_data.keys()
@@ -487,6 +516,7 @@ class Attributes(om.MDagModifier):
         if match_world_space:
             if source_tfm.world_matrix_list() != target_tfm.world_matrix_list():
                 cmds.xform(self.MAYA_STR_OBJECT, m=target_tfm.world_matrix_list(), ws=1)
+                return target_tfm.world_matrix_list(),
 
         # if the world spaces match, perform the operation to copy attributes.
         else:
@@ -528,6 +558,13 @@ class Attributes(om.MDagModifier):
 
     def __iter__(self):
         return iter(self.attr_data)
+
+    def __hash__(self):
+        if self._hash is None:
+            self._hash = 0
+            for pair in self.iteritems():
+                self._hash ^= hash(pair)
+        return self._hash
 
     def next(self):
         try:
