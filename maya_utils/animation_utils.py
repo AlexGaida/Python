@@ -29,8 +29,7 @@ def get_mfn_anim_node(object_node):
     :param object_node: <str> object node.
     :return: <OpenMaya.MFnAnimCurve> maya object.
     """
-    if isinstance(object_node, (str, unicode)):
-        return oma.MFnAnimCurve(object_utils.get_m_obj(object_node))
+    return oma.MFnAnimCurve(object_utils.get_m_obj(object_node))
 
 
 def get_name_from_mfn_anim_node(object_node):
@@ -189,11 +188,12 @@ def set_anim_data(anim_data={}, rounded=False):
     return True
 
 
-def connections_gen(object_name="", direction='kDownstream', level='kPlugLevel', ftype=''):
+def connections_gen(object_name="", attribute="", direction='kDownstream', level='kPlugLevel', ftype=''):
     """
     get plug connections
     :param object_name: <str> object to check connections from.
     :param direction: <str> specify which direction to traverse.
+    :param attribute: <str> find nodes connected to this attribute.
     :param ftype: <str> specify which type to filter.
     :param level: <str> specify which level to traverse.
     """
@@ -221,7 +221,14 @@ def connections_gen(object_name="", direction='kDownstream', level='kPlugLevel',
 
     # iterate the dependency graph to find what we want.
     while not dag_iter.isDone():
-        yield object_utils.Item(dag_iter.currentItem())
+        if not attribute:
+            yield object_utils.Item(dag_iter.currentItem())
+        elif attribute:
+            attribute_name = '{}.{}'.format(object_name, attribute)
+            item = object_utils.Item(dag_iter.currentItem())
+            plugs = item.source_plugs()
+            if filter(lambda x: attribute_name in x, plugs):
+                yield item
         dag_iter.next()
 
 
@@ -232,10 +239,8 @@ def get_anim_connections(object_name=""):
     :return: <dict> found animation connection plugs.
     """
     found_nodes = {}
-    node = object_utils.get_m_obj(object_name)
-    n_gen = connections_gen(node)
 
-    for cur_node in n_gen:
+    for cur_node in connections_gen(object_utils.get_m_obj(object_name)):
         if cur_node.hasFn(om.MFn.kBlendWeighted):
             plugs = object_utils.get_plugs(
                 cur_node, source=False, ignore_nodes=['kBlendWeighted', 'kUnitConversion', 'kNodeGraphEditorInfo'])
@@ -288,7 +293,11 @@ def get_animation_data_from_node(object_node=""):
 
     if isinstance(object_node, oma.MFnAnimCurve):
         o_anim = object_node
-        object_node = object_node.name()
+        object_node = o_anim.name()
+
+    if isinstance(object_node, om.MObject):
+        o_anim = oma.MFnAnimCurve(object_node)
+        object_node = o_anim.name()
 
     # get connections
     source_attr = object_utils.get_plugs(

@@ -234,7 +234,7 @@ def get_scene_objects(name='', as_strings=False, node_type=''):
         cur_item = scene_it.item()
         if not cur_item.isNull():
             if node_type:
-                if node_type in cur_item.apiTypeStr().lower():
+                if node_type.lower() in cur_item.apiTypeStr().lower():
                     o_name = get_m_object_name(cur_item)
                     if name:
                         if name in o_name:
@@ -515,14 +515,17 @@ def get_m_obj(object_str=""):
     """
     if not object_str:
         raise ValueError('[Get MObject] :: No object specified.')
-    try:
-        om_sel = om.MSelectionList()
-        om_sel.add(object_str)
-        node = om.MObject()
-        om_sel.getDependNode(0, node)
-        return node
-    except:
-        raise RuntimeError('[Get MObject] :: failed on {}'.format(object_str))
+    if isinstance(object_str, (unicode, str)):
+        try:
+            om_sel = om.MSelectionList()
+            om_sel.add(object_str)
+            node = om.MObject()
+            om_sel.getDependNode(0, node)
+            return node
+        except:
+            raise RuntimeError('[Get MObject] :: failed on {}'.format(object_str))
+    elif isinstance(object, om.MObject):
+        return object_str
 
 
 def get_m_dag(object_str=""):
@@ -938,11 +941,17 @@ class Item(om.MObject):
     def __init__(self, *args):
         super(Item, self).__init__(*args)
 
+    def node(self):
+        return om.MFnDependencyNode(self)
+
     def name(self):
-        return om.MFnDependencyNode(self).name()
+        return self.node.name()
 
     def type(self):
         return self.apiTypeStr()
+
+    def plug(self, attribute_name=""):
+        return self.node.attribute(attribute_name)
 
     def source_plugs(self):
         return get_plugs(self, source=True)

@@ -2,6 +2,7 @@
 module for dealing with deformers in Maya.
 """
 # import maya modules
+from maya import mel
 from maya import cmds
 from maya import OpenMaya as om
 
@@ -98,4 +99,17 @@ def get_connected_blendshape_nodes(object_name=""):
 
 
 def get_name(m_object=None):
+    """
+    grabs the string name of the MObject provided.
+    :param m_object: <OpenMaya.MObject> the MObject to convert to a string name.
+    :return: <str> node name.
+    """
     return object_utils.get_m_object_name(m_object)
+
+
+def extract_mesh_deltas(skin_mesh_name="", corrected_mesh_name=""):
+    """
+    extracts deltas from the mesh provided.
+    :return: <str> corrective mesh name.
+    """
+    return mel.eval("extractDeltas -s {} -c {}".format(skin_mesh_name, corrected_mesh_name))

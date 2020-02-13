@@ -71,8 +71,50 @@ def math_get_sign(number=0.0):
         return 1
 
 
-def do_corrective():
-    pass
+def do_corrective_shape():
+    """
+
+    :return:
+    """
+    interface_controllers = find_non_zero_interface_controllers()
+    objects = {}
+    for interface_node in interface_controllers:
+        # filters only one active driver attributes
+        interface_system_controller = find_face_system_controller(interface_node)[0]
+        face_attrs = filter_face_attributes(interface_system_controller, non_zero=True)
+        # system_attribute = '{}.{}'.format(interface_system_controller, face_attrs.keys()[0])
+        anim_curves_gen = animation_utils.connections_gen(
+                interface_system_controller, attribute=face_attrs.keys()[0], ftype='kAnimCurve')
+        for curve_node in anim_curves_gen:
+            anim_curve_name = object_utils.get_m_object_name(curve_node)
+            print anim_curve_name
+            objects[anim_curve_name] = tuple(animation_utils.get_animation_data_from_node(curve_node))
+    return tuple(objects)
+
+
+def get_empty_anim_curves():
+    """
+    return a tuple list of all empty anim curve nodes.
+    :return: <tuple> nodes.
+    """
+    garbage_collection = []
+    anim_curve_nodes = object_utils.get_scene_objects(node_type='kAnimCurve')
+    print("kAnimCurves in Scene: {}".format(len(anim_curve_nodes)))
+    for curve_node in anim_curve_nodes:
+        anim_fn = object_utils.oma.MFnAnimCurve(curve_node)
+        if not anim_fn.numKeys() or anim_fn.numKeys() < 2:
+            garbage_collection.append(anim_fn.name())
+    print("Empty kAnimCurves: {}".format(len(garbage_collection)))
+    return tuple(garbage_collection)
+
+
+def remove_single_key_nodes():
+    """
+    removes any animCurve nodes that only have a single key.
+    :return: <bool> True for success.
+    """
+    cmds.delete(get_empty_anim_curves())
+    return True
 
 
 def copy_keys_left_to_right(interface_ctrl="", mirror_interface=True):
@@ -296,7 +338,7 @@ def get_face_attributes(object_node="", non_zero=False):
 
 def filter_face_attributes(object_node="", non_zero=True):
     """
-    filters the attributes on the contriller node.
+    filters the attributes on the controller node.
     :param object_node: <str> maya object node.
     :param non_zero: <bool> get non zero face attributes.
     :return: <list> face attributes.
@@ -437,7 +479,7 @@ def flatten_keys(object_node=None):
     :param object_node: <str> maya object node.
     :return: <bool> True for success.
     """
-    anim_data = animation_utils.get_anim_data(object_node=object_node)
+    anim_data = get_anim_data(object_node=object_node)
     animation_utils.set_anim_data(anim_data=anim_data, rounded=True)
     return True
 
