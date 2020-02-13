@@ -19,11 +19,13 @@ from maya_utils import attribute_utils
 from maya_utils import animation_utils
 from maya_utils import transform_utils
 from maya_utils import object_utils
+from deformers import deform_utils
 from maya_utils import math_utils
 from maya_utils import ui_utils
 
 # reload modules
 reload(attribute_utils)
+reload(deform_utils)
 reload(transform_utils)
 reload(animation_utils)
 reload(object_utils)
@@ -31,7 +33,7 @@ reload(math_utils)
 reload(read_sides)
 
 # define private variables
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 __verbosity__ = 0
 _cls_mirror = read_sides.MirrorSides()
 __default_attribute_values = attribute_utils.Attributes.DEFAULT_ATTR_VALUES
@@ -48,12 +50,103 @@ if not cmds.objExists('on_face_control_grp'):
     cmds.warning("[ObjectDoesNotExist] :: on_face_control_grp")
 
 
+def flatten_list(list_obj):
+    return tuple([item for sublist in list_obj for item in sublist])
+
+
 def verbose(*args):
     if __verbosity__:
         if isinstance(args, (unicode, str)):
             print(''.join(args))
         else:
             print(' '.join(args))
+
+
+def get_interface_shape_names():
+    """
+    gets the shape names from the interface controllers.
+    :return: <tuple> shape names.
+    """
+    controllers = find_face_controls(interface=True)
+    collection = []
+    for control_name in controllers:
+        collection.append(control_name.split('face_')[-1].rpartition('_ctrl')[0])
+    return tuple(collection)
+
+
+def get_active_face_controller():
+    """
+    returns the active controller with the attribute value and key times.
+    :return: <str>, <str>, <dict>, <tuple> interface_system_controller, face_attrs, get_average_key_times
+    """
+    interface_controllers = find_non_zero_interface_controllers()
+    face_attrs = filter_face_attributes(interface_controllers, non_zero=True)
+    for interface_ctrl in interface_controllers:
+        interface_system_controller = find_face_system_controller(interface_ctrl)[0]
+        return interface_ctrl, interface_system_controller, face_attrs, get_average_key_times(),
+
+
+def get_corrective_shape_name(mesh_name, shape_name, attribute_name):
+    return '{}_{}_{}_sculpt'.format(mesh_name, shape_name, attribute_name)
+
+
+def get_blend_shape_target_name():
+    """
+    get the target blend shape attribute name for creation and setting of the attributes.
+    :return: <str> target name.
+    """
+    shape_names = get_interface_shape_names()
+    active_data = get_active_face_controller()
+    interface_name = active_data[0]
+    attribute_name = active_data[2].keys()[0]
+    shape_name = [x for x in shape_names if x in interface_name][0]
+    return shape_name + '_' + attribute_name
+
+
+def create_corrective_shape(mesh_name=""):
+    """
+    creates a corrective sculpting mesh.
+    :param mesh_name: <str> the mesh name to add the sculpt to.
+    :return: <str> mesh name.
+    """
+    active_data = get_active_face_controller()
+    shape_names = get_interface_shape_names()
+    if not active_data:
+        return False
+    interface_name = active_data[0]
+    attribute_name = active_data[2].keys()[0]
+    shape_name = [x for x in shape_names if x in interface_name][0]
+    corrective_mesh_name = get_corrective_shape_name(mesh_name, shape_name, attribute_name)
+    if not cmds.objExists(corrective_mesh_name):
+        cmds.rename(cmds.duplicate(mesh_name), corrective_mesh_name)
+        cmds.parent(corrective_mesh_name, world=True)
+    return corrective_mesh_name
+
+
+def get_corrective_mesh(mesh_name=""):
+    active_data = get_active_face_controller()
+    shape_names = get_interface_shape_names()
+    if not active_data:
+        return False
+    interface_name = active_data[0]
+    attribute_name = active_data[2].keys()[0]
+    shape_name = [x for x in shape_names if x in interface_name][0]
+    corrective_mesh_name = get_corrective_shape_name(mesh_name, shape_name, attribute_name)
+    return corrective_mesh_name + '_corrective'
+
+
+def extract_delta(mesh_name="", corrective_mesh_name=""):
+    delta_mesh = deform_utils.extract_mesh_deltas(mesh_name, corrective_mesh_name)
+    cmds.parent(delta_mesh, world=True)
+    return delta_mesh
+
+
+def attach_corrective_to_mesh(mesh_name="", target_index=0):
+    target_name = get_blend_shape_target_name()
+    corrective_sculpt_mesh = get_corrective_mesh(mesh_name)
+    print target_name, corrective_sculpt_mesh
+    deform_utils.add_target_shape(
+        mesh_name=mesh_name, target_mesh=corrective_sculpt_mesh, target_name=target_name, target_index=target_index)
 
 
 def get_selected_objects_gen():
@@ -71,10 +164,10 @@ def math_get_sign(number=0.0):
         return 1
 
 
-def do_corrective_shape():
+def get_anim_node_key_times():
     """
-
-    :return:
+    from a non-zero interface controller, extract the affecting anim curves and get the time values.
+    :return: <dict> animation curve items.
     """
     interface_controllers = find_non_zero_interface_controllers()
     objects = {}
@@ -87,9 +180,22 @@ def do_corrective_shape():
                 interface_system_controller, attribute=face_attrs.keys()[0], ftype='kAnimCurve')
         for curve_node in anim_curves_gen:
             anim_curve_name = object_utils.get_m_object_name(curve_node)
-            print anim_curve_name
-            objects[anim_curve_name] = tuple(animation_utils.get_animation_data_from_node(curve_node))
-    return tuple(objects)
+            # get keys only
+            time_values = animation_utils.get_animation_data_from_node(curve_node)[anim_curve_name]['data'].keys()
+            objects[anim_curve_name] = tuple(time_values)
+    return objects
+
+
+def get_average_key_times(rounded=True):
+    """
+    get the average key times.
+    :return:  <tuple> of all key times
+    """
+    items = flatten_list(set(get_anim_node_key_times().values()))
+    if rounded:
+        return tuple(set(map(lambda x: round(x, 4), items)))
+    else:
+        return tuple(set(items))
 
 
 def get_empty_anim_curves():
@@ -301,6 +407,7 @@ def inspect_interface_attributes():
         face_loc = find_face_system_controller(f_ctrl)
         attr = attribute_utils.Attributes(face_loc[0], custom=1, keyable=True)
         print(f_ctrl, face_loc, ">>", attr.__dict__())
+        print(get_key_times())
     return True
 
 
