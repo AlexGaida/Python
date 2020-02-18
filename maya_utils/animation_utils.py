@@ -335,7 +335,10 @@ def get_animation_data_from_node(object_node=""):
 
             # get the information the standard way
             v_float = cmds.keyframe(object_node, q=1, valueChange=1)[i_key]
-            t_float = cmds.keyframe(object_node, floatChange=1, q=1)[i_key]
+            try:
+                t_float = cmds.keyframe(object_node, floatChange=1, q=1)[i_key]
+            except TypeError:
+                t_float = i_key
             o_x = cmds.getAttr('{}.keyTanOutX[{}]'.format(object_node, i_key))
             o_y = cmds.getAttr('{}.keyTanOutY[{}]'.format(object_node, i_key))
             i_x = cmds.getAttr('{}.keyTanInX[{}]'.format(object_node, i_key))

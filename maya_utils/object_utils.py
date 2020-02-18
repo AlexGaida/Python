@@ -153,6 +153,16 @@ def get_selected_node(single=True):
     return cmds.ls(sl=1)
 
 
+def connect_attr(driver_attribute="", blend_attribute=""):
+    """
+    perform connection
+    :return: <bool> True for success. <bool> False for failure.
+    """
+    if not cmds.isConnected(driver_attribute, blend_attribute):
+        cmds.connectAttr(driver_attribute, blend_attribute)
+    return True
+
+
 def get_connections_source(object_name=""):
     """
     get a list of source connections from the object specified.
@@ -424,11 +434,21 @@ def get_connected_nodes(object_name="", find_node_type=om.MFn.kAnimCurve,
         direction = om.MItDependencyGraph.kUpstream
     if down_stream:
         direction = om.MItDependencyGraph.kDownstream
-    node = get_m_obj(object_name)
+
+    if isinstance(object_name, (list, tuple)):
+        node = object_name[0]
+    if isinstance(object_name, (str, unicode)):
+        node = get_m_obj(object_name)
+    elif isinstance(object_name, om.MObject):
+        node = object_name
+    elif isinstance(object_name, om.MFnMesh):
+        node = object_name.node()
+
     dag_iter = om.MItDependencyGraph(
         node,
         find_node_type,
-        direction)
+        direction,
+        om.MItDependencyGraph.kPlugLevel)
     dag_iter.reset()
 
     # iterate the dependency graph to find what we want.
@@ -493,12 +513,29 @@ def get_connected_nodes_gen(object_name=""):
     """
     nodes generator.
     :param object_name: <str> string object to use for searching from.
-    :param find_node_type: <om.MFn> kObjectName type to find.
     """
     node = get_m_obj(object_name)
     dag_iter = om.MItDependencyGraph(
         node,
         om.MItDependencyGraph.kDownstream,
+        om.MItDependencyGraph.kPlugLevel)
+    dag_iter.reset()
+
+    while not dag_iter.isDone():
+        yield dag_iter.currentItem()
+        dag_iter.next()
+
+
+def get_upstream_connected_nodes_gen(object_name=""):
+    """
+    nodes generator.
+    :param object_name: <str> string object to use for searching from.
+    """
+    node = get_m_obj(object_name)
+
+    dag_iter = om.MItDependencyGraph(
+        node,
+        om.MItDependencyGraph.kUpstream,
         om.MItDependencyGraph.kPlugLevel)
     dag_iter.reset()
 
@@ -524,8 +561,7 @@ def get_m_obj(object_str=""):
             return node
         except:
             raise RuntimeError('[Get MObject] :: failed on {}'.format(object_str))
-    elif isinstance(object, om.MObject):
-        return object_str
+    return object_str
 
 
 def get_m_dag(object_str=""):

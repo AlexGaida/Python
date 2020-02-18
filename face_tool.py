@@ -83,7 +83,7 @@ def get_active_face_controller():
     face_attrs = filter_face_attributes(interface_controllers, non_zero=True)
     for interface_ctrl in interface_controllers:
         interface_system_controller = find_face_system_controller(interface_ctrl)[0]
-        return interface_ctrl, interface_system_controller, face_attrs, get_average_key_times(),
+        return interface_ctrl, interface_system_controller, face_attrs, get_specified_key_time(interface_ctrl),
 
 
 def get_corrective_shape_name(mesh_name, shape_name, attribute_name):
@@ -116,6 +116,7 @@ def create_corrective_shape(mesh_name=""):
     interface_name = active_data[0]
     attribute_name = active_data[2].keys()[0]
     shape_name = [x for x in shape_names if x in interface_name][0]
+    print(mesh_name, shape_name, attribute_name)
     corrective_mesh_name = get_corrective_shape_name(mesh_name, shape_name, attribute_name)
     if not cmds.objExists(corrective_mesh_name):
         cmds.rename(cmds.duplicate(mesh_name), corrective_mesh_name)
@@ -123,7 +124,12 @@ def create_corrective_shape(mesh_name=""):
     return corrective_mesh_name
 
 
-def get_corrective_mesh(mesh_name=""):
+def get_corrective_mesh_name(mesh_name=""):
+    """
+    programmatically construct a corrective mesh name.
+    :param mesh_name: <str> use this to construct a name.
+    :return: <str> corrective mesh name.
+    """
     active_data = get_active_face_controller()
     shape_names = get_interface_shape_names()
     if not active_data:
@@ -132,21 +138,81 @@ def get_corrective_mesh(mesh_name=""):
     attribute_name = active_data[2].keys()[0]
     shape_name = [x for x in shape_names if x in interface_name][0]
     corrective_mesh_name = get_corrective_shape_name(mesh_name, shape_name, attribute_name)
-    return corrective_mesh_name + '_corrective'
+    return corrective_mesh_name
 
 
 def extract_delta(mesh_name="", corrective_mesh_name=""):
+    """
+    extract the mesh deltas from the mesh name, and corrective mesh name provided
+    :param mesh_name: <str> the base mesh to compare vertex deltas from.
+    :param corrective_mesh_name: <str> the corrective mesh name to extract deltas from.
+    :return: <str> delta mesh name.
+    """
     delta_mesh = deform_utils.extract_mesh_deltas(mesh_name, corrective_mesh_name)
     cmds.parent(delta_mesh, world=True)
     return delta_mesh
 
 
-def attach_corrective_to_mesh(mesh_name="", target_index=0):
+def attach_corrective_to_mesh(mesh_name="", corrective_sculpt_mesh=""):
+    """
+    attached the corrective blend-shape to the mesh object and connects it.
+    :param mesh_name: <str> mesh that has the blend shape and corrective sculpt.
+    :return: <bool> True for success.
+    """
     target_name = get_blend_shape_target_name()
-    corrective_sculpt_mesh = get_corrective_mesh(mesh_name)
-    print target_name, corrective_sculpt_mesh
-    deform_utils.add_target_shape(
-        mesh_name=mesh_name, target_mesh=corrective_sculpt_mesh, target_name=target_name, target_index=target_index)
+    if not corrective_sculpt_mesh:
+        corrective_sculpt_mesh = get_corrective_mesh_name(mesh_name)
+    return deform_utils.add_target_shape(
+        mesh_name=mesh_name, target_mesh=corrective_sculpt_mesh, target_name=target_name)
+
+
+def create_corrective_shape_on_selected():
+    mesh_object = object_utils.get_selected_node(single=True)
+    if mesh_object:
+        return create_corrective_shape(mesh_object)
+
+
+def do_corrective_process_on_selected():
+    mesh_object = object_utils.get_selected_node(single=True)
+    if mesh_object:
+        return do_corrective_process(mesh_object)
+
+
+def do_corrective_process(mesh_name=""):
+    """
+    performs the attachment of a corrective to the driver.
+    :param mesh_name:
+    :return:
+    """
+    corrective_mesh_name = get_corrective_mesh_name(mesh_name)
+    delta_mesh = extract_delta(mesh_name, corrective_mesh_name)
+    attach_corrective_to_mesh(mesh_name, delta_mesh)
+    connect_driver_to_active_target_blendshape(mesh_name)
+    return True
+
+
+def connect_driver_to_active_target_blendshape(mesh_name=""):
+    """
+    gets the blend shape name, the active target name and connects it.
+    :param mesh_name:
+    :return:
+    """
+    face_controller_data = get_active_face_controller()
+    controller_loc = face_controller_data[1]
+    attr = face_controller_data[2].keys()[0]
+    driver_attr = '{}.{}'.format(controller_loc, attr)
+
+    blend_node = deform_utils.get_connected_blendshape_nodes(mesh_name, as_strings=True)
+    if not blend_node:
+        return False
+    blend_node = blend_node[0]
+    target_name = get_blend_shape_target_name()
+    target_attr = deform_utils.get_blend_target_attribute(blend_node=blend_node, target_name=target_name)
+    print("[ConnectingDriverToBlendShape] :: {} >> {}".format(driver_attr, target_attr))
+    target_attr = target_attr[0][0]
+    target_attr = '{}.{}'.format(blend_node, target_attr)
+    object_utils.connect_attr(driver_attr, target_attr)
+    return True
 
 
 def get_selected_objects_gen():
@@ -164,12 +230,15 @@ def math_get_sign(number=0.0):
         return 1
 
 
-def get_anim_node_key_times():
+def get_anim_node_key_times(face_system_controller=""):
     """
     from a non-zero interface controller, extract the affecting anim curves and get the time values.
     :return: <dict> animation curve items.
     """
-    interface_controllers = find_non_zero_interface_controllers()
+    if not face_system_controller:
+        interface_controllers = find_non_zero_interface_controllers()
+    else:
+        interface_controllers = [face_system_controller]
     objects = {}
     for interface_node in interface_controllers:
         # filters only one active driver attributes
@@ -181,9 +250,25 @@ def get_anim_node_key_times():
         for curve_node in anim_curves_gen:
             anim_curve_name = object_utils.get_m_object_name(curve_node)
             # get keys only
-            time_values = animation_utils.get_animation_data_from_node(curve_node)[anim_curve_name]['data'].keys()
-            objects[anim_curve_name] = tuple(time_values)
+            data = animation_utils.get_animation_data_from_node(curve_node)
+            if anim_curve_name and anim_curve_name in data:
+                time_values = data[anim_curve_name]['data'].keys()
+                objects[anim_curve_name] = tuple(time_values)
+            else:
+                continue
     return objects
+
+
+def get_specified_key_time(interface_control, rounded=True):
+    """
+    get the average key times.
+    :return:  <tuple> of all key times
+    """
+    items = flatten_list(set(get_anim_node_key_times(interface_control).values()))
+    if rounded:
+        return tuple(set(map(lambda x: round(x, 4), items)))
+    else:
+        return tuple(set(items))
 
 
 def get_average_key_times(rounded=True):
@@ -307,13 +392,16 @@ def get_weighted_values_length(driven_object, driven_attr):
     Get the length of all non-zero weighted values.
     :param driven_object: <str> the driven object to get connections from.
     :param driven_attr: <str> the driven attribute to get the weighted values from.
-    :return: <list> blend weighted values.
+    :return: <int> length.
     """
     rounder = lambda x: round(x, 4)
     weighted_values = animation_utils.get_blend_weighted_values(
-        node_name=driven_object, target_attr=driven_attr)[0]
-    # return len(tuple(filter(lambda x: round(x, 4) != 0.0, weighted_values)))
-    return len(filter(None, map(rounder, weighted_values)))
+        node_name=driven_object, target_attr=driven_attr)
+    if weighted_values:
+        # return len(tuple(filter(lambda x: round(x, 4) != 0.0, weighted_values)))
+        return len(filter(None, map(rounder, weighted_values[0])))
+    else:
+        0
 
 
 def get_original_weight_value(driven_object, driven_attr, interface_node, face_attr):
@@ -407,7 +495,7 @@ def inspect_interface_attributes():
         face_loc = find_face_system_controller(f_ctrl)
         attr = attribute_utils.Attributes(face_loc[0], custom=1, keyable=True)
         print(f_ctrl, face_loc, ">>", attr.__dict__())
-        print(get_key_times())
+        print(get_specified_key_time(face_loc))
     return True
 
 
@@ -1097,6 +1185,10 @@ def apply_key_on_face_control(selected_on_face_ctrl='', interface_ctrl=""):
     return True
 
 
+def find_blend_weighted_node(driven_object, driven_attr):
+    return animation_utils.get_connected_blend_weighted_node(driven_object, driven_attr)
+
+
 def set_keys_on_face_controller(selected_node='', interface_ctrl="", driven_node="", original_data={}):
     """
     Identify the selected face controller and set the driven key.
@@ -1163,12 +1255,21 @@ def set_keys_on_face_controller(selected_node='', interface_ctrl="", driven_node
             driven_weighted_value = get_original_weight_value(driven_object, driven_attr, interface_node, face_attr)
 
             # driven_val = driven_weighted_value - driven_value_difference
+            blend_node = find_blend_weighted_node(driven_object, driven_attr)
+
+            if not blend_node:
+                print("[SetKeyFailure] :: Attribute not initialized: {}".format(driven_attr))
+                continue
 
             if get_weighted_values_length(driven_object, driven_attr) > 0:
-                print('The driven value will be blended.\n{}'.format(driven_attr))
-                print(driven_weighted_value, get_weighted_values_length(driven_object, driven_attr), driven_val)
-                driven_val = (original_driven_value + driven_weighted_value)
-                print('New: ', driven_val)
+                print(driven_attr, original_driven_value, driven_weighted_value, get_weighted_values_length(driven_object, driven_attr), driven_val)
+                # driven_val = (original_driven_value + driven_weighted_value)
+                # driven_val = original_driven_value + driven_weighted_value
+                if original_driven_value:
+                    print('The driven value will be blended.\n{}'.format(driven_attr))
+                    if driven_weighted_value != original_driven_value + weighted_sum:
+                        driven_val = original_driven_value + driven_weighted_value
+                # print('New: ', driven_val)
             # print("[DrivenValue] :: {}".format(driven_val))
             # print("[DrivenValue] :: {}".format(driven_val))
             # print("[DrivenValue] :: {}".format(driven_val))
