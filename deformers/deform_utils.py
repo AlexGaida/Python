@@ -4,7 +4,7 @@ module for dealing with deformers in Maya.
 # import maya modules
 from maya import mel
 from maya import cmds
-from maya import OpenMaya as om
+from maya import OpenMaya as OpenMaya
 
 # import local modules
 from maya_utils import object_utils
@@ -76,9 +76,9 @@ def get_fn_shape(m_object=None, get_all=False):
     :return: <OpenMaya.MObject> if True, <tuple> of list objects.
     """
     try:
-        fn_item = om.MFnDagNode(m_object)
+        fn_item = OpenMaya.MFnDagNode(m_object)
     except TypeError:
-        fn_item = om.MFnDagNode(get_m_object(m_object))
+        fn_item = OpenMaya.MFnDagNode(get_m_object(m_object))
     c_count = fn_item.childCount()
     collection = []
     if c_count:
@@ -100,7 +100,7 @@ def get_mesh_fn(object_name=""):
     :param object_name: <str> object name to get the MeshFn class.
     :return: <OpenMaya.MFnMesh> object.
     """
-    return om.MFnMesh(get_fn_shape(object_utils.get_m_obj(object_name)))
+    return OpenMaya.MFnMesh(get_fn_shape(object_utils.get_m_obj(object_name)))
 
 
 def get_connected_blendshape_nodes(object_name="", as_strings=True):
@@ -113,7 +113,7 @@ def get_connected_blendshape_nodes(object_name="", as_strings=True):
     collection = []
     for m_set in get_connected_object_sets(object_name):
         blend_node = object_utils.get_connected_nodes(m_set,
-                                                      find_node_type=om.MFn.kBlendShape,
+                                                      find_node_type=OpenMaya.MFn.kBlendShape,
                                                       up_stream=True,
                                                       down_stream=False,
                                                       as_strings=as_strings)
@@ -132,7 +132,7 @@ def get_connected_skincluster_nodes(object_name="", as_strings=True):
     collection = []
     for m_set in get_connected_object_sets(object_name):
         skin_node = object_utils.get_connected_nodes(m_set,
-                                                     find_node_type=om.MFn.kSkinClusterFilter,
+                                                     find_node_type=OpenMaya.MFn.kSkinClusterFilter,
                                                      up_stream=1,
                                                      down_stream=0,
                                                      as_strings=as_strings)
@@ -148,17 +148,22 @@ def get_connected_object_sets(object_name=""):
     :return:
     """
     return object_utils.get_connected_nodes(get_fn_shape(object_name),
-                                            find_node_type=om.MFn.kSet,
+                                            find_node_type=OpenMaya.MFn.kSet,
                                             up_stream=True,
                                             down_stream=False)
 
 
 def get_deform_object_set_items(object_name=""):
+    """
+    get set items from deformer sets.
+    :param object_name:
+    :return:
+    """
     for deform_set in get_connected_object_sets(object_name):
-        m_sel = om.MSelectionList()
-        om.MFnSet(deform_set).getMembers(m_sel, True)
+        m_sel = OpenMaya.MSelectionList()
+        OpenMaya.MFnSet(deform_set).getMembers(m_sel, True)
         for i in xrange(m_sel.length()):
-            node = om.MObject()
+            node = OpenMaya.MObject()
             print m_sel.getDependNode(i, node)
             print object_utils._get_m_object_name(node)
 
@@ -262,4 +267,12 @@ def get_blendshape_targets(blend_node=""):
 
 
 def remove_blendshape_target(mesh_name="", blend_name="", shape_name="", shape_index=""):
+    """
+    removes the blendshape target.
+    :param mesh_name:
+    :param blend_name:
+    :param shape_name:
+    :param shape_index:
+    :return:
+    """
     cmds.blendShape(blend_name, edit=True, remove=True, t=(mesh_name, shape_index, shape_name, 1.0))

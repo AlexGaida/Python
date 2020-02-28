@@ -5,7 +5,7 @@ Transform module for finding, creating and setting attributes
 import math
 
 # import maya modules
-from maya import OpenMaya as om
+from maya import OpenMaya
 from maya import cmds
 
 # import local modules
@@ -15,12 +15,12 @@ import object_utils
 __version__ = "1.0.0"
 
 
-class Transform(om.MFnTransform):
+class Transform(OpenMaya.MFnTransform):
     MAYA_STR_OBJECT = None
-    M_SCRIPT_UTIL = om.MScriptUtil()
+    M_SCRIPT_UTIL = OpenMaya.MScriptUtil()
 
-    WORLD_SPACE = om.MSpace.kWorld
-    OBJECT_SPACE = om.MSpace.kObject
+    WORLD_SPACE = OpenMaya.MSpace.kWorld
+    OBJECT_SPACE = OpenMaya.MSpace.kObject
 
     ROTATION_ORDER_NAMES = {1: 'kXYZ',
                             2: 'kYZX',
@@ -29,17 +29,17 @@ class Transform(om.MFnTransform):
                             5: 'kYXZ',
                             6: 'kZYX'}
 
-    ROTATE_ORDER_XYZ = om.MTransformationMatrix.kXYZ
-    ROTATE_ORDER_YZX = om.MTransformationMatrix.kYZX
-    ROTATE_ORDER_ZXY = om.MTransformationMatrix.kZXY
-    ROTATE_ORDER_XZY = om.MTransformationMatrix.kXZY
-    ROTATE_ORDER_YXZ = om.MTransformationMatrix.kYXZ
-    ROTATE_ORDER_ZYX = om.MTransformationMatrix.kZYX
-    ROTATE_ORDER_INVALID = om.MTransformationMatrix.kInvalid
+    ROTATE_ORDER_XYZ = OpenMaya.MTransformationMatrix.kXYZ
+    ROTATE_ORDER_YZX = OpenMaya.MTransformationMatrix.kYZX
+    ROTATE_ORDER_ZXY = OpenMaya.MTransformationMatrix.kZXY
+    ROTATE_ORDER_XZY = OpenMaya.MTransformationMatrix.kXZY
+    ROTATE_ORDER_YXZ = OpenMaya.MTransformationMatrix.kYXZ
+    ROTATE_ORDER_ZYX = OpenMaya.MTransformationMatrix.kZYX
+    ROTATE_ORDER_INVALID = OpenMaya.MTransformationMatrix.kInvalid
 
-    X = om.MVector(1, 0, 0)
-    Y = om.MVector(0, 1, 0)
-    Z = om.MVector(0, 0, 1)
+    X = OpenMaya.MVector(1, 0, 0)
+    Y = OpenMaya.MVector(0, 1, 0)
+    Z = OpenMaya.MVector(0, 0, 1)
 
     def __init__(self, maya_node=""):
         self.MAYA_STR_OBJECT = maya_node
@@ -62,7 +62,7 @@ class Transform(om.MFnTransform):
         if not as_m_vector:
             return x, y, z,
         else:
-            return om.MVector([x, y, z])
+            return OpenMaya.MVector([x, y, z])
 
     def translate_values(self, world=False, as_m_vector=False):
         """
@@ -102,9 +102,9 @@ class Transform(om.MFnTransform):
         :return: <tuple> rotate attribute values
         """
         if not world:
-            m_rotate = om.MEulerRotation(self.OBJECT_SPACE)
+            m_rotate = OpenMaya.MEulerRotation(self.OBJECT_SPACE)
         else:
-            m_rotate = om.MEulerRotation(self.WORLD_SPACE)
+            m_rotate = OpenMaya.MEulerRotation(self.WORLD_SPACE)
         self.getRotation(m_rotate)
 
         if not as_m_vector:
@@ -147,7 +147,7 @@ class Transform(om.MFnTransform):
             return self.matrix_list(self.matrix(), flatten=flatten)
 
     def world_transform_matrix(self):
-        return om.MTransformationMatrix(self.world_matrix())
+        return OpenMaya.MTransformationMatrix(self.world_matrix())
 
     def world_matrix_list(self):
         """
@@ -188,17 +188,17 @@ class Transform(om.MFnTransform):
         return self.MAYA_MFN_OBJECT.attribute('worldMatrix')
 
     def m_attr_plug(self, attr):
-        return om.MPlug(self.MAYA_M_OBJECT, attr)
+        return OpenMaya.MPlug(self.MAYA_M_OBJECT, attr)
 
     def m_attr_index(self, m_plug, idx):
         return m_plug.elementByLogicalIndex(idx)
 
     def matrix_data_fn(self, m_plug):
-        return om.MFnMatrixData(m_plug.asMObject())
+        return OpenMaya.MFnMatrixData(m_plug.asMObject())
 
     def get_transformatrion_matrix(self, matrix=None):
         if matrix:
-            return om.MTransformationMatrix(matrix)
+            return OpenMaya.MTransformationMatrix(matrix)
         else:
             return self.transformation()
 
@@ -217,7 +217,7 @@ class Transform(om.MFnTransform):
         """
         return self.get_rotation_order_name(self.rotationOrder())
 
-    def matrix_list(self, m_matrix=om.MMatrix, flatten=False):
+    def matrix_list(self, m_matrix=OpenMaya.MMatrix, flatten=False):
         """
         returns the OpenMaya.MMatrix as a tuple
         :param m_matrix: <OpenMaya.MMatrix>
@@ -263,9 +263,9 @@ class Transform(om.MFnTransform):
         """
         builds a matrix from list.
         :param matrix_list:
-        :return: <om.MMatrix> built matrix with values from list provided.
+        :return: <OpenMaya.MMatrix> built matrix with values from list provided.
         """
-        matrix = om.MMatrix()
+        matrix = OpenMaya.MMatrix()
         self.M_SCRIPT_UTIL.setDoubleArray(matrix[0], 0, matrix_list[0][0])
         self.M_SCRIPT_UTIL.setDoubleArray(matrix[0], 1, matrix_list[0][1])
         self.M_SCRIPT_UTIL.setDoubleArray(matrix[0], 2, matrix_list[0][2])
@@ -297,7 +297,7 @@ class Transform(om.MFnTransform):
         interpolating between the two rotations by using Spherical Linear Interpolation
         """
         if identity:
-            return om.MQuaternion.slerp(om.MQuaternion.kIdentity, q_rotation, 0.1)
+            return OpenMaya.MQuaternion.slerp(OpenMaya.MQuaternion.kIdentity, q_rotation, 0.1)
 
     def get_quaternion_rotation(self, normalize=True):
         if not normalize:
@@ -315,10 +315,10 @@ class Transform(om.MFnTransform):
         self.setRotationComponents(q_list, self.OBJECT_SPACE, asQuaternion=True)
 
     def set_rotation_identity(self):
-        self.setRotation(om.MQuaternion.kIdentity, self.OBJECT_SPACE)
+        self.setRotation(OpenMaya.MQuaternion.kIdentity, self.OBJECT_SPACE)
 
     def set_euler_rotation_order(self, rotation_order="kXYZ"):
-        return self.euler_rotation().reorderIt(eval('om.MTransformationMatrix.{}'.format(rotation_order)))
+        return self.euler_rotation().reorderIt(eval('OpenMaya.MTransformationMatrix.{}'.format(rotation_order)))
 
     def get_euler_rotation(self):
         return self.transformation().rotation().asEulerRotation()
@@ -449,7 +449,7 @@ class Transform(om.MFnTransform):
     def mirror_rotation_matrix(self):
         # world_matrix = self.world_matrix_list()
         # mirror_matrix = self.mirror_matrix(world_matrix)
-        m_xform = om.MTransformationMatrix(object_utils.ScriptUtil().matrix_from_list(self.inclusive_matrix_list()))
+        m_xform = OpenMaya.MTransformationMatrix(object_utils.ScriptUtil().matrix_from_list(self.inclusive_matrix_list()))
         xform_euler = m_xform.rotation().asEulerRotation()
         euler_angles = self.convert_euler_to_angle(xform_euler)
 
@@ -458,7 +458,7 @@ class Transform(om.MFnTransform):
         # mirror axis Z
         euler_angles[2] *= -1
 
-        quat = om.MQuaternion()
+        quat = OpenMaya.MQuaternion()
         quat += self.quaternion_rotation(euler_angles[0], 'X')
         quat += self.quaternion_rotation(euler_angles[0], 'Y')
         quat += self.quaternion_rotation(euler_angles[0], 'Z')
@@ -483,11 +483,11 @@ class Transform(om.MFnTransform):
 
     def quaternion_rotation(self, degree=0, axis='Y'):
         if axis == 'X':
-            return om.MQuaternion(math.radians(degree), self.X)
+            return OpenMaya.MQuaternion(math.radians(degree), self.X)
         if axis == 'Y':
-            return om.MQuaternion(math.radians(degree), self.Y)
+            return OpenMaya.MQuaternion(math.radians(degree), self.Y)
         if axis == 'Z':
-            return om.MQuaternion(math.radians(degree), self.Z)
+            return OpenMaya.MQuaternion(math.radians(degree), self.Z)
 
     def rotate_by_quaternion(self, quat):
         """
@@ -495,4 +495,4 @@ class Transform(om.MFnTransform):
         :param quat: <OpenMaya,MQuaternion>
         :return: <OpenMaya.MStatus>
         """
-        return self.rotateByQuaternion(quat.x, quat.y, quat.z, quat.w, om.MSpace.kPreTransform)
+        return self.rotateByQuaternion(quat.x, quat.y, quat.z, quat.w, OpenMaya.MSpace.kPreTransform)

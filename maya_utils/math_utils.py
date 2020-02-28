@@ -17,6 +17,17 @@ M_PI = 3.14159265358979323846
 EXP = 2.718281
 
 
+def squared_difference(num_array=()):
+    return (sum(map(lambda x: x**2, num_array)) / len(num_array))**0.5
+
+
+
+def gaussian(in_value=0.0, magnitude=0.0, mean=0.0, variance=0.0):
+    if variance <= 0.0:
+        variance = 0.001
+    return magnitude * EXP ** (-1 * (in_value - mean**2) / (2.0 * variance))
+
+
 def flatten_list(list_data=[]):
     """
     flatten the nested lists into one list.

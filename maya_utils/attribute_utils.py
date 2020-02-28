@@ -33,7 +33,7 @@ class ImmutableDict(dict):
         return type(self)(dict(self).fromkeys(sequence, v))
 
 
-class Attributes(om.MDagModifier):
+class Attributes(OpenMaya.MDagModifier):
     MAYA_STR_OBJECT = None
     SCALE_ATTRS = ['scaleX', 'scaleY', 'scaleZ']
     DEFAULT_ATTR_VALUES = {'translateX': 0.0,
@@ -51,17 +51,17 @@ class Attributes(om.MDagModifier):
                            'visibility': 1
                            }
 
-    LINEAR_ATTR_TYPES = (om.MFn.kDoubleLinearAttribute,
-                         om.MFn.kFloatLinearAttribute)
+    LINEAR_ATTR_TYPES = (OpenMaya.MFn.kDoubleLinearAttribute,
+                         OpenMaya.MFn.kFloatLinearAttribute)
 
-    INTEGER_ATTR_TYPES = (om.MFnNumericData.kShort,
-                          om.MFnNumericData.kInt,
-                          om.MFnNumericData.kLong,
-                          om.MFnNumericData.kByte)
+    INTEGER_ATTR_TYPES = (OpenMaya.MFnNumericData.kShort,
+                          OpenMaya.MFnNumericData.kInt,
+                          OpenMaya.MFnNumericData.kLong,
+                          OpenMaya.MFnNumericData.kByte)
 
-    DOUBLE_ATTRS_TYPES = (om.MFnNumericData.kFloat,
-                          om.MFnNumericData.kDouble,
-                          om.MFnNumericData.kAddr)
+    DOUBLE_ATTRS_TYPES = (OpenMaya.MFnNumericData.kFloat,
+                          OpenMaya.MFnNumericData.kDouble,
+                          OpenMaya.MFnNumericData.kAddr)
 
     def __init__(self, maya_node="", all_attrs=False, keyable=False, custom=False, connected=False):
         super(Attributes, self).__init__()
@@ -96,25 +96,25 @@ class Attributes(om.MDagModifier):
         :return: <list> node type default attributes.
         """
         attr_list = []
-        mfn_obj = om.MFnDependencyNode()
+        mfn_obj = OpenMaya.MFnDependencyNode()
         ref_obj = mfn_obj.create(self.OBJECT_NODE_TYPE)
         for a_i in range(mfn_obj.attributeCount()):
-            m_attr = om.MFnAttribute(mfn_obj.attribute(a_i))
+            m_attr = OpenMaya.MFnAttribute(mfn_obj.attribute(a_i))
             attr_list.append(m_attr.name())
         self.deleteNode(ref_obj)
         self.doIt()
         return attr_list
 
-    def get_connections_src(self, find_node_type=om.MFn.kTransform, with_shape=om.MFn.kLocator, custom_attr=True):
+    def get_connections_src(self, find_node_type=OpenMaya.MFn.kTransform, with_shape=OpenMaya.MFn.kLocator, custom_attr=True):
         """
         get the connection source.
         :param find_node_type:
         :return: <dict> connected atrributes.
         """
-        dag_iter = om.MItDependencyGraph(
+        dag_iter = OpenMaya.MItDependencyGraph(
             self.MAYA_M_OBJECT,
-            om.MItDependencyGraph.kDownstream,
-            om.MItDependencyGraph.kPlugLevel)
+            OpenMaya.MItDependencyGraph.kDownstream,
+            OpenMaya.MItDependencyGraph.kPlugLevel)
         dag_iter.reset()
 
         # iterate the dependency graph to find what we want.
@@ -123,18 +123,18 @@ class Attributes(om.MDagModifier):
             cur_item = dag_iter.currentItem()
 
             if cur_item.hasFn(find_node_type):
-                cur_fn = om.MFnDependencyNode(cur_item)
+                cur_fn = OpenMaya.MFnDependencyNode(cur_item)
                 cur_name = cur_fn.name()
                 connections[cur_name] = []
 
                 if with_shape:
-                    fn_item = om.MFnDagNode(cur_item)
+                    fn_item = OpenMaya.MFnDagNode(cur_item)
                     c_count = fn_item.childCount()
                     if c_count:
                         if fn_item.child(0).hasFn(with_shape):
                             for a_i in range(cur_fn.attributeCount()):
                                 a_obj = cur_fn.attribute(a_i)
-                                m_plug = om.MPlug(cur_item, a_obj)
+                                m_plug = OpenMaya.MPlug(cur_item, a_obj)
                                 if m_plug.isConnected() and m_plug.isKeyable():
                                     if not custom_attr:
                                         connections[cur_name].append(m_plug.name())
@@ -144,7 +144,7 @@ class Attributes(om.MDagModifier):
                 else:
                     for a_i in range(cur_fn.attributeCount()):
                         a_obj = cur_fn.attribute(a_i)
-                        m_plug = om.MPlug(cur_item, a_obj)
+                        m_plug = OpenMaya.MPlug(cur_item, a_obj)
                         if m_plug.isConnected():
                             connections[cur_name].append(m_plug.name())
 
@@ -176,12 +176,12 @@ class Attributes(om.MDagModifier):
             o_plug_type = o_plug_attr.apiType()
 
             # rotational attributes
-            if o_plug_type == om.MFn.kDoubleAngleAttribute:
-                o_plug.setMAngle(om.MAngle(float(attribute_value)))
+            if o_plug_type == OpenMaya.MFn.kDoubleAngleAttribute:
+                o_plug.setMAngle(OpenMaya.MAngle(float(attribute_value)))
 
             # unit attributes
             if o_plug_type in self.LINEAR_ATTR_TYPES:
-                num_type = om.MFnUnitAttribute(o_plug_attr).unitType()
+                num_type = OpenMaya.MFnUnitAttribute(o_plug_attr).unitType()
 
                 # integers
                 if num_type in self.INTEGER_ATTR_TYPES:
@@ -192,12 +192,12 @@ class Attributes(om.MDagModifier):
                     o_plug.setInt(int(attribute_value))
 
             # numeric attributes
-            if o_plug_type == om.MFn.kNumericAttribute:
-                num_type = om.MFnNumericAttribute(o_plug_attr).unitType()
-                # om.MFnNumericAttribute(o_plug_attr).unitType()
+            if o_plug_type == OpenMaya.MFn.kNumericAttribute:
+                num_type = OpenMaya.MFnNumericAttribute(o_plug_attr).unitType()
+                # OpenMaya.MFnNumericAttribute(o_plug_attr).unitType()
 
                 # booleans
-                if num_type == om.MFnNumericData.kBoolean:
+                if num_type == OpenMaya.MFnNumericData.kBoolean:
                     o_plug.setBool(bool(attribute_value))
 
                 # integers
@@ -267,7 +267,7 @@ class Attributes(om.MDagModifier):
             a_obj = self.MAYA_MFN_OBJECT.attribute(i)
             p_type = a_obj.apiType()
             p_type_str = a_obj.apiTypeStr()
-            m_plug = om.MPlug(self.MAYA_M_OBJECT, a_obj)
+            m_plug = OpenMaya.MPlug(self.MAYA_M_OBJECT, a_obj)
             attr_name = m_plug.name().split('.')[-1]
 
             # get only the attributes which are specified in the keyword parameters given.
@@ -315,59 +315,59 @@ class Attributes(om.MDagModifier):
         attr_node, plug_name = attr_plug.name().split('.')
 
         # vector compound attributes
-        if api_type in (om.MFn.kAttribute3Double, om.MFn.kAttribute3Float,
-                        om.MFn.kCompoundAttribute, om.MFn.kAttribute4Double):
+        if api_type in (OpenMaya.MFn.kAttribute3Double, OpenMaya.MFn.kAttribute3Float,
+                        OpenMaya.MFn.kCompoundAttribute, OpenMaya.MFn.kAttribute4Double):
             if attr_plug.isCompound():
                 p_value = cmds.attributeQuery(plug_name, node=attr_node, listChildren=True)
 
         # geometry <generic> attributes
-        elif api_type == om.MFn.kGenericAttribute:
+        elif api_type == OpenMaya.MFn.kGenericAttribute:
             p_value = attr_plug.asDouble()
 
         # time attributes
-        elif api_type == om.MFn.kTimeAttribute:
+        elif api_type == OpenMaya.MFn.kTimeAttribute:
             p_value = attr_plug.asDouble()
 
         # message attributes
-        elif api_type == om.MFn.kMessageAttribute:
+        elif api_type == OpenMaya.MFn.kMessageAttribute:
             p_value = None
 
         # rotational attributes
-        elif api_type == om.MFn.kDoubleAngleAttribute:
+        elif api_type == OpenMaya.MFn.kDoubleAngleAttribute:
             p_value = round(attr_plug.asMAngle().asDegrees(), 3)
 
         # distance attribute
-        elif api_type in (om.MFn.kDoubleLinearAttribute, om.MFn.kFloatLinearAttribute):
+        elif api_type in (OpenMaya.MFn.kDoubleLinearAttribute, OpenMaya.MFn.kFloatLinearAttribute):
             p_value = attr_plug.asMDistance().asCentimeters()
 
         # angle attribute
-        elif api_type in (om.MFn.kDoubleLinearAttribute, om.MFn.kFloatLinearAttribute):
+        elif api_type in (OpenMaya.MFn.kDoubleLinearAttribute, OpenMaya.MFn.kFloatLinearAttribute):
             p_value = attr_plug.asDouble()
 
         # typed attribute
-        elif api_type == om.MFn.kTypedAttribute:
-            at_type = om.MFnTypedAttribute(attr_obj).attrType()
+        elif api_type == OpenMaya.MFn.kTypedAttribute:
+            at_type = OpenMaya.MFnTypedAttribute(attr_obj).attrType()
 
             # matrix
-            if at_type == om.MFnData.kMatrix:
-                # p_value = om.MFnMatrixData(attr_plug.asMObject()).matrix()
+            if at_type == OpenMaya.MFnData.kMatrix:
+                # p_value = OpenMaya.MFnMatrixData(attr_plug.asMObject()).matrix()
                 p_value = cmds.getAttr(attr_plug.name())
 
             # string
-            if at_type == om.MFnData.kString:
+            if at_type == OpenMaya.MFnData.kString:
                 p_value = attr_plug.asString()
 
         # matrix
-        elif api_type == om.MFn.kMatrixAttribute:
-            # p_value = om.MFnMatrixData(attr_plug.asMObject()).matrix()
+        elif api_type == OpenMaya.MFn.kMatrixAttribute:
+            # p_value = OpenMaya.MFnMatrixData(attr_plug.asMObject()).matrix()
             p_value = cmds.getAttr(attr_plug.name())
 
         # numbers
-        elif api_type == om.MFn.kNumericAttribute:
-            at_type = om.MFnNumericAttribute(attr_obj).unitType()
+        elif api_type == OpenMaya.MFn.kNumericAttribute:
+            at_type = OpenMaya.MFnNumericAttribute(attr_obj).unitType()
 
             # boolean
-            if at_type == om.MFnNumericData.kBoolean:
+            if at_type == OpenMaya.MFnNumericData.kBoolean:
                 p_value = attr_plug.asBool()
 
             # integer
@@ -379,7 +379,7 @@ class Attributes(om.MDagModifier):
                 p_value = round(attr_plug.asDouble(), 3)
 
         # enumeration
-        elif api_type == om.MFn.kEnumAttribute:
+        elif api_type == OpenMaya.MFn.kEnumAttribute:
             p_value = attr_plug.asInt()
         else:
             print(attr_node, plug_name, api_type, attr_obj.apiTypeStr())

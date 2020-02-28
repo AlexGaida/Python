@@ -145,8 +145,8 @@ class MirrorSides(Sides):
     def side_from_string(self, in_string="", index=False):
         """
         get the sides from a string value provided.
-        :param in_string: <str> input string to extract sides from.
-        :param index: <bool> if true, extract the position where the side string came from.
+        :param in_string: <str> input string to extract sides frOpenMaya.
+        :param index: <bool> if true, extract the position where the side string came frOpenMaya.
         :return: <str> the side string value.
         """
         return extract_side_from_string(self.SIDES, in_string, index=index)

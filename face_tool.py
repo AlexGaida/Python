@@ -37,8 +37,8 @@ __version__ = "1.0.1"
 __verbosity__ = 0
 _cls_mirror = read_sides.MirrorSides()
 __default_attribute_values = attribute_utils.Attributes.DEFAULT_ATTR_VALUES
-_k_transform = object_utils.om.MFn.kTransform
-_k_locator = object_utils.om.MFn.kLocator
+_k_transform = object_utils.OpenMaya.MFn.kTransform
+_k_locator = object_utils.OpenMaya.MFn.kLocator
 
 # define global variables
 SIDES = read_sides.Sides()
@@ -144,8 +144,8 @@ def get_corrective_mesh_name(mesh_name=""):
 def extract_delta(mesh_name="", corrective_mesh_name=""):
     """
     extract the mesh deltas from the mesh name, and corrective mesh name provided
-    :param mesh_name: <str> the base mesh to compare vertex deltas from.
-    :param corrective_mesh_name: <str> the corrective mesh name to extract deltas from.
+    :param mesh_name: <str> the base mesh to compare vertex deltas frOpenMaya.
+    :param corrective_mesh_name: <str> the corrective mesh name to extract deltas frOpenMaya.
     :return: <str> delta mesh name.
     """
     delta_mesh = deform_utils.extract_mesh_deltas(mesh_name, corrective_mesh_name)
@@ -292,7 +292,7 @@ def get_empty_anim_curves():
     anim_curve_nodes = object_utils.get_scene_objects(node_type='kAnimCurve')
     print("kAnimCurves in Scene: {}".format(len(anim_curve_nodes)))
     for curve_node in anim_curve_nodes:
-        anim_fn = object_utils.oma.MFnAnimCurve(curve_node)
+        anim_fn = object_utils.OpenMayaAnim..MFnAnimCurve(curve_node)
         if not anim_fn.numKeys() or anim_fn.numKeys() < 2:
             garbage_collection.append(anim_fn.name())
     print("Empty kAnimCurves: {}".format(len(garbage_collection)))
@@ -372,7 +372,7 @@ def find_non_zero_interface_controllers():
 def get_list_index(ls_object=[], find_str=""):
     """
     find a string index from list provided.
-    :param ls_object: <list> the list to find the string from.
+    :param ls_object: <list> the list to find the string frOpenMaya.
     :param find_str: <str> the string to find inside the list.
     :return: <int> the found index. -1 if not found.
     """
@@ -390,8 +390,8 @@ def get_blend_weighted_items(driven_object, driven_attr):
 def get_weighted_values_length(driven_object, driven_attr):
     """
     Get the length of all non-zero weighted values.
-    :param driven_object: <str> the driven object to get connections from.
-    :param driven_attr: <str> the driven attribute to get the weighted values from.
+    :param driven_object: <str> the driven object to get connections frOpenMaya.
+    :param driven_attr: <str> the driven attribute to get the weighted values frOpenMaya.
     :return: <int> length.
     """
     rounder = lambda x: round(x, 4)
@@ -407,8 +407,8 @@ def get_weighted_values_length(driven_object, driven_attr):
 def get_original_weight_value(driven_object, driven_attr, interface_node, face_attr):
     """
     get the weight value from the blend weighted node. If no blendWeighted node is found, return default 0.0
-    :param driven_object: <str> the driven object to get connections from.
-    :param driven_attr: <str> the driven attribute to get the weighted values from.
+    :param driven_object: <str> the driven object to get connections frOpenMaya.
+    :param driven_attr: <str> the driven attribute to get the weighted values frOpenMaya.
     :param interface_node: <str> the driver interface controller.
     :param face_attr: <str> the face driver attribute.
     :return: <float> the weighted float value.
@@ -426,7 +426,7 @@ def get_original_weight_value(driven_object, driven_attr, interface_node, face_a
 def get_keyable_object_attributes(driven_object):
     """
     from the object provided, return the driven keyable attributes names and values in dictionary format.
-    :param driven_object: <str> the driven object to get keyable attributes from.
+    :param driven_object: <str> the driven object to get keyable attributes frOpenMaya.
     :return: <dict> all keyable attributes with values.
     """
     return attribute_utils.Attributes(driven_object, keyable=1).__dict__()
@@ -435,7 +435,7 @@ def get_keyable_object_attributes(driven_object):
 def get_keyable_non_zero_attributes(driven_object):
     """
     from the object provided, return the driven keyable attributes names and values in dictionary format.
-    :param driven_object: <str> the driven object to get keyable attributes from.
+    :param driven_object: <str> the driven object to get keyable attributes frOpenMaya.
     :return: <dict> all keyable attributes with values.
     """
     return attribute_utils.Attributes(driven_object, keyable=1).non_zero_attributes()
@@ -1031,7 +1031,7 @@ class MirrorList(object):
 def delete_keys_on_controller(controller_name="", interface_ctrl=""):
     """
     delete keys on the selected controller.
-    :param controller_name: <str> controller name to delete keys from.
+    :param controller_name: <str> controller name to delete keys frOpenMaya.
     :param interface_ctrl: <str> interface controller name.
     :return: <bool> True for success.
     """
@@ -1192,10 +1192,10 @@ def find_blend_weighted_node(driven_object, driven_attr):
 def set_keys_on_face_controller(selected_node='', interface_ctrl="", driven_node="", original_data={}):
     """
     Identify the selected face controller and set the driven key.
-    :param selected_node: <str> selected node to get attributes from.
+    :param selected_node: <str> selected node to get attributes frOpenMaya.
     :param interface_ctrl: <str> the controller maya object node which has the custom face_attributes.
     :param driven_node: <str> the driven maya object node.
-    :param original_data: <dict> get the original attributes to get the difference of values from.
+    :param original_data: <dict> get the original attributes to get the difference of values frOpenMaya.
     :return: <bool> True for success. <bool> False for failure.
     """
     if not driven_node:

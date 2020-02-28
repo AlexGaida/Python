@@ -30,20 +30,80 @@ import types
 
 # import maya modules
 from maya import cmds
-from maya import OpenMaya as om
-from maya import OpenMayaAnim as oma
+from maya import OpenMaya as OpenMaya
+from maya import OpenMayaAnim as OpenMayaAnim
 
 # import local modules
 import attribute_utils
 import transform_utils
 
-# define global variables
-__node_types = {'nurbsCurve': om.MFn.kNurbsCurve, 'locator': om.MFn.kLocator}
-check_fn = lambda node, node_type: node.hasFn(eval("om.MFn." + node_type))
-__re_brackets_pattern = r'\[|]'
+# define local variables
+node_types = {
+    'nurbsCurve': OpenMaya.MFn.kNurbsCurve,
+    'locator': OpenMaya.MFn.kLocator,
+    'mesh': OpenMaya.MFn.kMesh,
+    'nurbsSurface': OpenMaya.MFn.kNurbsSurface,
+    'unitConversion': OpenMaya.MFn.kUnitConversion,
+    'blendWeighted': OpenMaya.MFn.kBlendWeighted
+    }
+
+# define private variables
+__verbosity__ = 0
+
+
+def verbose(*args):
+    """
+    print only if verbosity is > 0.
+    :param args: array items.
+    :return: <None>
+    """
+    if __verbosity__:
+        print(args)
+
+
+def get_shape_fn(object_name=""):
+    """
+    :return: the shape fn object.
+    """
+    if not object_name:
+        object_name = get_selected_node()
+    return get_m_shape(get_m_obj(object_name))
+
+
+def get_shape_name(object_name="", shape_type=""):
+    """
+    :return: the shape fn object.
+    """
+    if not object_name:
+        object_name = get_selected_node()
+    return get_m_shape(get_m_obj(object_name), shape_type=shape_type, as_strings=True)
+
+
+def get_shape_obj(object_name="", shape_type=""):
+    """
+    :return: the shape fn object.
+    """
+    if not object_name:
+        object_name = get_selected_node()
+    return get_m_shape(get_m_obj(object_name), shape_type=shape_type, as_strings=False)
+
+
+def is_shape_curve(object_name):
+    """
+    check if the object name has nurbs curve shape object.
+    :param object_name:
+    :return:
+    """
+    return get_shape_name(object_name, shape_type="nurbsCurve")
 
 
 def check_object_type(object_name="", object_type=""):
+    """
+    compare two objects' types.
+    :param object_name:
+    :param object_type:
+    :return: <bool> True for success. <bool> False for failure.
+    """
     return cmds.objectType(object_name) == object_type
 
 
@@ -57,13 +117,13 @@ def get_nice_name(object_name=''):
 
 
 def get_float_3_ptr():
-    util = om.MScriptUtil()
+    util = OpenMaya.MScriptUtil()
     return util.asFloat3Ptr()
 
 
-class ScriptUtil(om.MScriptUtil):
+class ScriptUtil(OpenMaya.MScriptUtil):
     ptr = None
-    MATRIX = om.MMatrix()
+    MATRIX = OpenMaya.MMatrix()
 
     def __init__(self, *a, **kw):
         super(ScriptUtil, self).__init__(*a)
@@ -103,7 +163,7 @@ def get_unsigned_int_ptr(int_num=None):
     :param int_num: <int> integer number to convert to a pointer object.
     :return: <MScriptUtil.asIntPtr> integer pointer object.
     """
-    util = om.MScriptUtil()
+    util = OpenMaya.MScriptUtil()
     util.createFromInt(int_num)
     return util.asIntPtr()
 
@@ -114,7 +174,7 @@ def get_unsigned_int(int_num=None):
     :param int_num: <int> integer number to convert to a pointer object.
     :return: <MScriptUtil.asIntPtr> integer pointer object.
     """
-    util = om.MScriptUtil()
+    util = OpenMaya.MScriptUtil()
     util.createFromInt(int_num)
     return util.asInt()
 
@@ -122,10 +182,9 @@ def get_unsigned_int(int_num=None):
 def get_double_ptr():
     """
     returns an unsigned integer pointer object.
-    :param int_num: <int> integer number to convert to a pointer object.
     :return: <MScriptUtil.asIntPtr> integer pointer object.
     """
-    util = om.MScriptUtil()
+    util = OpenMaya.MScriptUtil()
     util.createFromList([0.0, 0.0, 0.0], 3)
     return util.asDoublePtr()
 
@@ -133,10 +192,9 @@ def get_double_ptr():
 def get_double4_ptr():
     """
     returns an unsigned integer pointer object.
-    :param int_num: <int> integer number to convert to a pointer object.
     :return: <MScriptUtil.asIntPtr> integer pointer object.
     """
-    util = om.MScriptUtil()
+    util = OpenMaya.MScriptUtil()
     return util.asDouble4Ptr()
 
 
@@ -166,8 +224,8 @@ def connect_attr(driver_attribute="", blend_attribute=""):
 def get_connections_source(object_name=""):
     """
     get a list of source connections from the object specified.
-    :param object_name:
-    :return:
+    :param object_name: <str> object to check.
+    :return: <tuple> source connections.
     """
     return tuple(cmds.listConnections(object_name, source=True, destination=False, plugs=True))
 
@@ -175,19 +233,20 @@ def get_connections_source(object_name=""):
 def get_connections_destination(object_name=""):
     """
     get a list of destination connections from the object specified.
-    :param object_name:
+    :param object_name: <str> object to check.
+    :return: <tuple> destination connections.
     :return:
     """
     return tuple(cmds.listConnections(object_name, source=False, destination=True, plugs=True))
 
 
-def _get_m_object_name(m_object=om.MObject):
+def get_m_object_name(m_object=OpenMaya.MObject):
     """
     get the object name string.
     :param m_object: <OpenMaya.MObject> get the string of this object node.
     :return: <str> object name.
     """
-    return om.MFnDependencyNode(m_object).name()
+    return OpenMaya.MFnDependencyNode(m_object).name()
 
 
 def get_object_types(find_str=""):
@@ -195,14 +254,14 @@ def get_object_types(find_str=""):
     return a list of all OpenMaya object types.
     :return: <list> of object_type.
     """
-    k_objects = filter(lambda k: k.startswith('k'), dir(om.MFn))
+    k_objects = filter(lambda k: k.startswith('k'), dir(OpenMaya.MFn))
     return filter(lambda k: find_str in k, k_objects)
 
 
 def get_m_anim_from_sel(object_node="", as_strings=False):
     """
     get animation curves from selected.
-    :param object_node: <str> control object to get animation curve nodes from.
+    :param object_node: <str> control object to get animation curve nodes frOpenMaya.
     :param as_strings: <bool> return string objects.
     :return: <list> anim curves.
     """
@@ -210,24 +269,42 @@ def get_m_anim_from_sel(object_node="", as_strings=False):
         object_node = get_selected_node()
     anim_nodes = {}
     anim_curve_nodes = get_connected_nodes(
-            object_name=object_node, find_node_type=om.MFn.kAnimCurve, as_strings=as_strings,
+            object_name=object_node, find_node_type=OpenMaya.MFn.kAnimCurve, as_strings=as_strings,
             down_stream=False, up_stream=True)
     for anim in anim_curve_nodes:
         if as_strings:
             anim_nodes[anim] = get_m_obj(anim)
         else:
-            anim_nodes[get_m_object_name(anim)] = oma.MFnAnimCurve(anim)
+            anim_nodes[get_m_object_name(anim)] = OpenMayaAnim.MFnAnimCurve(anim)
     return anim_nodes
 
 
 def get_m_object_name(m_object=None):
     """
     gets the name of the m object.
-    :param m_object: <om.MObject> maya object.
+    :param m_object: <OpenMaya.MObject> maya object.
     :return: <str> node name.
     """
-    node_fn = om.MFnDependencyNode(m_object)
+    node_fn = OpenMaya.MFnDependencyNode(m_object)
     return node_fn.name()
+
+
+def compare_objects(object_1, object_2, fn=False, shape_type=False):
+    """
+    compare two objects
+    :param object_1: <str>
+    :param object_2: <str>
+    :param fn: <bool> compare function set.
+    :param shape_type: <bool> compare shape function set.
+    :return: <bool> True for success. <bool> False for failure.
+    """
+    object_1 = get_m_obj(object_1)
+    object_2 = get_m_obj(object_2)
+    if fn:
+        return get_fn(object_1) == get_fn(object_2)
+    if shape_type:
+        return get_shape_name(object_1) == get_shape_name(object_2)
+    return False
 
 
 def get_scene_objects(name='', as_strings=False, node_type=''):
@@ -238,7 +315,7 @@ def get_scene_objects(name='', as_strings=False, node_type=''):
     :param node_type: <str> find this node type in the current scene.
     :return: <list> of scene items. <bool> False for failure.
     """
-    scene_it = om.MItDependencyNodes()
+    scene_it = OpenMaya.MItDependencyNodes()
     items = []
     while not scene_it.isDone():
         cur_item = scene_it.item()
@@ -262,14 +339,14 @@ def get_scene_objects(name='', as_strings=False, node_type=''):
     return tuple(items)
 
 
-def _confirm_fn_shape(m_object=None, m_type=None):
+def check_fn_shape(m_object=None, m_type=None):
     """
     confirm the shape type for this object.
     :param m_object: <OpenMaya.MObject>
     :param m_type: <OpenMaya.MFn.kType>
     :return: <OpenMaya.MObject> if True, <NoneType> False if not.
     """
-    fn_item = om.MFnDagNode(m_object)
+    fn_item = OpenMaya.MFnDagNode(m_object)
     c_count = fn_item.childCount()
     if c_count:
         if fn_item.child(0).hasFn(m_type):
@@ -280,16 +357,16 @@ def _confirm_fn_shape(m_object=None, m_type=None):
 def get_parents(object_name=None, stop_at=''):
     """
     get parents
-    :param object_name:
-    :param stop_at:
-    :return:
+    :param object_name: <OpenMaya.MObject>
+    :param stop_at: <str> stop at when found this name.
+    :return: <tuple> parent object names.
     """
     m_object = get_m_obj(object_name)
-    fn_object = om.MFnDagNode(m_object)
-    return_data = []
+    fn_object = OpenMaya.MFnDagNode(m_object)
+    return_data = ()
     par_count = fn_object.parentCount()
     if par_count:
-        o_arr = om.MDagPathArray()
+        o_arr = OpenMaya.MDagPathArray()
         fn_object.getAllPaths(o_arr)
         length = o_arr.length()
         for i in xrange(length):
@@ -297,26 +374,26 @@ def get_parents(object_name=None, stop_at=''):
             p_node_ls = m_path.fullPathName().split('|')
             p_node_ls.reverse()
             for p in p_node_ls:
-                return_data.append(p)
+                return_data += p,
                 if p == stop_at:
                     break
     return return_data
 
 
-def _get_m_parent(m_object=None, find_parent='', with_shape='', as_strings=False):
+def get_m_parent(m_object=None, find_parent='', with_shape='', as_strings=False):
     """
     finds the parent from the maya object provided.
-    :param m_object: <OpenMaya.MObject> the object to get the parents from.
+    :param m_object: <OpenMaya.MObject> the object to get the parents frOpenMaya.
     :param find_parent: <str> find this parent from the object provided.
     :param with_shape: <str> find a parent containing this shape object.
     :return: <list> found objects.
     """
-    fn_object = om.MFnDagNode(m_object)
+    fn_object = OpenMaya.MFnDagNode(m_object)
     return_data = []
     par_count = fn_object.parentCount()
     if par_count:
         if isinstance(find_parent, (str, unicode)):
-            o_arr = om.MDagPathArray()
+            o_arr = OpenMaya.MDagPathArray()
             fn_object.getAllPaths(o_arr)
             length = o_arr.length()
             for i in xrange(length):
@@ -330,59 +407,130 @@ def _get_m_parent(m_object=None, find_parent='', with_shape='', as_strings=False
                         return_data.append(get_m_obj(found))
         elif isinstance(find_parent, (int, bool)):
             if as_strings:
-                return_data.append(_get_m_object_name(fn_object.parent(0)))
+                return_data.append(get_m_object_name(fn_object.parent(0)))
             else:
                 return_data.append(fn_object.parent(0))
     return return_data
 
 
-def _get_m_child(m_object=None, find_child='', with_shape='', as_strings=False):
+def get_fn(m_object):
+    """
+    returns the fn object from the m_object supplied.
+    :param m_object: <OpenMaya.MObject> to get function class frOpenMaya.
+    :return: <OpenMaya.MFn<ClassType> specific object fn type.
+    """
+    if type_str(m_object) == 'mesh':
+        return OpenMaya.MFnMesh(m_object)
+    elif type_str(m_object) == 'nurbsCurve':
+        return OpenMaya.MFnNurbsCurve(m_object)
+    elif type_str(m_object) == 'nurbsSurface':
+        return OpenMaya.MFnNurbsSurface(m_object)
+    elif type_str(m_object) == 'camera':
+        return OpenMaya.MFnCamera(m_object)
+    else:
+        return OpenMaya.MFnDependencyNode(m_object)
+
+
+def type_str(m_object):
+    """
+    get OpenMaya.MObject type as string.
+    :param m_object: <OpenMaya.MObject>
+    :return: <str> api type name.
+    """
+    return OpenMaya.MFnDependencyNode(m_object).typeName()
+
+
+def type_int(m_object):
+    """
+    get OpenMaya.MObject type as an integer.
+    :param m_object: <OpenMaya.MObject>
+    :return: <int> api type.
+    """
+    return OpenMaya.MFnDependencyNode(m_object).type()
+
+
+def has_fn(item_name, shape_type):
+    """
+    check if the MObject provided has this type.
+    :param item_name: <OpenMaya.MObject> the object to check the type.
+    :param shape_type: <str>, <OpenMaya.MFn.kType> the type id.
+    :return: <bool> True for type is match. <bool> for no match.
+    """
+    if isinstance(shape_type, str):
+        if shape_type not in node_types:
+            return False
+        return item_name.hasFn(node_types[shape_type])
+    if isinstance(shape_type, int):
+        return item_name.hasFn(shape_type)
+
+
+def get_m_shape(m_object=None, shape_type="", as_strings=False):
+    """
+    get the MObject children object(s).
+    :param m_object: <OpenMaya.MObject> the MObject to get children frOpenMaya.
+    :param shape_type: <str> get only shapes of this type.
+    :param as_strings: <bool> return as string name array.
+    :return: <tuple> array of shape objects.
+    """
+    return_items = ()
+    fn_item = OpenMaya.MFnDagNode(m_object)
+    for i in xrange(fn_item.childCount()):
+        ch_item = fn_item.child(i)
+        if not has_fn(ch_item, shape_type):
+            continue
+        if as_strings:
+            return_items += OpenMaya.MFnDependencyNode(ch_item).name(),
+        else:
+            return_items += ch_item,
+    return return_items
+
+
+def get_m_child(m_object=None, find_child=True, with_shape='', as_strings=False):
     """
     finds the child from the maya object provided.
-    :param m_object: <OpenMaya.MObject> the object to get the parents from.
+    :param m_object: <OpenMaya.MObject> the object to get the parents frOpenMaya.
     :param find_child: <str> find this child from the object provided.
     :param with_shape: <str> find a child containing this shape object.
-    :param as_strings: <bool> return as string objects instead.
+    :param as_strings: return objects as strings.
     :return: <list> found objects.
     """
-    fn_object = om.MFnDagNode(m_object)
+    fn_object = OpenMaya.MFnDagNode(m_object)
     return_data = []
-    if find_child:
-        ch_count = fn_object.childCount()
-        if ch_count:
-            m_dag = om.MDagPath()
-            fn_object.getPath(m_dag)
-            m_iter = om.MItDag(om.MItDag.kBreadthFirst)
-            m_iter.reset(m_dag)
+    ch_count = fn_object.childCount()
+    if ch_count:
+        m_dag = OpenMaya.MDagPath()
+        fn_object.getPath(m_dag)
+        m_iter = OpenMaya.MItDag(OpenMaya.MItDag.kBreadthFirst)
+        m_iter.reset(m_dag)
 
-            # iterate from the dag path provided
-            while not m_iter.isDone():
-                o_path = om.MDagPath()
-                m_iter.getPath(o_path)
-                ch_name = o_path.partialPathName()
+        # iterate from the dag path provided
+        while not m_iter.isDone():
+            o_path = OpenMaya.MDagPath()
+            m_iter.getPath(o_path)
+            if as_strings:
+                ch_item = o_path.partialPathName()
+            else:
+                ch_item = o_path.node()
+            # return a child that matches a name
+            if isinstance(find_child, (str, unicode)) and find_child in o_path.partialPathName():
+                # find the shape associated with the node object node.
+                if with_shape:
+                    fn_item = OpenMaya.MFnDagNode(m_iter.item())
+                    c_count = fn_item.childCount()
+                    if c_count:
+                        if fn_item.child(0).hasFn(node_types[with_shape]):
+                            return_data.append(ch_item)
+                else:
+                    return_data.append(ch_item)
 
-                # return a child that matches a name
-                if isinstance(find_child, (str, unicode)) and find_child in ch_name:
-
-                    # find the shape associated with the node object node.
-                    if with_shape:
-                        fn_item = om.MFnDagNode(m_iter.item())
-                        c_count = fn_item.childCount()
-                        if c_count:
-                            if fn_item.child(0).hasFn(__node_types[with_shape]):
-                                return_data.append(ch_name)
-                    else:
-                        return_data.append(ch_name)
-
-                # return all children
-                elif isinstance(find_child, (bool, int)):
-                    return_data.append(ch_name)
-                m_iter.next()
-
+            # return all children
+            else:
+                return_data.append(ch_item)
+            m_iter.next()
     return return_data
 
 
-def get_transform_relatives(object_name='', find_parent=False, find_child=False, with_shape='', as_strings=False):
+def get_transform_relatives(object_name='', find_parent='', find_child=False, with_shape='', as_strings=False):
     """
     get parent/ child transforms relative to the object name provided.
     :param object_name: <str> object name to search from in the scene.
@@ -406,56 +554,56 @@ def get_transform_relatives(object_name='', find_parent=False, find_child=False,
 
     if m_object:
         if find_parent:
-            return_data.extend(_get_m_parent(
+            return_data.extend(get_m_parent(
                 m_object, find_parent=find_parent, with_shape=with_shape, as_strings=as_strings)
             )
         elif find_child:
-            return_data.extend(_get_m_child(
+            return_data.extend(get_m_child(
                 m_object, find_child=find_child, with_shape=with_shape, as_strings=as_strings)
             )
     return return_data
 
 
-def get_connected_nodes(object_name="", find_node_type=om.MFn.kAnimCurve,
+def get_connected_nodes(object_name="", find_node_type=OpenMaya.MFn.kAnimCurve,
                         as_strings=False, find_attr="", down_stream=True,
                         up_stream=False, with_shape=None):
     """
     get connected nodes from node provided.
-    :param object_name: <str> string object to use for searching from.
+    :param object_name: <str> string object to use for searching frOpenMaya.
     :param as_strings: <bool> return as string objects instead.
     :param find_attr: <str> find the node containing this attribute name.
-    :param find_node_type: <om.MFn> kObjectName type to find.
+    :param find_node_type: <OpenMaya.MFn> kObjectName type to find.
     :param down_stream: <bool> find nodes down stream.
     :param with_shape: <str> shape name.
     :param up_stream: <bool> find nodes up stream.
     """
     direction = None
     if up_stream:
-        direction = om.MItDependencyGraph.kUpstream
+        direction = OpenMaya.MItDependencyGraph.kUpstream
     if down_stream:
-        direction = om.MItDependencyGraph.kDownstream
+        direction = OpenMaya.MItDependencyGraph.kDownstream
 
     if isinstance(object_name, (list, tuple)):
         node = object_name[0]
     if isinstance(object_name, (str, unicode)):
         node = get_m_obj(object_name)
-    elif isinstance(object_name, om.MObject):
+    elif isinstance(object_name, OpenMaya.MObject):
         node = object_name
-    elif isinstance(object_name, om.MFnMesh):
+    elif isinstance(object_name, OpenMaya.MFnMesh):
         node = object_name.node()
 
-    dag_iter = om.MItDependencyGraph(
+    dag_iter = OpenMaya.MItDependencyGraph(
         node,
         find_node_type,
         direction,
-        om.MItDependencyGraph.kPlugLevel)
+        OpenMaya.MItDependencyGraph.kPlugLevel)
     dag_iter.reset()
 
     # iterate the dependency graph to find what we want.
     found_nodes = []
     while not dag_iter.isDone():
         cur_item = dag_iter.currentItem()
-        cur_fn = om.MFnDependencyNode(cur_item)
+        cur_fn = OpenMaya.MFnDependencyNode(cur_item)
         cur_name = cur_fn.name()
 
         if find_attr:
@@ -465,26 +613,26 @@ def get_connected_nodes(object_name="", find_node_type=om.MFn.kAnimCurve,
                 if find_relevant_attr:
                     if as_strings:
                         if with_shape:
-                            if _confirm_fn_shape(cur_item, with_shape):
+                            if check_fn_shape(cur_item, with_shape):
                                 found_nodes.append(cur_name)
                         else:
                             found_nodes.append(cur_name)
                     else:
                         if with_shape:
-                            if _confirm_fn_shape(cur_item, with_shape):
+                            if check_fn_shape(cur_item, with_shape):
                                 found_nodes.append(cur_item)
                         else:
                             found_nodes.append(cur_item)
         else:
             if as_strings:
                 if with_shape:
-                    if _confirm_fn_shape(cur_item, with_shape):
+                    if check_fn_shape(cur_item, with_shape):
                         found_nodes.append(cur_name)
                 else:
                     found_nodes.append(cur_name)
             else:
                 if with_shape:
-                    if _confirm_fn_shape(cur_item, with_shape):
+                    if check_fn_shape(cur_item, with_shape):
                         found_nodes.append(cur_name)
                 else:
                     found_nodes.append(cur_item)
@@ -495,8 +643,8 @@ def get_connected_nodes(object_name="", find_node_type=om.MFn.kAnimCurve,
 def get_connected_anim(object_name=""):
     """
     get connected nodes from node provided.
-    :param object_name: <str> string object to use for searching from.
-    :param find_node_type: <om.MFn> kObjectName type to find.
+    :param object_name: <str> string object to use for searching frOpenMaya.
+    :param find_node_type: <OpenMaya.MFn> kObjectName type to find.
     """
     anim_c = cmds.listConnections(object_name, s=1, d=0, type='animCurve')
     anim_b = cmds.listConnections(object_name, s=1, d=0, type='blendWeighted')
@@ -512,13 +660,13 @@ def get_connected_anim(object_name=""):
 def get_connected_nodes_gen(object_name=""):
     """
     nodes generator.
-    :param object_name: <str> string object to use for searching from.
+    :param object_name: <str> string object to use for searching frOpenMaya.
     """
     node = get_m_obj(object_name)
-    dag_iter = om.MItDependencyGraph(
+    dag_iter = OpenMaya.MItDependencyGraph(
         node,
-        om.MItDependencyGraph.kDownstream,
-        om.MItDependencyGraph.kPlugLevel)
+        OpenMaya.MItDependencyGraph.kDownstream,
+        OpenMaya.MItDependencyGraph.kPlugLevel)
     dag_iter.reset()
 
     while not dag_iter.isDone():
@@ -529,14 +677,14 @@ def get_connected_nodes_gen(object_name=""):
 def get_upstream_connected_nodes_gen(object_name=""):
     """
     nodes generator.
-    :param object_name: <str> string object to use for searching from.
+    :param object_name: <str> string object to use for searching frOpenMaya.
     """
     node = get_m_obj(object_name)
 
-    dag_iter = om.MItDependencyGraph(
+    dag_iter = OpenMaya.MItDependencyGraph(
         node,
-        om.MItDependencyGraph.kUpstream,
-        om.MItDependencyGraph.kPlugLevel)
+        OpenMaya.MItDependencyGraph.kUpstream,
+        OpenMaya.MItDependencyGraph.kPlugLevel)
     dag_iter.reset()
 
     while not dag_iter.isDone():
@@ -554,9 +702,9 @@ def get_m_obj(object_str=""):
         raise ValueError('[Get MObject] :: No object specified.')
     if isinstance(object_str, (unicode, str)):
         try:
-            om_sel = om.MSelectionList()
+            om_sel = OpenMaya.MSelectionList()
             om_sel.add(object_str)
-            node = om.MObject()
+            node = OpenMaya.MObject()
             om_sel.getDependNode(0, node)
             return node
         except:
@@ -573,9 +721,9 @@ def get_m_dag(object_str=""):
     if not object_str:
         raise ValueError('[Get MObject] :: No object specified.')
     try:
-        om_sel = om.MSelectionList()
+        om_sel = OpenMaya.MSelectionList()
         om_sel.add(object_str)
-        node = om.MDag()
+        node = OpenMaya.MDag()
         om_sel.getDagPath(0, node)
         return node
     except:
@@ -589,9 +737,9 @@ def get_mfn_obj(m_obj=None):
     :return: <MFnDependencyNode>
     """
     if isinstance(m_obj, basestring):
-        return om.MFnDependencyNode(get_m_obj(m_obj))
-    elif isinstance(m_obj, om.MObject):
-        return om.MFnDependencyNode(m_obj)
+        return OpenMaya.MFnDependencyNode(get_m_obj(m_obj))
+    elif isinstance(m_obj, OpenMaya.MObject):
+        return OpenMaya.MFnDependencyNode(m_obj)
 
 
 def get_mfn_dag(m_obj=None):
@@ -601,9 +749,9 @@ def get_mfn_dag(m_obj=None):
     :return: <MFnDependencyNode>
     """
     if isinstance(m_obj, basestring):
-        return om.MFnDagNode(get_m_obj(m_obj))
-    elif isinstance(m_obj, om.MObject):
-        return om.MFnDagNode(m_obj)
+        return OpenMaya.MFnDagNode(get_m_obj(m_obj))
+    elif isinstance(m_obj, OpenMaya.MObject):
+        return OpenMaya.MFnDagNode(m_obj)
 
 
 def get_m_dag_path(m_obj=None):
@@ -613,9 +761,9 @@ def get_m_dag_path(m_obj=None):
     :return: <MFnDependencyNode>
     """
     if isinstance(m_obj, basestring):
-        return om.MDagPath.getAPathTo(get_m_obj(m_obj))
-    elif isinstance(m_obj, om.MObject):
-        return om.MDagPath.getAPathTo(m_obj)
+        return OpenMaya.MDagPath.getAPathTo(get_m_obj(m_obj))
+    elif isinstance(m_obj, OpenMaya.MObject):
+        return OpenMaya.MDagPath.getAPathTo(m_obj)
 
 
 def get_mesh_points(object_name):
@@ -625,9 +773,9 @@ def get_mesh_points(object_name):
     :return: <list> mesh vertex list.
     """
     mesh_fn, mesh_ob, mesh_dag = get_mesh_fn(object_name)
-    mesh_it = om.MItMeshVertex(mesh_ob)
+    mesh_it = OpenMaya.MItMeshVertex(mesh_ob)
     mesh_vertexes = []
-    print("[Number of Vertices] :: {}".format(mesh_fn.numVertices()))
+    verbose("[Number of Vertices] :: {}".format(mesh_fn.numVertices()))
     while not mesh_it.isDone():
         mesh_vertexes.append(mesh_it.position())
         mesh_it.next()
@@ -641,7 +789,7 @@ def get_mesh_points_cmds(object_name):
     :return:
     """
     mesh_vertices = cmds.ls(object_name + '.vtx[*]', flatten=1)
-    print("[Number of Vertices] :: {}".format(len(mesh_vertices)))
+    verbose("[Number of Vertices] :: {}".format(len(mesh_vertices)))
     nums = []
     for i in mesh_vertices:
         nums.append(i)
@@ -656,23 +804,23 @@ def get_mesh_fn(target):
     """
 
     if isinstance(target, str) or isinstance(target, unicode):
-        slls = om.MSelectionList()
+        slls = OpenMaya.MSelectionList()
         slls.add(target)
-        ground_path = om.MDagPath()
+        ground_path = OpenMaya.MDagPath()
         slls.getDagPath(0, ground_path)
         ground_path.extendToShapeDirectlyBelow(0)
         ground_node = ground_path.node()
-    elif isinstance(target, om.MObject):
+    elif isinstance(target, OpenMaya.MObject):
         ground_node = target
         ground_path = target
-    elif isinstance(target, om.MDagPath):
+    elif isinstance(target, OpenMaya.MDagPath):
         ground_node = target.node()
         ground_path = target
     else:
         raise TypeError('Must be of type str, MObject or MDagPath, is type: {}'.format(type(target)))
 
-    if ground_node.hasFn(om.MFn.kMesh):
-        return om.MFnMesh(ground_path), ground_node, ground_path
+    if ground_node.hasFn(OpenMaya.MFn.kMesh):
+        return OpenMaya.MFnMesh(ground_path), ground_node, ground_path
     else:
         raise TypeError('Target must be of type kMesh')
 
@@ -764,144 +912,36 @@ def zero_transforms(object_name=""):
     return True
 
 
-def mirror_transforms(object_name=""):
-    """
-    mirror the transform controllers. **Must have corresponding left/ right naming.
-    :param object_name: <str>
-    :return: <bool> True for success.
-    """
-    if not object_name:
-        object_name = get_selected_node(single=True)
-    mirror_obj_name = ''
-    if '_l_' in object_name:
-        mirror_obj_name = object_name.replace('_l_', '_r_')
-    if '_r_' in object_name:
-        mirror_obj_name = object_name.replace('_r_', '_l_')
-    p_object = get_transform_relatives(object_name, find_parent=True, as_strings=True)[0]
-    p_mirror_object = get_transform_relatives(mirror_obj_name, find_parent=True, as_strings=True)[0]
-    p_trm = transform_utils.Transform(p_object)
-    matrix = p_trm.world_matrix()
-    mirror_matrix = p_trm.mirror_matrix(matrix)
-    cmds.xform(p_mirror_object, m=mirror_matrix, ws=1)
-    return True
-
-
-def create_locators():
-    """
-    create locators on position
-    """
-    for sl in cmds.ls(sl=1):
-        if '.' in sl:
-            name, dot, num = sl.partition('.')
-            matrix = False
-            translate = True
-            name += '_{}'.format(re.sub(__re_brackets_pattern, '', num))
-        else:
-            matrix = True
-            translate = False
-            name = sl
-        locator_name = name + '_loc'
-        cmds.createNode('locator', name=locator_name + 'Shape')
-        snap_to_transform(locator_name, sl, matrix=matrix, translate=translate)
-    return True
-
-
-def snap_control_to_selected_locator():
-    for sl in cmds.ls(sl=1, type='transform'):
-        if '_loc' not in sl:
-            continue
-        ctrl_name = sl.rpartition('_loc')[0]
-        x_mat = cmds.xform(sl, m=1, q=1, ws=1)
-
-        cmds.xform(ctrl_name, m=x_mat, ws=1)
-    return True
-
-
 def get_driver_object(object_name="", plugs=False):
     """
     return the driver object.
-    :param object_name:
-    :param plugs:
-    :return:
+    :param object_name: <str> object name to get driver object frOpenMaya.
+    :param plugs: <bool> find plugs from the object name.
+    :return: <str>, <tuple> based on arguments given.
     """
-    m_obj = get_connected_nodes(object_name, find_node_type=om.MFn.kTransform, up_stream=True,
+    m_obj = get_connected_nodes(object_name, find_node_type=OpenMaya.MFn.kTransform, up_stream=True,
                                 down_stream=False)
     m_object = m_obj[0]
-    cur_fn = om.MFnDependencyNode(m_object)
+    cur_fn = OpenMaya.MFnDependencyNode(m_object)
     cur_name = cur_fn.name()
 
-    connected_plugs = []
+    connected_plugs = ()
     for i in range(cur_fn.attributeCount()):
         a_obj = cur_fn.attribute(i)
-        m_plug = om.MPlug(m_object, a_obj)
-        connected_plugs.append(m_plug.name())
+        m_plug = OpenMaya.MPlug(m_object, a_obj)
+        connected_plugs += m_plug.name(),
     if not plugs:
         return cur_name
     else:
         return connected_plugs
 
 
-def set_ctrl_color(color='yellow'):
-    """
-    sets the color on the MFn.kNurbsCurve
-    :param color: <str>, <list>, <list> color property.
-    :return: <bool> True for success. <bool> False for failure.
-    """
-    for ctrl in cmds.ls(sl=1):
-        cmds.setAttr(ctrl + 'Shape.overrideEnabled', 1)
-        cmds.setAttr(ctrl + 'Shape.overrideRGBColors', 1)
-        if isinstance(color, (str, unicode)):
-            if color == 'yellow':
-                cmds.setAttr(ctrl + 'Shape.overrideColorRGB', 1.0, 1.0, 0.0, type='double3')
-            if color == 'blue':
-                cmds.setAttr(ctrl + 'Shape.overrideColorRGB', 0.0, 0.0, 1.0, type='double3')
-            if color == 'red':
-                cmds.setAttr(ctrl + 'Shape.overrideColorRGB', 1.0, 0.0, 0.0, type='double3')
-        elif isinstance(color, (list, tuple)):
-            r, g, b = color
-            cmds.setAttr(ctrl + 'Shape.overrideColorRGB', r, g, b, type='double3')
-    return True
-
-
-def zero_all_controllers():
-    """
-    zeroes out all the scene controllers.
-    :return: <bool> True for success.
-    """
-    for ctrl_name in iter(cmds.ls('*_ctrl')):
-        c_attr = attribute_utils.Attributes(ctrl_name, keyable=True)
-        if c_attr.non_zero_attributes():
-            c_attr.zero_attributes()
-    return True
-
-
-def set_joint_labels():
-    """
-    names the joint labels
-    :return: <bool> True for success.
-    """
-    joints = cmds.ls('*_bnd_jnt', type='joint')
-    for j_name in joints:
-        cmds.setAttr(j_name + ".type", 18)
-        if j_name.startswith('l_'):
-            side = 'l'
-            cmds.setAttr(j_name+".side", 1)
-        if j_name.startswith('c_'):
-            side = 'c'
-            cmds.setAttr(j_name + ".side", 0)
-        if j_name.startswith('r_'):
-            side = 'r'
-            cmds.setAttr(j_name + ".side", 2)
-        if side:
-            cmds.setAttr(j_name+'.otherType', j_name.replace(side, ''), type='string')
-    return True
-
-
 def mirror_object(control_name="", mirror_obj_name="", invert_rotate=True):
     """
     mirrors the selected object. If mirror object is not supplied, then mirror the supplied object directly.
-    :param control_name: <str> controller object to get transformational values from.
+    :param control_name: <str> controller object to get transformational values frOpenMaya.
     :param mirror_obj_name: <str> the object to receive mirror information.
+    :param invert_rotate: <bool> invert the rotation values.
     :return: <bool> True for success. <bool> False for failure.
     """
     if not control_name:
@@ -930,10 +970,10 @@ def mirror_object(control_name="", mirror_obj_name="", invert_rotate=True):
     return True
 
 
-def get_plugs(o_node=None, source=True, ignore_nodes=[], ignore_attrs=[], attr_name=""):
+def get_plugs(o_node=None, source=True, ignore_nodes=(), ignore_attrs=(), attr_name=""):
     """
     get plugs
-    :param o_node: <OpenMaya.MObject>, <str> object to find plugs from.
+    :param o_node: <OpenMaya.MObject>, <str> object to find plugs frOpenMaya.
     :param source: <bool> if true, get the source plug connections.
     :param ignore_nodes: <bool> ignores select nodes and continues with the loop.
     :param ignore_attrs: <bool> ignores these attributes,
@@ -941,13 +981,13 @@ def get_plugs(o_node=None, source=True, ignore_nodes=[], ignore_attrs=[], attr_n
     :param attr_name: <str> get connection from this attribute only.
     :return:
     """
-    if not isinstance(o_node, om.MObject):
+    if not isinstance(o_node, OpenMaya.MObject):
         o_node = get_m_obj(o_node)
-    node_fn = om.MFnDependencyNode(o_node)
+    node_fn = OpenMaya.MFnDependencyNode(o_node)
     plug_names = []
     for i in range(node_fn.attributeCount()):
         a_obj = node_fn.attribute(i)
-        m_plug = om.MPlug(o_node, a_obj)
+        m_plug = OpenMaya.MPlug(o_node, a_obj)
         # m_plug_type_name = a_obj.apiTypeStr()
         m_plug_name = m_plug.name()
         if attr_name:
@@ -956,7 +996,7 @@ def get_plugs(o_node=None, source=True, ignore_nodes=[], ignore_attrs=[], attr_n
         if ignore_attrs:
             if [a for a in ignore_attrs if a in m_plug_name]:
                 continue
-        m_plug_array = om.MPlugArray()
+        m_plug_array = OpenMaya.MPlugArray()
         m_plug.connectedTo(m_plug_array, source, not source)
         plug_array_len = m_plug_array.length()
         for idx in range(plug_array_len):
@@ -966,19 +1006,20 @@ def get_plugs(o_node=None, source=True, ignore_nodes=[], ignore_attrs=[], attr_n
             if not ignore_nodes:
                 plug_names.append(plug_name)
             elif ignore_nodes:
-                if [ig for ig in ignore_nodes if check_fn(plug_node, ig)]:
+                if [ig for ig in ignore_nodes if has_fn(plug_node, ig)]:
                     plug_names.extend(get_plugs(plug_name, source=source, ignore_nodes=ignore_nodes))
                 else:
                     plug_names.append(plug_name)
     return plug_names
 
 
-class Item(om.MObject):
+class Item(OpenMaya.MObject):
     def __init__(self, *args):
         super(Item, self).__init__(*args)
 
+    @property
     def node(self):
-        return om.MFnDependencyNode(self)
+        return OpenMaya.MFnDependencyNode(self)
 
     def name(self):
         return self.node.name()
@@ -992,5 +1033,13 @@ class Item(om.MObject):
     def source_plugs(self):
         return get_plugs(self, source=True)
 
-    def destination_plugs(self, ignore_nodes=[]):
+    def destination_plugs(self, ignore_nodes=()):
         return get_plugs(self, source=False, ignore_nodes=ignore_nodes)
+
+    def compare(self, m_obj=None):
+        """
+        compare against another MObject.
+        :param m_obj: <OpenMaya.MObject>
+        :return: <bool> True for good match. <bool> False for no match.
+        """
+        return compare_objects(self, m_obj, fn=True)

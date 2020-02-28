@@ -8,7 +8,7 @@ from math import acos
 from maya import cmds
 from maya import mel
 from maya import OpenMaya as om
-from maya import OpenMayaAnim as oma
+from maya import OpenMayaAnim as OpenMayaAnim.
 
 # import custom modules
 import object_utils
@@ -19,7 +19,7 @@ from maya_utils import math_utils
 # define private variables
 __version__ = '1.0.0'
 __verbosity__ = 0
-__m_util = om.MScriptUtil()
+__m_util = OpenMaya.MScriptUtil()
 _float_ptr = ScriptUtil()
 
 
@@ -29,7 +29,7 @@ def get_mfn_anim_node(object_node):
     :param object_node: <str> object node.
     :return: <OpenMaya.MFnAnimCurve> maya object.
     """
-    return oma.MFnAnimCurve(object_utils.get_m_obj(object_node))
+    return OpenMayaAnim..MFnAnimCurve(object_utils.get_m_obj(object_node))
 
 
 def get_name_from_mfn_anim_node(object_node):
@@ -38,7 +38,7 @@ def get_name_from_mfn_anim_node(object_node):
     :param object_node: <OpenMaya.MFnAnimCurve> maya object.
     :return: <str> curve node name.
     """
-    if isinstance(object_node, oma.MFnAnimCurve):
+    if isinstance(object_node, OpenMayaAnim..MFnAnimCurve):
         return object_node.name()
     return object_node
 
@@ -118,7 +118,7 @@ def get_value_from_time(a_node="", idx=0):
     :param idx: <int> the time index.
     :return: <tuple> data.
     """
-    return om.MTime(a_node.time(idx).value(), om.MTime.kSeconds).value(), a_node.value(idx),
+    return OpenMaya.MTime(a_node.time(idx).value(), OpenMaya.MTime.kSeconds).value(), a_node.value(idx),
 
 
 def get_tangents_from_time(a_node="", idx=0):
@@ -177,7 +177,7 @@ def set_anim_data(anim_data={}, rounded=False):
             continue
         num_keys = a_data[node_name]["num_keys"]
         anim_data = a_data[node_name]["anim_values"]
-        mfn_anim = oma.MFnAnimCurve(node_name)
+        mfn_anim = OpenMayaAnim..MFnAnimCurve(node_name)
         for i in xrange(num_keys):
             a_val, a_time = anim_data[i]
             if rounded:
@@ -191,7 +191,7 @@ def set_anim_data(anim_data={}, rounded=False):
 def connections_gen(object_name="", attribute="", direction='kDownstream', level='kPlugLevel', ftype=''):
     """
     get plug connections
-    :param object_name: <str> object to check connections from.
+    :param object_name: <str> object to check connections frOpenMaya.
     :param direction: <str> specify which direction to traverse.
     :param attribute: <str> find nodes connected to this attribute.
     :param ftype: <str> specify which type to filter.
@@ -199,20 +199,20 @@ def connections_gen(object_name="", attribute="", direction='kDownstream', level
     """
     # define function variables
     node = object_utils.get_m_obj(object_name)
-    direction = eval('om.MItDependencyGraph.{}'.format(direction))
-    level = eval('om.MItDependencyGraph.{}'.format(level))
+    direction = eval('OpenMaya.MItDependencyGraph.{}'.format(direction))
+    level = eval('OpenMaya.MItDependencyGraph.{}'.format(level))
     if ftype:
-        ftype = eval('om.MFn.{}'.format(ftype))
+        ftype = eval('OpenMaya.MFn.{}'.format(ftype))
 
         # initiate the iterator object
-        dag_iter = om.MItDependencyGraph(
+        dag_iter = OpenMaya.MItDependencyGraph(
             node,
             ftype,
             direction
         )
     else:
         # initiate the iterator object
-        dag_iter = om.MItDependencyGraph(
+        dag_iter = OpenMaya.MItDependencyGraph(
             node,
             direction,
             level
@@ -241,7 +241,7 @@ def get_anim_connections(object_name=""):
     found_nodes = {}
 
     for cur_node in connections_gen(object_utils.get_m_obj(object_name)):
-        if cur_node.hasFn(om.MFn.kBlendWeighted):
+        if cur_node.hasFn(OpenMaya.MFn.kBlendWeighted):
             plugs = object_utils.get_plugs(
                 cur_node, source=False, ignore_nodes=['kBlendWeighted', 'kUnitConversion', 'kNodeGraphEditorInfo'])
 
@@ -252,7 +252,7 @@ def get_anim_connections(object_name=""):
             found_nodes["targets"].extend(plugs)
 
         # find what the curve nodes are attached to.
-        if cur_node.hasFn(om.MFn.kAnimCurve):
+        if cur_node.hasFn(OpenMaya.MFn.kAnimCurve):
             if "source" not in found_nodes:
                 found_nodes["source"] = []
             plugs = object_utils.get_plugs(cur_node, source=True)
@@ -263,9 +263,9 @@ def get_anim_connections(object_name=""):
             # collect anim nodes.
             if "animNodes" not in found_nodes:
                 found_nodes["animNodes"] = {}
-            anim_fn = oma.MFnAnimCurve(cur_node)
+            anim_fn = OpenMayaAnim..MFnAnimCurve(cur_node)
             if anim_fn.numKeys():
-                anim_node = om.MFnDependencyNode(cur_node).name()
+                anim_node = OpenMaya.MFnDependencyNode(cur_node).name()
                 found_nodes["animNodes"].update(get_animation_data_from_node(anim_node))
     # change the lists into tuples
     if "source" in found_nodes:
@@ -280,7 +280,7 @@ def get_anim_connections(object_name=""):
 def get_animation_data_from_node(object_node=""):
     """
     get the animation data from the node specified.
-    :param object_node: <str> the object to check the data from.
+    :param object_node: <str> the object to check the data frOpenMaya.
     :return: <dict> key data.
     """
     if not object_node:
@@ -289,14 +289,14 @@ def get_animation_data_from_node(object_node=""):
     o_anim = None
     if isinstance(object_node, (str, unicode)):
         m_object = object_utils.get_m_obj(object_node)
-        o_anim = oma.MFnAnimCurve(m_object)
+        o_anim = OpenMayaAnim..MFnAnimCurve(m_object)
 
-    if isinstance(object_node, oma.MFnAnimCurve):
+    if isinstance(object_node, OpenMayaAnim..MFnAnimCurve):
         o_anim = object_node
         object_node = o_anim.name()
 
-    if isinstance(object_node, om.MObject):
-        o_anim = oma.MFnAnimCurve(object_node)
+    if isinstance(object_node, OpenMaya.MObject):
+        o_anim = OpenMayaAnim..MFnAnimCurve(object_node)
         object_node = o_anim.name()
 
     # get connections
@@ -390,8 +390,8 @@ def get_sum(value_data=[]):
 def get_blend_weighted_sum(node_name="", target_attr=""):
     """
     get the sum of all values given by the blend weighted node found from the parameters given.
-    :param node_name: <str> the node name to get the blend weighted node from.
-    :param target_attr: <str> the attribute to get blendWeighted values from.
+    :param node_name: <str> the node name to get the blend weighted node frOpenMaya.
+    :param target_attr: <str> the attribute to get blendWeighted values frOpenMaya.
     :return: <float> the sum of all values.
     """
     return get_sum(get_blend_weighted_values(node_name, target_attr))

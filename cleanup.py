@@ -3,6 +3,7 @@ This is the cleanup module for clearing the Maya scene with stuff we don't want.
 """
 # import maya modules
 from maya import cmds
+from maya import mel
 
 # import local modules
 from maya_utils import object_utils
@@ -21,6 +22,10 @@ def normalize_skin_weights():
 def zero_controls():
     object_utils.zero_all_controllers()
     return True
+
+
+def delete_unused():
+    mel.eval('MLdeleteUnused;')
 
 
 def run_cleanup_functions():
