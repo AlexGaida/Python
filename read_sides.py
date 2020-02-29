@@ -8,8 +8,9 @@ import json
 import os
 import re
 
-# define global variables
+# define local variables
 sides_file = os.path.join(os.path.dirname(__file__), "sides.json")
+re_any_upper = re.compile('[A-Z]+')
 
 
 def read_file():
@@ -20,12 +21,25 @@ def read_file():
         return json.load(s_file)
 
 
-def extract_side_from_string(s_dict={}, in_string="", index=False):
+def strip_underscore(in_string="", strip=False):
+    """
+    if true, strips any underscores from the incoming parameter.
+    :param in_string: <str> check this string for any underscores.
+    :param strip: <bool> if true, strip '_' from the string.
+    :return: <str> resultant string name.
+    """
+    if strip:
+        return in_string.strip("_")
+    return in_string
+
+
+def extract_side_from_string(s_dict={}, in_string="", index=False, with_underscore=True):
     """
     extract the side from the string provided.
     :param s_dict: <dict> input dictionary.
     :param in_string: <str> input string.
     :param index: <bool> gets the index of the side found.
+    :param with_underscore: <bool> return with underscore.
     :return: <str> side.
     """
     s_string = ""
@@ -47,9 +61,9 @@ def extract_side_from_string(s_dict={}, in_string="", index=False):
             s_index = extract_side_index_from_string(in_string, s_string)
 
     if index:
-        return s_string, s_index
+        return strip_underscore(s_string, not with_underscore), s_index
     else:
-        return s_string
+        return strip_underscore(s_string, not with_underscore)
 
 
 def extract_side_index_from_string(in_string="", side="", start=False, end=False):
@@ -87,16 +101,86 @@ class Sides(object):
             self.__dict__[k] = v
 
     def side_from_string(self, in_string=""):
+        """
+        get the side from string collected.
+        :param in_string: <str> search for a side string name from this parameter.
+        :return: <str> the side string name.
+        """
         return extract_side_from_string(self.SIDES, in_string)
 
+    def side_name_from_string(self, in_string=""):
+        """
+        get a uniform, title-cased side name from an incoming string object.
+        :param in_string: <str> check this string for a side name.
+        :return: <str> side name from string.
+        """
+        side_name = extract_side_from_string(self.SIDES, in_string, with_underscore=False)
+        if len(side_name) == 1:
+            return self.SIDES[side_name].title()
+        return side_name.title()
+
     def split(self):
-        return filter(lambda x: '_' in x, self.SIDES)
+        """
+        finds if there is an _ in the sides dictionary.
+        :return: <tuple> array of names with '_'.
+        """
+        return tuple(filter(lambda x: '_' in x, self.SIDES))
 
     def sides(self):
-        return self.SIDES
+        """
+        get all the side keys in sides.json dictionary.
+        :return: <tuple> array of side names.
+        """
+        return tuple(self.SIDES)
 
     def items(self):
+        """
+        array of side names.
+        :return: <list> array of side names with their corresponding letter/ letters.
+        """
         return self.SIDES.items()
+
+    def upper(self):
+        """
+        return any name with upper case letters.
+        :return: <tuple> upper case letter names.
+        """
+        return tuple(filter(lambda x: re_any_upper.search(x), self.SIDES))
+
+    def lower(self):
+        """
+        return any name with lower case letters.
+        :return: <tuple> lower case letter names.
+        """
+        return tuple(filter(lambda x: x.islower(), self.SIDES))
+
+    def upper_singles(self):
+        """
+        return any name with upper case single letters.
+        :return: <tuple> upper case single letter names.
+        """
+        return tuple(filter(lambda x: len(x) == 1, self.upper()))
+
+    def lower_singles(self):
+        """
+        return any name with lower case single letters.
+        :return: <tuple> lower case single letter names.
+        """
+        return tuple(filter(lambda x: len(x) == 1, self.lower()))
+
+    def lower_names(self):
+        """
+        return any lower case names.
+        :return: <tuple> lower case names.
+        """
+        return tuple(filter(lambda x: len(x) != 1, self.lower()))
+
+    def upper_names(self):
+        """
+        return any upper case names.
+        :return: <tuple> upper case names.
+        """
+        return tuple(filter(lambda x: len(x) != 1, self.upper()))
 
     def __getitem__(self, item):
         return self.__dict__[item]

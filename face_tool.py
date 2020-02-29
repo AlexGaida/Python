@@ -5,6 +5,7 @@ Goal:
     Select controller, select object and set the driven keyframes.
 Versions:
     1.0.0: Initial working release.
+    1.0.1: Bug fix: blending the values of two shapes.
 """
 # import standard modules
 from pprint import pprint
@@ -35,10 +36,11 @@ reload(read_sides)
 # define private variables
 __version__ = "1.0.1"
 __verbosity__ = 0
+
 _cls_mirror = read_sides.MirrorSides()
 __default_attribute_values = attribute_utils.Attributes.DEFAULT_ATTR_VALUES
-_k_transform = object_utils.OpenMaya.MFn.kTransform
-_k_locator = object_utils.OpenMaya.MFn.kLocator
+transform_type = object_utils.node_types['transform']
+locator_type = object_utils.node_types['locator']
 
 # define global variables
 SIDES = read_sides.Sides()
@@ -292,7 +294,7 @@ def get_empty_anim_curves():
     anim_curve_nodes = object_utils.get_scene_objects(node_type='kAnimCurve')
     print("kAnimCurves in Scene: {}".format(len(anim_curve_nodes)))
     for curve_node in anim_curve_nodes:
-        anim_fn = object_utils.OpenMayaAnim..MFnAnimCurve(curve_node)
+        anim_fn = object_utils.OpenMayaAnim.MFnAnimCurve(curve_node)
         if not anim_fn.numKeys() or anim_fn.numKeys() < 2:
             garbage_collection.append(anim_fn.name())
     print("Empty kAnimCurves: {}".format(len(garbage_collection)))
@@ -692,12 +694,12 @@ def find_face_system_controller(object_node=""):
     if face_attrs:
         return object_node
     return object_utils.get_connected_nodes(object_node,
-                                            find_node_type=_k_transform,
+                                            find_node_type=transform_type,
+                                            with_shape=locator_type,
                                             find_attr="face_",
                                             as_strings=True,
                                             up_stream=False,
-                                            down_stream=True,
-                                            with_shape=_k_locator)
+                                            down_stream=True)
 
 
 def find_face_controls(interface=False, on_face=False):
@@ -957,7 +959,7 @@ def get_anim_nodes():
     return return_dict
 
 
-def get_anim_data(nodes=[]):
+def get_anim_data(nodes=()):
     """
     grabs the animation keys from nodes provided.
     :param nodes: <list> animation data.
@@ -1016,7 +1018,7 @@ class MirrorList(object):
                 __temp.append(current_values)
         return __temp
 
-    def find_multiple(self, search_list=[]):
+    def find_multiple(self, search_list=()):
         # find the attribute from list
         __temp = []
         for current_values in self.temp_mirror_list:
@@ -1186,6 +1188,12 @@ def apply_key_on_face_control(selected_on_face_ctrl='', interface_ctrl=""):
 
 
 def find_blend_weighted_node(driven_object, driven_attr):
+    """
+    finds the blend weighted node from the driven object found.
+    :param driven_object: <str> the driven object to find the blendWeighted connected node from.
+    :param driven_attr: <str> the driven attribute the connecting blend weighted node to be found as source.
+    :return: <tuple> connected blendWeighted node from attribute given.
+    """
     return animation_utils.get_connected_blend_weighted_node(driven_object, driven_attr)
 
 
@@ -1269,15 +1277,6 @@ def set_keys_on_face_controller(selected_node='', interface_ctrl="", driven_node
                     print('The driven value will be blended.\n{}'.format(driven_attr))
                     if driven_weighted_value != original_driven_value + weighted_sum:
                         driven_val = original_driven_value + driven_weighted_value
-                # print('New: ', driven_val)
-            # print("[DrivenValue] :: {}".format(driven_val))
-            # print("[DrivenValue] :: {}".format(driven_val))
-            # print("[DrivenValue] :: {}".format(driven_val))
-            # print("[DrivenValue] :: {}".format(driven_val))
-            # print("[DrivenValue] :: {}".format(driven_val))
-            # print("[DrivenValue] :: {}".format(driven_val))
-            # print("[DrivenValue] :: {}".format(driven_val))
-            # print("[DrivenValue] :: {}".format(driven_val))
 
             # set the key at the current space location
             face_value = math_utils.round_to_step(face_value)

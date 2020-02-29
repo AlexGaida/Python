@@ -3,15 +3,12 @@ Attribute module for finding, creating and setting transform attributes.
 """
 
 # import maya modules
-from maya import OpenMaya as om
+from maya import OpenMaya
 from maya import cmds
 
 # import local modules
 import object_utils
 import transform_utils
-
-# define global variables
-__version__ = "1.0.0"
 
 
 class ImmutableDict(dict):

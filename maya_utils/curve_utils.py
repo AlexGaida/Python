@@ -175,23 +175,23 @@ def get_nurb_data(curve_name=""):
     return curve_data
 
 
-def set_curve_color(color='yellow'):
+def set_nurb_shape_color(shape_name="", color='yellow'):
     """
-    sets the color on the MFn.kNurbsCurve
+    sets the color on the nurbsCurve shape.
+    :param shape_name: <str> the shape name to change settings on.
     :param color: <str>, <list>, <list> color property.
     :return: <bool> True for success. <bool> False for failure.
     """
-    for ctrl in object_utils.get_selected_node(single=False):
-        cmds.setAttr(ctrl + 'Shape.overrideEnabled', 1)
-        cmds.setAttr(ctrl + 'Shape.overrideRGBColors', 1)
-        if isinstance(color, (str, unicode)):
-            if color == 'yellow':
-                cmds.setAttr(ctrl + 'Shape.overrideColorRGB', 1.0, 1.0, 0.0, type='double3')
-            if color == 'blue':
-                cmds.setAttr(ctrl + 'Shape.overrideColorRGB', 0.0, 0.0, 1.0, type='double3')
-            if color == 'red':
-                cmds.setAttr(ctrl + 'Shape.overrideColorRGB', 1.0, 0.0, 0.0, type='double3')
-        elif isinstance(color, (list, tuple)):
-            r, g, b = color
-            cmds.setAttr(ctrl + 'Shape.overrideColorRGB', r, g, b, type='double3')
+    cmds.setAttr(shape_name + '.overrideEnabled', 1)
+    cmds.setAttr(shape_name + '.overrideRGBColors', 1)
+    if isinstance(color, (str, unicode)):
+        if color == 'yellow':
+            cmds.setAttr(shape_name + '.overrideColorRGB', 1.0, 1.0, 0.0, type='double3')
+        if color == 'blue':
+            cmds.setAttr(shape_name + '.overrideColorRGB', 0.0, 0.0, 1.0, type='double3')
+        if color == 'red':
+            cmds.setAttr(shape_name + '.overrideColorRGB', 1.0, 0.0, 0.0, type='double3')
+    elif isinstance(color, (list, tuple)):
+        r, g, b = color
+        cmds.setAttr(shape_name + '.overrideColorRGB', r, g, b, type='double3')
     return True

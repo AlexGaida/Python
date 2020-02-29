@@ -11,9 +11,6 @@ from maya import cmds
 # import local modules
 import object_utils
 
-# define global variables
-__version__ = "1.0.0"
-
 
 class Transform(OpenMaya.MFnTransform):
     MAYA_STR_OBJECT = None

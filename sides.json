@@ -1,9 +1,11 @@
 {
   "mirror": {
+    "c": "c",
     "r": "l",
     "l": "r",
     "L": "R",
     "R": "L",
+    "center": "center",
     "right": "left",
     "left": "right",
     "Left": "Right",
@@ -11,10 +13,12 @@
   },
 
   "sides": {
+    "c": "center",
     "r": "right",
     "l": "left",
     "R": "Right",
     "L": "Left",
+    "center": "c",
     "right": "r",
     "left": "l",
     "Right": "R",

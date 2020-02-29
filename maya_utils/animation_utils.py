@@ -7,8 +7,8 @@ from math import acos
 # import maya modules
 from maya import cmds
 from maya import mel
-from maya import OpenMaya as om
-from maya import OpenMayaAnim as OpenMayaAnim.
+from maya import OpenMaya as OpenMaya
+from maya import OpenMayaAnim as OpenMayaAnim
 
 # import custom modules
 import object_utils
@@ -29,7 +29,7 @@ def get_mfn_anim_node(object_node):
     :param object_node: <str> object node.
     :return: <OpenMaya.MFnAnimCurve> maya object.
     """
-    return OpenMayaAnim..MFnAnimCurve(object_utils.get_m_obj(object_node))
+    return OpenMayaAnim.MFnAnimCurve(object_utils.get_m_obj(object_node))
 
 
 def get_name_from_mfn_anim_node(object_node):
@@ -38,7 +38,7 @@ def get_name_from_mfn_anim_node(object_node):
     :param object_node: <OpenMaya.MFnAnimCurve> maya object.
     :return: <str> curve node name.
     """
-    if isinstance(object_node, OpenMayaAnim..MFnAnimCurve):
+    if isinstance(object_node, OpenMayaAnim.MFnAnimCurve):
         return object_node.name()
     return object_node
 
@@ -177,7 +177,7 @@ def set_anim_data(anim_data={}, rounded=False):
             continue
         num_keys = a_data[node_name]["num_keys"]
         anim_data = a_data[node_name]["anim_values"]
-        mfn_anim = OpenMayaAnim..MFnAnimCurve(node_name)
+        mfn_anim = OpenMayaAnim.MFnAnimCurve(node_name)
         for i in xrange(num_keys):
             a_val, a_time = anim_data[i]
             if rounded:
@@ -263,7 +263,7 @@ def get_anim_connections(object_name=""):
             # collect anim nodes.
             if "animNodes" not in found_nodes:
                 found_nodes["animNodes"] = {}
-            anim_fn = OpenMayaAnim..MFnAnimCurve(cur_node)
+            anim_fn = OpenMayaAnim.MFnAnimCurve(cur_node)
             if anim_fn.numKeys():
                 anim_node = OpenMaya.MFnDependencyNode(cur_node).name()
                 found_nodes["animNodes"].update(get_animation_data_from_node(anim_node))
@@ -289,14 +289,14 @@ def get_animation_data_from_node(object_node=""):
     o_anim = None
     if isinstance(object_node, (str, unicode)):
         m_object = object_utils.get_m_obj(object_node)
-        o_anim = OpenMayaAnim..MFnAnimCurve(m_object)
+        o_anim = OpenMayaAnim.MFnAnimCurve(m_object)
 
-    if isinstance(object_node, OpenMayaAnim..MFnAnimCurve):
+    if isinstance(object_node, OpenMayaAnim.MFnAnimCurve):
         o_anim = object_node
         object_node = o_anim.name()
 
     if isinstance(object_node, OpenMaya.MObject):
-        o_anim = OpenMayaAnim..MFnAnimCurve(object_node)
+        o_anim = OpenMayaAnim.MFnAnimCurve(object_node)
         object_node = o_anim.name()
 
     # get connections
@@ -357,6 +357,12 @@ def attribute_name(node_name, target_attr):
 
 
 def get_connected_blend_weighted_node(node_name="", target_attr=""):
+    """
+    get connected blend weighted node from the node name and the attribute provided.
+    :param node_name: <str> the node name to check.
+    :param target_attr: <str> the connected target attribute to get the blendWeighted node from.
+    :return: <>
+    """
     node_attr = attribute_name(node_name, target_attr)
     return object_utils.get_plugs(node_name, attr_name=node_attr, ignore_nodes=['kUnitConversion'])
 
