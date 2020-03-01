@@ -46,6 +46,7 @@ node_types = {
     'unitConversion': OpenMaya.MFn.kUnitConversion,
     'blendWeighted': OpenMaya.MFn.kBlendWeighted,
     'transform': OpenMaya.MFn.kTransform,
+    'follicle': OpenMaya.MFn.kFollicle
     }
 
 # define private variables
@@ -95,6 +96,9 @@ def get_shape_name(object_name="", shape_type=""):
 
 def get_shape_obj(object_name="", shape_type=""):
     """
+    returns a objects' shape OpenMaya.MObject.
+    :param object_name: <str> the object name to get shape object from.
+    :param shape_type: <str> shape type to return, else, return any shape.
     :return: the shape OpenMaya.MObject.
     """
     if not object_name:
@@ -105,10 +109,19 @@ def get_shape_obj(object_name="", shape_type=""):
 def is_shape_curve(object_name):
     """
     check if the object name has nurbs curve shape object.
-    :param object_name:
+    :param object_name: <str> the object to check shape type from.
     :return: <bool> True for yes, <bool> False for no.
     """
     return bool(get_shape_name(object_name, shape_type="nurbsCurve"))
+
+
+def is_shape_follicle(object_name):
+    """
+    check if the object name has follicle shape object.
+    :param object_name: <str> the object to check shape type from.
+    :return: <bool> True for yes, <bool> False for no.
+    """
+    return bool(get_shape_name(object_name, shape_type="follicle"))
 
 
 def is_shape_mesh(object_name):
@@ -129,11 +142,20 @@ def is_shape_nurbs_surface(object_name):
     return bool(get_shape_name(object_name, shape_type="nurbsSurface"))
 
 
+def is_shape_nurbs_curve(object_name):
+    """
+    check if the object name has nurbs curve shape object.
+    :param object_name: <str> object name to check.
+    :return: <bool> True for yes, <bool> False for no.
+    """
+    return bool(get_shape_name(object_name, shape_type="nurbsCurve"))
+
+
 def check_object_type(object_name="", object_type=""):
     """
     compare two objects' types.
-    :param object_name:
-    :param object_type:
+    :param object_name: <str> the object to check shape type from.
+    :param object_type: <str> the object type to check.
     :return: <bool> True for success. <bool> False for failure.
     """
     return cmds.objectType(object_name) == object_type
@@ -146,11 +168,6 @@ def get_nice_name(object_name=''):
     :return: <str> nice name.
     """
     return '_'.join(object_name.split(':'))
-
-
-def get_float_3_ptr():
-    util = OpenMaya.MScriptUtil()
-    return util.asFloat3Ptr()
 
 
 class ScriptUtil(OpenMaya.MScriptUtil):
@@ -168,6 +185,9 @@ class ScriptUtil(OpenMaya.MScriptUtil):
         if 'as_double3_ptr' in kw:
             self.createFromList([0.0, 0.0, 0.0], 3)
             self.ptr = self.asDouble3Ptr()
+        if 'as_float3_ptr' in kw:
+            self.createFromList([0.0, 0.0, 0.0], 3)
+            self.ptr = self.asFloat3Ptr()
         if 'as_int_ptr' in kw:
             self.ptr = self.asIntPtr()
         if 'as_uint_ptr' in kw:
@@ -184,6 +204,9 @@ class ScriptUtil(OpenMaya.MScriptUtil):
     def as_float(self):
         return self.ptr.asFloat()
 
+    def as_float3(self):
+        return self.ptr.asFloat3()
+
     def as_double(self):
         return self.ptr.asDouble()
 
@@ -196,13 +219,16 @@ class ScriptUtil(OpenMaya.MScriptUtil):
     def get_float(self):
         return self.getFloat(self.ptr)
 
+    def get_float3_item(self, idx=0):
+        return self.getFloat3ArrayItem(self.ptr, idx)
+
     def get_int(self):
         return self.getInt(self.ptr)
 
     def double_array_item(self, idx=0):
         return self.getDoubleArrayItem(self.ptr, idx)
 
-    def matrix_from_list(self, matrix_list=[]):
+    def matrix_from_list(self, matrix_list=()):
         self.createMatrixFromList(matrix_list, self.MATRIX)
         return self.MATRIX
 
@@ -396,6 +422,8 @@ def check_fn_shape(m_object=None, m_type=None):
     c_count = fn_item.childCount()
     if c_count:
         return fn_item.child(0).hasFn(m_type)
+    elif not c_count:
+        return m_object.hasFn(m_type)
     return None
 
 
@@ -415,6 +443,7 @@ def check_shape_type_name(m_object=None, shape_type=None):
     :param shape_type: <str> shape type name.
     :return: <bool> True for yes. <bool> False for no.
     """
+    m_object = get_m_obj(m_object)
     if type_exists(shape_type):
         return check_fn_shape(m_object, m_type=node_types[shape_type])
     return False
@@ -690,6 +719,9 @@ def get_connected_nodes(object_name="", find_node_type=OpenMaya.MFn.kAnimCurve,
         node = object_name
     elif isinstance(object_name, OpenMaya.MFnMesh):
         node = object_name.node()
+
+    if isinstance(find_node_type, str):
+        find_node_type = node_types[find_node_type]
 
     dag_iter = OpenMaya.MItDependencyGraph(
         node,

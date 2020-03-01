@@ -20,7 +20,6 @@ from maya_utils import math_utils
 __version__ = '1.0.0'
 __verbosity__ = 0
 __m_util = OpenMaya.MScriptUtil()
-_float_ptr = ScriptUtil()
 
 
 def get_mfn_anim_node(object_node):

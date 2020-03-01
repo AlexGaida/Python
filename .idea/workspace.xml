@@ -2,16 +2,9 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="a4eb6531-5ee5-4027-af4a-b83dcfaec8a5" name="Default" comment="">
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/maya_utils/follicle_utils.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/deformers/skincluster_utils.py" afterPath="$PROJECT_DIR$/deformers/skincluster_utils.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/maya_utils/curve_utils.py" afterPath="$PROJECT_DIR$/maya_utils/curve_utils.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/maya_utils/file_utils.py" afterPath="$PROJECT_DIR$/maya_utils/file_utils.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/maya_utils/animation_utils.py" afterPath="$PROJECT_DIR$/maya_utils/animation_utils.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/maya_utils/follicle_utils.py" afterPath="$PROJECT_DIR$/maya_utils/follicle_utils.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/maya_utils/object_utils.py" afterPath="$PROJECT_DIR$/maya_utils/object_utils.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/maya_utils/transform_utils.py" afterPath="$PROJECT_DIR$/maya_utils/transform_utils.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/rig_utils/control_utils.py" afterPath="$PROJECT_DIR$/rig_utils/control_utils.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/rig_utils/joint_utils.py" afterPath="$PROJECT_DIR$/rig_utils/joint_utils.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/rig_utils/name_utils.py" afterPath="$PROJECT_DIR$/rig_utils/name_utils.py" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -29,18 +22,18 @@
       <file leaf-file-name="skincluster_utils.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/deformers/skincluster_utils.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="242">
+            <state relative-caret-position="918">
               <caret line="39" column="28" lean-forward="false" selection-start-line="39" selection-start-column="4" selection-end-line="39" selection-end-column="28" />
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="object_utils.py" pinned="false" current-in-tab="false">
+      <file leaf-file-name="object_utils.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/maya_utils/object_utils.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="296">
-              <caret line="448" column="4" lean-forward="false" selection-start-line="448" selection-start-column="4" selection-end-line="448" selection-end-column="4" />
+            <state relative-caret-position="-513">
+              <caret line="230" column="44" lean-forward="false" selection-start-line="230" selection-start-column="44" selection-end-line="230" selection-end-column="44" />
               <folding>
                 <element signature="e#890#899#0" expanded="true" />
               </folding>
@@ -48,11 +41,21 @@
           </provider>
         </entry>
       </file>
+      <file leaf-file-name="face_tool.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/face_tool.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="25137">
+              <caret line="961" column="4" lean-forward="false" selection-start-line="961" selection-start-column="4" selection-end-line="961" selection-end-column="4" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
       <file leaf-file-name="animation_utils.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/maya_utils/animation_utils.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="27">
-              <caret line="319" column="44" lean-forward="false" selection-start-line="319" selection-start-column="31" selection-end-line="319" selection-end-column="44" />
+            <state relative-caret-position="269">
+              <caret line="128" column="7" lean-forward="true" selection-start-line="128" selection-start-column="7" selection-end-line="128" selection-end-column="7" />
               <folding>
                 <element signature="e#89#110#0" expanded="true" />
               </folding>
@@ -73,18 +76,18 @@
       <file leaf-file-name="transform_utils.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/maya_utils/transform_utils.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="296">
+            <state relative-caret-position="1512">
               <caret line="63" column="42" lean-forward="false" selection-start-line="63" selection-start-column="31" selection-end-line="63" selection-end-column="42" />
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="follicle_utils.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="follicle_utils.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/maya_utils/follicle_utils.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="648">
-              <caret line="189" column="38" lean-forward="false" selection-start-line="189" selection-start-column="38" selection-end-line="189" selection-end-column="38" />
+            <state relative-caret-position="1592">
+              <caret line="207" column="63" lean-forward="false" selection-start-line="207" selection-start-column="63" selection-end-line="207" selection-end-column="63" />
               <folding>
                 <element signature="e#110#131#0" expanded="true" />
               </folding>
@@ -92,32 +95,10 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="file_utils.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/maya_utils/file_utils.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="756">
-              <caret line="52" column="0" lean-forward="true" selection-start-line="52" selection-start-column="0" selection-end-line="52" selection-end-column="0" />
-              <folding>
-                <element signature="e#109#119#0" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="curve_utils.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/maya_utils/curve_utils.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="216">
-              <caret line="8" column="0" lean-forward="false" selection-start-line="8" selection-start-column="0" selection-end-line="8" selection-end-column="0" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
       <file leaf-file-name="read_sides.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/read_sides.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="27">
+            <state relative-caret-position="2268">
               <caret line="86" column="9" lean-forward="false" selection-start-line="86" selection-start-column="4" selection-end-line="86" selection-end-column="9" />
               <folding>
                 <element signature="e#245#256#0" expanded="true" />
@@ -147,22 +128,9 @@
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>_k_transform</find>
-      <find>OpenMayaAnim</find>
-      <find>cmds.xform</find>
-      <find>OpenMaya</find>
-      <find>_k_locator</find>
-      <find>extract_side_from_string</find>
-      <find>copy_xform</find>
-      <find>kPluginCmdName</find>
-      <find>create_curve_dict</find>
-      <find>get_controllers</find>
-      <find>set_nurb_shape_color</find>
-      <find>insert</find>
       <find>check_fn</find>
       <find>node_types</find>
       <find>get_shape_fn</find>
-      <find>check_fn_shape</find>
       <find>FOLLICLE_SUFFIX</find>
       <find>follicle_name</find>
       <find>get_mobject_sel</find>
@@ -171,12 +139,25 @@
       <find>check_</find>
       <find>OpenMaya.MObject</find>
       <find>get_m_shape</find>
-      <find>_float_ptr</find>
       <find>ScriptUtil</find>
       <find>WORLD_SPACE</find>
       <find>get_m_obj</find>
       <find>get_shape_obj</find>
       <find>convert_</find>
+      <find>CLOSEST_POINT_ON_CURVE_SUFFIX</find>
+      <find>closest_point_curve_node_name</find>
+      <find>create_follicle_node</find>
+      <find>follicle_node_name</find>
+      <find>is_shape</find>
+      <find>create_follicle</find>
+      <find>check_fn_shape</find>
+      <find>check_shape_type_name</find>
+      <find>get_fn</find>
+      <find>get_connected_nodes</find>
+      <find>attr_name</find>
+      <find>get_float_3_ptr</find>
+      <find>_float_ptr</find>
+      <find>__m_util</find>
     </findStrings>
     <replaceStrings>
       <replace>get_m_object_name</replace>
@@ -199,7 +180,6 @@
         <option value="$PROJECT_DIR$/deformers/skincluster.py" />
         <option value="$PROJECT_DIR$/deformers/deform_utils.py" />
         <option value="$PROJECT_DIR$/maya_utils/attribute_utils.py" />
-        <option value="$PROJECT_DIR$/maya_utils/animation_utils.py" />
         <option value="$PROJECT_DIR$/face_tool.py" />
         <option value="$PROJECT_DIR$/sides.json" />
         <option value="$PROJECT_DIR$/read_sides.py" />
@@ -211,8 +191,9 @@
         <option value="$PROJECT_DIR$/rig_utils/name_utils.py" />
         <option value="$PROJECT_DIR$/maya_utils/file_utils.py" />
         <option value="$PROJECT_DIR$/maya_utils/transform_utils.py" />
-        <option value="$PROJECT_DIR$/maya_utils/object_utils.py" />
         <option value="$PROJECT_DIR$/maya_utils/follicle_utils.py" />
+        <option value="$PROJECT_DIR$/maya_utils/animation_utils.py" />
+        <option value="$PROJECT_DIR$/maya_utils/object_utils.py" />
       </list>
     </option>
   </component>
@@ -237,6 +218,8 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
+      <pane id="Scratches" />
+      <pane id="Scope" />
       <pane id="ProjectPane">
         <subPane>
           <PATH>
@@ -307,8 +290,6 @@
           </PATH>
         </subPane>
       </pane>
-      <pane id="Scope" />
-      <pane id="Scratches" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -469,12 +450,11 @@
   </component>
   <component name="ToolWindowManager">
     <frame x="1912" y="-8" width="1936" height="1056" extended-state="6" />
-    <editor active="false" />
+    <editor active="true" />
     <layout>
       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="true" content_ui="tabs" />
-      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32980973" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="10" side_tool="false" content_ui="tabs" />
       <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
@@ -486,6 +466,7 @@
       <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
       <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="combo" />
+      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32980973" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
     </layout>
@@ -507,14 +488,6 @@
     <watches-manager />
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/sides.json">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="216">
-          <caret line="8" column="20" lean-forward="false" selection-start-line="8" selection-start-column="20" selection-end-line="8" selection-end-column="20" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/rig_utils/name_utils.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="1323">
@@ -527,9 +500,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="1296">
           <caret line="53" column="0" lean-forward="false" selection-start-line="53" selection-start-column="0" selection-end-line="53" selection-end-column="32" />
-          <folding>
-            <element signature="e#1759#1791#0" expanded="false" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -537,9 +507,7 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="18441">
           <caret line="697" column="68" lean-forward="false" selection-start-line="697" selection-start-column="68" selection-end-line="697" selection-end-column="68" />
-          <folding>
-            <element signature="e#347#372#0" expanded="false" />
-          </folding>
+          <folding />
         </state>
       </provider>
     </entry>
@@ -557,9 +525,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="4671">
           <caret line="184" column="46" lean-forward="false" selection-start-line="184" selection-start-column="46" selection-end-line="184" selection-end-column="46" />
-          <folding>
-            <element signature="e#95#104#0" expanded="false" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -577,7 +542,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="216">
           <caret line="8" column="20" lean-forward="true" selection-start-line="8" selection-start-column="20" selection-end-line="8" selection-end-column="20" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -615,9 +579,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="1296">
           <caret line="53" column="0" lean-forward="false" selection-start-line="53" selection-start-column="0" selection-end-line="53" selection-end-column="32" />
-          <folding>
-            <element signature="e#1759#1791#0" expanded="false" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -635,7 +596,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="2133">
           <caret line="79" column="65" lean-forward="false" selection-start-line="79" selection-start-column="61" selection-end-line="79" selection-end-column="65" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -643,9 +603,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding>
-            <element signature="e#95#104#0" expanded="false" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -660,9 +617,7 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="189">
           <caret line="14" column="21" lean-forward="true" selection-start-line="14" selection-start-column="21" selection-end-line="14" selection-end-column="21" />
-          <folding>
-            <element signature="e#96#107#0" expanded="false" />
-          </folding>
+          <folding />
         </state>
       </provider>
     </entry>
@@ -692,9 +647,7 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="7560">
           <caret line="294" column="31" lean-forward="false" selection-start-line="294" selection-start-column="31" selection-end-line="294" selection-end-column="31" />
-          <folding>
-            <element signature="e#347#372#0" expanded="false" />
-          </folding>
+          <folding />
         </state>
       </provider>
     </entry>
@@ -790,9 +743,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="1296">
           <caret line="53" column="0" lean-forward="false" selection-start-line="53" selection-start-column="0" selection-end-line="53" selection-end-column="32" />
-          <folding>
-            <element signature="e#1759#1791#0" expanded="false" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -807,19 +757,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="4428">
           <caret line="175" column="7" lean-forward="true" selection-start-line="175" selection-start-column="7" selection-end-line="175" selection-end-column="7" />
-          <folding>
-            <element signature="e#95#104#0" expanded="false" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/face_tool.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="27">
-          <caret line="961" column="4" lean-forward="false" selection-start-line="961" selection-start-column="4" selection-end-line="961" selection-end-column="4" />
-          <folding>
-            <element signature="e#347#372#0" expanded="false" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -827,7 +764,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="216">
           <caret line="8" column="20" lean-forward="false" selection-start-line="8" selection-start-column="20" selection-end-line="8" selection-end-column="20" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -835,7 +771,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="135">
           <caret line="5" column="0" lean-forward="true" selection-start-line="5" selection-start-column="0" selection-end-line="5" selection-end-column="0" />
-          <folding />
         </state>
       </provider>
     </entry>
@@ -849,7 +784,7 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/maya_utils/file_utils.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="756">
+        <state relative-caret-position="1404">
           <caret line="52" column="0" lean-forward="true" selection-start-line="52" selection-start-column="0" selection-end-line="52" selection-end-column="0" />
           <folding>
             <element signature="e#109#119#0" expanded="true" />
@@ -867,7 +802,7 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/deformers/skincluster_utils.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="242">
+        <state relative-caret-position="918">
           <caret line="39" column="28" lean-forward="false" selection-start-line="39" selection-start-column="4" selection-end-line="39" selection-end-column="28" />
           <folding />
         </state>
@@ -875,7 +810,7 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/read_sides.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="27">
+        <state relative-caret-position="2268">
           <caret line="86" column="9" lean-forward="false" selection-start-line="86" selection-start-column="4" selection-end-line="86" selection-end-column="9" />
           <folding>
             <element signature="e#245#256#0" expanded="true" />
@@ -891,40 +826,56 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/maya_utils/transform_utils.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1512">
+          <caret line="63" column="42" lean-forward="false" selection-start-line="63" selection-start-column="31" selection-end-line="63" selection-end-column="42" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/maya_utils/follicle_utils.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1592">
+          <caret line="207" column="63" lean-forward="false" selection-start-line="207" selection-start-column="63" selection-end-line="207" selection-end-column="63" />
+          <folding>
+            <element signature="e#110#131#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/face_tool.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="25137">
+          <caret line="961" column="4" lean-forward="false" selection-start-line="961" selection-start-column="4" selection-end-line="961" selection-end-column="4" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/.PyCharmCE2016.3/system/python_stubs/35054722/maya/OpenMaya/MScriptUtil.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="306">
+          <caret line="471" column="8" lean-forward="false" selection-start-line="471" selection-start-column="8" selection-end-line="471" selection-end-column="8" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/maya_utils/animation_utils.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="27">
-          <caret line="319" column="44" lean-forward="false" selection-start-line="319" selection-start-column="31" selection-end-line="319" selection-end-column="44" />
+        <state relative-caret-position="269">
+          <caret line="128" column="7" lean-forward="true" selection-start-line="128" selection-start-column="7" selection-end-line="128" selection-end-column="7" />
           <folding>
             <element signature="e#89#110#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/maya_utils/transform_utils.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="296">
-          <caret line="63" column="42" lean-forward="false" selection-start-line="63" selection-start-column="31" selection-end-line="63" selection-end-column="42" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/maya_utils/object_utils.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="296">
-          <caret line="448" column="4" lean-forward="false" selection-start-line="448" selection-start-column="4" selection-end-line="448" selection-end-column="4" />
+        <state relative-caret-position="-513">
+          <caret line="230" column="44" lean-forward="false" selection-start-line="230" selection-start-column="44" selection-end-line="230" selection-end-column="44" />
           <folding>
             <element signature="e#890#899#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/maya_utils/follicle_utils.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="648">
-          <caret line="189" column="38" lean-forward="false" selection-start-line="189" selection-start-column="38" selection-end-line="189" selection-end-column="38" />
-          <folding>
-            <element signature="e#110#131#0" expanded="true" />
           </folding>
         </state>
       </provider>
