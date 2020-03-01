@@ -49,7 +49,7 @@ def get_attached_skincluster(mesh_name=""):
     )
 
 
-def restore_dag_pose(influences=[]):
+def restore_dag_pose(influences=()):
     """
     restores the dag pose from the influences given.
     :param influences: <list> the influence objects to acting on the skin cluster.
@@ -117,7 +117,7 @@ def get_skin_name(object_name=""):
     return object_name + '_Skin'
 
 
-def apply_skin(object_name="", influences=[], name=""):
+def apply_skin(object_name="", influences=(), name=""):
     """
     creates the skin cluster object to the objects specified in the parameters given.
     :param object_name: <str> the mesh object to bind the influences to.
@@ -168,7 +168,6 @@ def copy_skincluster(source_mesh="", target_mesh=""):
     return False
 
 
-
 def get_skin_fn(skin_name=""):
     """
     Get the <MFnSkinCluster> class type from name prov_ided.
@@ -199,37 +198,6 @@ def get_all_skin_nodes():
         m_iterator.next()
 
 
-def get_all_skin_nodes():
-    """
-    Given a mesh name, find the skinCluster node connection.
-    :return: <str> skinCluster for success. <bool> False for failure.
-    """
-    m_iterator = OpenMaya.MItDependencyNodes(OpenMaya.MFn.kSkin)
-    while not m_iterator.isDone():
-        m_obj = m_iterator.currentItem()
-        m_dag_fn = OpenMaya.MFnDagNode(m_obj)
-        if OpenMaya.MFn.kSkin == m_obj.apiType():
-            return m_dag_fn.fullPathName()
-        m_iterator.next()
-
-
-def get_mobject_sel():
-    """
-    Returns a list of selected objects' MObject.
-    :return: <list> of MObjects.
-    """
-    objects = []
-    m_sel = OpenMaya.MSelectionList()
-    OpenMaya.MGlobal.getActiveSelectionList(m_sel)
-    m_it_sel_ls = OpenMaya.MItSelectionList(m_sel)
-    while not m_it_sel_ls.isDone():
-        m_obj = OpenMaya.MObject()
-        m_it_sel_ls.getDependNode(m_obj)
-        objects.append(m_obj)
-        m_it_sel_ls.next()
-    return objects
-
-
 def get_skin_cluster(source_obj=None):
     """
     Grabs the  skin cluster from the node specified.
@@ -238,7 +206,7 @@ def get_skin_cluster(source_obj=None):
     """
     m_it_graph = OpenMaya.MItDependencyGraph(source_obj,
                                              OpenMaya.MItDependencyGraph.kUpstream,
-                                             OpenMaya.MItDependencyGraph.kPlugLeve)
+                                             OpenMaya.MItDependencyGraph.kPlugLevel)
     while not m_it_graph.isDone():
         cur_item = m_it_graph.currentItem()
         m_depend_node = OpenMaya.MFnDependencyNode(cur_item)
@@ -275,15 +243,14 @@ def connect(source_obj, source_plug_name, destination_obj, destination_plug_name
     mg_mod.doIt()
 
 
-def get_skin_dict(shape_name=""):
+def get_skin_data(skin_obj=None):
     """
     Returns a dictionary of skinCluster influences and weights.
-    :param shape_name: <str> the mesh shape name.
+    :param skin_obj: <OpenMaya.MObject> the mesh shape name.
     :return: <dict> skinCluster values. <bool> False for failure.
     """
     weights = {}
-    m_skin = object_utils.get_m_obj(shape_name)
-    skin_name, skin_fn = get_skin_cluster(m_skin)
+    skin_fn = get_skin_cluster(skin_obj)
 
     # get the MDagPath for all influence
     inf_dag_arr = OpenMaya.MDagPathArray()

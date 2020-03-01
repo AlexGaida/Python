@@ -25,6 +25,14 @@ transform_attrs = attribute_utils.Attributes.DEFAULT_ATTR_VALUES
 side_cls = read_sides.Sides()
 
 
+def get_controllers():
+    """
+    get all controllers in scene.
+    :return: <tuple> controller objects.
+    """
+    return tuple(cmds.ls('*_{}'.format(__ctrl_suffix__)))
+
+
 def get_selected_ctrl():
     """
     the joints from current selection.
@@ -33,18 +41,6 @@ def get_selected_ctrl():
     selected_obj = object_utils.get_selected_node()
     if selected_obj and object_utils.is_shape_curve(selected_obj):
         return selected_obj
-
-
-def zero_all_controllers():
-    """
-    zeroes out all the scene controllers.
-    :return: <bool> True for success.
-    """
-    for ctrl_name in iter(cmds.ls('*_{}'.format(__ctrl_suffix__))):
-        c_attr = attribute_utils.Attributes(ctrl_name, keyable=True)
-        if c_attr.non_zero_attributes():
-            c_attr.zero_attributes()
-    return True
 
 
 def mirror_transforms(object_name=""):
@@ -178,7 +174,7 @@ def color_code_controllers():
     color code all controller shape names.
     :return: <bool> True for success.
     """
-    ctrl_curves = cmds.ls('*_{}'.format(__ctrl_suffix__))
+    ctrl_curves = get_controllers()
     shape_names_array = get_shape_names(ctrl_curves)
     for shape_name in shape_names_array:
         # get a uniform side name
@@ -192,8 +188,35 @@ def color_code_controllers():
     return True
 
 
+def attr_str(ctrl_name, attr_name):
+    """
+    join the two strings together to form the attribute name.
+    :param ctrl_name:
+    :param attr_name:
+    :return:
+    """
+    return '{}.{}'.format(ctrl_name, attr_name)
+
+
 def zero_controllers():
     """
-    zero out all controllers in the scene.
+    assuming controllers are all named with a suffix _ctrl
     :return: <bool> True for success.
     """
+    for ctrl_name in get_controllers():
+        for attr_name, attr_val in transform_attrs.items():
+            ctrl_attribute = attr_str(ctrl_name, attr_name)
+            cmds.setAttr(ctrl_attribute, attr_val)
+    return True
+
+
+def zero_all_controllers():
+    """
+    zeroes out all the scene controllers.
+    :return: <bool> True for success.
+    """
+    for ctrl_name in get_controllers():
+        c_attr = attribute_utils.Attributes(ctrl_name, keyable=True)
+        if c_attr.non_zero_attributes():
+            c_attr.zero_attributes()
+    return True

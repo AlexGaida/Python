@@ -62,18 +62,31 @@ def verbose(*args):
         print(args)
 
 
+def get_dag(object_name=""):
+    """
+    returns a dag path object.
+    :param object_name: <str> object to get dag path from.
+    :return: <OpenMaya.MDagPath>
+    """
+    m_sel = OpenMaya.MSelectionList()
+    m_sel.add(object_name)
+    m_dag = OpenMaya.MDagPath()
+    m_sel.getDagPath(0, m_dag)
+    return m_dag
+
+
 def get_shape_fn(object_name=""):
     """
-    :return: the shape fn object.
+    :return: the shape fn object from the string object provided.
     """
     if not object_name:
         object_name = get_selected_node()
-    return get_m_shape(get_m_obj(object_name))
+    return get_fn(get_m_shape(get_dag(object_name)))
 
 
 def get_shape_name(object_name="", shape_type=""):
     """
-    :return: the shape fn object.
+    :return: the shape name.
     """
     if not object_name:
         object_name = get_selected_node()
@@ -82,7 +95,7 @@ def get_shape_name(object_name="", shape_type=""):
 
 def get_shape_obj(object_name="", shape_type=""):
     """
-    :return: the shape fn object.
+    :return: the shape OpenMaya.MObject.
     """
     if not object_name:
         object_name = get_selected_node()
@@ -93,9 +106,27 @@ def is_shape_curve(object_name):
     """
     check if the object name has nurbs curve shape object.
     :param object_name:
-    :return:
+    :return: <bool> True for yes, <bool> False for no.
     """
-    return get_shape_name(object_name, shape_type="nurbsCurve")
+    return bool(get_shape_name(object_name, shape_type="nurbsCurve"))
+
+
+def is_shape_mesh(object_name):
+    """
+    check if the object name has mesh shape object.
+    :param object_name: <str> object name to check.
+    :return: <bool> True for yes, <bool> False for no.
+    """
+    return bool(get_shape_name(object_name, shape_type="mesh"))
+
+
+def is_shape_nurbs_surface(object_name):
+    """
+    check if the object name has nurbs surface shape object.
+    :param object_name: <str> object name to check.
+    :return: <bool> True for yes, <bool> False for no.
+    """
+    return bool(get_shape_name(object_name, shape_type="nurbsSurface"))
 
 
 def check_object_type(object_name="", object_type=""):
@@ -129,12 +160,18 @@ class ScriptUtil(OpenMaya.MScriptUtil):
     def __init__(self, *a, **kw):
         super(ScriptUtil, self).__init__(*a)
         if 'as_double_ptr' in kw:
-            self.createFromList([0.0, 0.0, 0.0], 3)
+            self.createFromDouble(*a)
             self.ptr = self.asDoublePtr()
         if 'as_float_ptr' in kw:
+            self.createFromDouble(*a)
             self.ptr = self.asFloatPtr()
         if 'as_double3_ptr' in kw:
+            self.createFromList([0.0, 0.0, 0.0], 3)
             self.ptr = self.asDouble3Ptr()
+        if 'as_int_ptr' in kw:
+            self.ptr = self.asIntPtr()
+        if 'as_uint_ptr' in kw:
+            self.ptr = self.asUintPtr()
         if 'matrix_from_list' in kw:
             self.matrix_from_list(*a)
         if 'function' in kw:
@@ -149,6 +186,18 @@ class ScriptUtil(OpenMaya.MScriptUtil):
 
     def as_double(self):
         return self.ptr.asDouble()
+
+    def as_int(self):
+        return self.ptr.asInt()
+
+    def get_double(self):
+        return self.getDouble(self.ptr)
+
+    def get_float(self):
+        return self.getFloat(self.ptr)
+
+    def get_int(self):
+        return self.getInt(self.ptr)
 
     def double_array_item(self, idx=0):
         return self.getDoubleArrayItem(self.ptr, idx)
@@ -346,9 +395,29 @@ def check_fn_shape(m_object=None, m_type=None):
     fn_item = OpenMaya.MFnDagNode(m_object)
     c_count = fn_item.childCount()
     if c_count:
-        if fn_item.child(0).hasFn(m_type):
-            return m_object
+        return fn_item.child(0).hasFn(m_type)
     return None
+
+
+def type_exists(shape_type):
+    """
+    checks if the shape type name is valid.
+    :param shape_type: <str> the shape type to check.
+    :return: <bool> True for yes. <bool> False for no.
+    """
+    return shape_type in node_types
+
+
+def check_shape_type_name(m_object=None, shape_type=None):
+    """
+    checks the shape name.
+    :param m_object: <OpenMaya.MObject>
+    :param shape_type: <str> shape type name.
+    :return: <bool> True for yes. <bool> False for no.
+    """
+    if type_exists(shape_type):
+        return check_fn_shape(m_object, m_type=node_types[shape_type])
+    return False
 
 
 def get_parents(object_name=None, stop_at=''):
@@ -377,12 +446,24 @@ def get_parents(object_name=None, stop_at=''):
     return return_data
 
 
+def convert_list_to_str(array_obj):
+    """
+    change the array object into a string object.
+    :param array_obj: <tuple>, <list> array object to convert.
+    :return: <str> object.
+    """
+    if isinstance(array_obj, (tuple, list)) and len(array_obj) == 1:
+        return array_obj[0]
+    return array_obj
+
+
 def get_fn(m_object):
     """
     returns the fn object from the m_object supplied.
     :param m_object: <OpenMaya.MObject> to get function class frOpenMaya.
     :return: <OpenMaya.MFn<ClassType> specific object fn type.
     """
+    m_object = convert_list_to_str(m_object)
     if type_str(m_object) == 'mesh':
         return OpenMaya.MFnMesh(m_object)
     elif type_str(m_object) == 'nurbsCurve':
@@ -440,11 +521,11 @@ def get_m_shape(m_object=None, shape_type="", as_strings=False):
     fn_item = OpenMaya.MFnDagNode(m_object)
     for i in xrange(fn_item.childCount()):
         ch_item = fn_item.child(i)
-        if not has_fn(ch_item, shape_type):
+        if shape_type and not has_fn(ch_item, shape_type):
             continue
         if as_strings:
             return_items += OpenMaya.MFnDependencyNode(ch_item).name(),
-        else:
+        elif not as_strings:
             return_items += ch_item,
     return return_items
 
@@ -454,8 +535,8 @@ def get_m_parent(m_object=None, find_parent='', with_shape='', as_strings=False)
     finds the parent from the maya object provided.
     :param m_object: <OpenMaya.MObject> the object to get the parents frOpenMaya.
     :param find_parent: <str> find this parent from the object provided.
-    :param transform: <bool> find transforms only.
-    :param with_shape: <str> find a parent containing this shape object.
+    :param with_shape: (Not Implemented) <str> find a parent containing this shape object.
+    :param as_strings: <bool> get results as strings.
     :return: <list> found objects.
     """
     fn_object = OpenMaya.MFnDagNode(m_object)
@@ -537,6 +618,15 @@ def get_m_child(m_object=None, find_child=True, with_shape='', transform=False, 
                     return_data += ch_item,
             m_iter.next()
     return return_data
+
+
+def get_parent_name(object_name):
+    """
+    finds the parent node.
+    :param object_name: <str> object to get the parent relative transform from.
+    :return: <str> parent object node.
+    """
+    return get_transform_relatives(object_name, find_parent=True, as_strings=True)
 
 
 def get_transform_relatives(object_name='', find_parent='', find_child=False, with_shape='', as_strings=False):
@@ -701,14 +791,12 @@ def get_upstream_connected_nodes_gen(object_name=""):
         dag_iter.next()
 
 
-def get_m_obj(object_str=""):
+def get_m_obj(object_str):
     """
     get MDagPath from MObject.
     :param object_str: <str> get the MObject from this parameter given.
     :return: <OpenMaya.MObject> the maya object.
     """
-    if not object_str:
-        raise ValueError('[Get MObject] :: No object specified.')
     if isinstance(object_str, (unicode, str)):
         try:
             om_sel = OpenMaya.MSelectionList()

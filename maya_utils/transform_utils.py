@@ -61,15 +61,12 @@ class Transform(OpenMaya.MFnTransform):
         else:
             return OpenMaya.MVector([x, y, z])
 
-    def translate_values(self, world=False, as_m_vector=False):
+    def translate_values(self, as_m_vector=False):
         """
         return the translate attribute values
         :return: <tuple> scale attribute values
         """
-        if not world:
-            m_vector = self.getTranslation(self.OBJECT_SPACE)
-        else:
-            m_vector = self.getTranslation(self.WORLD_SPACE)
+        m_vector = self.getTranslation(self.OBJECT_SPACE)
         if not as_m_vector:
             x = round(m_vector.x, 4)
             y = round(m_vector.y, 4)
@@ -78,11 +75,8 @@ class Transform(OpenMaya.MFnTransform):
         else:
             return m_vector
 
-    def get_translation(self, world=True):
-        if world:
-            return self.transformation().translation(self.WORLD_SPACE)
-        else:
-            return self.transformation().translation(self.OBJECT_SPACE)
+    def get_translation(self):
+        return self.transformation().translation(self.OBJECT_SPACE)
 
     def get_translation_list(self):
         return [self.get_translation()[t] for t in range(3)]

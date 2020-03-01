@@ -6,7 +6,7 @@ from maya import OpenMaya
 from maya import cmds
 
 # import local modules
-from maya_utils import object_utils
+import object_utils
 
 # define local variables
 __shape_name__ = 'nurbsCurve'

@@ -8,10 +8,11 @@ import re
 from maya import cmds
 
 # import local modules
-from maya_utils import object_utils
+import object_utils
 
 # define local variables
 JNT_SUFFIX = 'jnt'
+BND_JNT_SUFFIX = 'bnd_{}'.format(JNT_SUFFIX)
 
 
 def is_joint(arg):
@@ -30,7 +31,23 @@ def get_joints_from_selection():
     the joints from current selection.
     :return: <tuple> array of joints from selection.
     """
-    return cmds.ls(sl=1, type='joint')
+    return tuple(cmds.ls(sl=1, type='joint'))
+
+
+def get_joints():
+    """
+    get all joints in the scene.
+    :return: <tuple> array of joints.
+    """
+    return tuple(cmds.ls(type='joint'))
+
+
+def get_bnd_joints():
+    """
+    return only bound joints.
+    :return: <tuple> filtered array of joints.
+    """
+    return filter(lambda x: x.endswith(BND_JNT_SUFFIX), get_joints())
 
 
 def mirror_joints(joints=(), axis='YZ', behaviour=False, search_replace=('l_', 'r_')):
@@ -61,11 +78,10 @@ def mirror_joints(joints=(), axis='YZ', behaviour=False, search_replace=('l_', '
 
 def set_joint_labels():
     """
-    names the joints through the labels for skinCluster weights.
+    names the bind joints through the labels for skinCluster weights.
     :return: <bool> True for success.
     """
-    joints = cmds.ls('*_bnd_jnt', type='joint')
-    for j_name in joints:
+    for j_name in get_bnd_joints():
         cmds.setAttr(j_name + ".type", 18)
         if j_name.startswith('l_'):
             side = 'l'
