@@ -303,9 +303,10 @@ def create_controller_shape(shape_name):
     """
     creates the shape from the file.
     :param shape_name:
-    :return: <str> curve name.
+    :return: <tuple> array of created curves.
     """
     curve_data = get_controller_data_file(shape_name)
+    curves = ()
     for c_name, c_data in curve_data.items():
         form = c_data['form']
         knots = c_data['knots']
@@ -314,10 +315,37 @@ def create_controller_shape(shape_name):
         order = c_data['order']
         cv_length = len(cvs)
         cv_points = ()
-        knot = cv_length + degree - 1
+        # knot = cv_length + degree - 1
         for cv_point in cvs:
             cv_points += cv_point[1:],
-    return cmds.curve(p=cv_points, k=knots[:-2], degree=degree)
+        curves += cmds.curve(p=cv_points, k=knots[:-2], degree=degree),
+    return curves
+
+
+def get_curve_shapes_in_array(curve_names):
+    """
+    get the curve shape names in the array given.
+    :param curve_names:
+    :return:
+    """
+    c_shapes = ()
+    for c_name in curve_names:
+        c_shapes += object_utils.get_shape_name(c_name)[0],
+    return c_shapes
+
+
+def parent_curve_shapes(curve_names):
+    """
+    parents the shapes of the curves to the last curve in the array.
+    :param curve_names: <tuple> array of objects to parent.
+    :return: <str> the name of the curve.
+    """
+    curve_name = curve_names[-1]
+    if len(curve_names) != 1:
+        curve_shapes = list(get_curve_shapes_in_array(curve_names))
+        cmds.parent(curve_shapes[:-1] + [curve_name], r=True, s=True)
+        cmds.delete(curve_names[:-1])
+    return curve_name
 
 
 def create_control(shape_name, name='', groups=('grp',)):
@@ -328,7 +356,8 @@ def create_control(shape_name, name='', groups=('grp',)):
     :param groups: <tuple> array of group suffixes to create.
     :return: <tuple> group names belonging to this controller name.
     """
-    curve_name = create_controller_shape(shape_name)
+    curve_names = create_controller_shape(shape_name)
+    curve_name = parent_curve_shapes(curve_names)
     if name:
         curve_name = cmds.rename(curve_name, name)
     else:
