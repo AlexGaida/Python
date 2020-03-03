@@ -11,6 +11,7 @@ from maya import cmds
 # import local modules
 import math
 import decimal
+import numpy
 
 # define global variables
 M_PI = 3.14159265358979323846
@@ -18,17 +19,29 @@ EXP = 2.718281
 
 
 def squared_difference(num_array=()):
+    """
+    calculate the squared difference (the mean) from the array of number values given.
+    :param num_array:
+    :return:
+    """
     return (sum(map(lambda x: x**2, num_array)) / len(num_array))**0.5
 
 
-
 def gaussian(in_value=0.0, magnitude=0.0, mean=0.0, variance=0.0):
+    """
+    calculate gaussian
+    :param in_value:
+    :param magnitude:
+    :param mean:
+    :param variance:
+    :return:
+    """
     if variance <= 0.0:
         variance = 0.001
     return magnitude * EXP ** (-1 * (in_value - mean**2) / (2.0 * variance))
 
 
-def flatten_list(list_data=[]):
+def flatten_list(list_data=()):
     """
     flatten the nested lists into one list.
     :param list_data: <list> the list of lists to flatten.
@@ -42,7 +55,7 @@ def flatten_list(list_data=[]):
             yield x
 
 
-def get_sum(value_data=[]):
+def get_sum(value_data=()):
     """
     gets the sum of all values inside a list object.
     :param value_data: <list> the values to get the

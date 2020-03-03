@@ -7,6 +7,7 @@ from functools import partial
 
 # import local modules
 import read_sides
+from maya_utils import file_utils
 from maya_utils import object_utils
 from maya_utils import attribute_utils
 from maya_utils import transform_utils
@@ -18,6 +19,7 @@ from maya import cmds
 # define private variables
 __ctrl_suffix__ = 'ctrl'
 __locator_suffix__ = 'loc'
+__control_folder_dir__ = file_utils.controller_data_dir()
 
 # define local variables
 re_brackets = re.compile(r'\[|]')
@@ -220,3 +222,117 @@ def zero_all_controllers():
         if c_attr.non_zero_attributes():
             c_attr.zero_attributes()
     return True
+
+
+def get_controller_path(shape_name):
+    """
+    returns the shape name path.
+    :param shape_name:
+    :return:
+    """
+    return file_utils.concatenate_path(__control_folder_dir__, shape_name)
+
+
+def save_controller_shape(controller_name):
+    """
+    saves the controller shape data to file.
+    :return: <str> controller file path name.
+    """
+    curve_data = curve_utils.get_nurb_data(controller_name)
+    controller_data_file_name = get_controller_path(controller_name)
+    json_cls = file_utils.JSONSerializer(file_name=controller_data_file_name)
+    json_cls.write(data=curve_data)
+    print("[ControllerShapeFile] :: {}".format(json_cls.file_name))
+    return controller_data_file_name
+
+
+def find_shape_in_dir(shape_name):
+    """
+    returns the shape name from the directory.
+    :param shape_name:
+    :return:
+    """
+    return filter(lambda x: shape_name in file_utils.split_file_name(x), find_controller_shapes())
+
+
+def is_shape_in_dir(shape_name):
+    """
+    finds if the file name is in the directory.
+    :param shape_name: <str> find this name in the shape directory.
+    :return: <bool> the shape name exists in directory.
+    """
+    return bool(find_shape_in_dir(shape_name))
+
+
+def get_controller_data_file(shape_name):
+    """
+    get the data from shape name given.
+    :param shape_name:
+    :return:
+    """
+    if not is_shape_in_dir(shape_name):
+        raise IOError("[NoControllerShapesFoundInDir] :: {}".format(shape_name))
+    shape_file = find_shape_in_dir(shape_name)[0]
+    controller_data_file_name = get_controller_path(shape_file)
+    json_cls = file_utils.JSONSerializer(file_name=controller_data_file_name)
+    return json_cls.read()
+
+
+def find_controller_shapes():
+    """
+    finds all the saves controller shapes.
+    :return: <tuple> array of files.
+    """
+    return file_utils.list_controller_files()
+
+
+def insert_groups(object_name="", names=()):
+    """
+    insert transform groups.
+    :param object_name: <str> insert groups here.
+    :param names: <tuple> array of names to use to create the groups with.
+    :return:
+    """
+    grps = ()
+    for name in names:
+        grps += object_utils.insert_transform(object_name, name),
+    return grps
+
+
+def create_controller_shape(shape_name):
+    """
+    creates the shape from the file.
+    :param shape_name:
+    :return: <str> curve name.
+    """
+    curve_data = get_controller_data_file(shape_name)
+    for c_name, c_data in curve_data.items():
+        form = c_data['form']
+        knots = c_data['knots']
+        cvs = c_data['cvs']
+        degree = c_data['degree']
+        order = c_data['order']
+        cv_length = len(cvs)
+        cv_points = ()
+        knot = cv_length + degree - 1
+        for cv_point in cvs:
+            cv_points += cv_point[1:],
+    return cmds.curve(p=cv_points, k=knots[:-2], degree=degree)
+
+
+def create_control(shape_name, name='', groups=('grp',)):
+    """
+    create a controller object with specified groups.
+    :param shape_name: <str> create this shape.
+    :param name: <str> the name of the controller to name.
+    :param groups: <tuple> array of group suffixes to create.
+    :return: <tuple> group names belonging to this controller name.
+    """
+    curve_name = create_controller_shape(shape_name)
+    if name:
+        curve_name = cmds.rename(curve_name, name)
+    else:
+        curve_name = cmds.rename(curve_name, shape_name)
+    group_names = map(lambda x: '{}_{}'.format(shape_name, x), groups)
+    insert_groups(curve_name, names=group_names)
+    return group_names

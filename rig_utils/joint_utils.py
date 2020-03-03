@@ -8,22 +8,27 @@ import re
 from maya import cmds
 
 # import local modules
-import object_utils
+from maya_utils import object_utils
+from maya_utils import transform_utils
 
 # define local variables
 JNT_SUFFIX = 'jnt'
 BND_JNT_SUFFIX = 'bnd_{}'.format(JNT_SUFFIX)
 
 
-def is_joint(arg):
+def joint_name(name="", idx=-1):
     """
-    checks if the incoming argument is of type joint.
-    :param arg: <str> check this argument.
-    :return: <bool> True for success. <bool> False for failure.
+    concatenate the strings to form a joint name.
+    :param name: <str> the base name string to use.
+    :param idx: <int> the number to concatenate into.
+    :return: <str> the joint name.
     """
-    if isinstance(arg, (str, unicode)):
-        return cmds.objectType(arg) == 'joint'
-    return False
+    if not name.endswith(JNT_SUFFIX):
+        return '{}_{}'.format(name, JNT_SUFFIX)
+    elif name and idx != -1:
+        return '{}_{}_{}'.format(name, idx, JNT_SUFFIX)
+    else:
+        return name
 
 
 def get_joints_from_selection():
@@ -61,7 +66,8 @@ def mirror_joints(joints=(), axis='YZ', behaviour=False, search_replace=('l_', '
     """
     if not joints:
         joints = get_joints_from_selection()
-    jnt_array = filter(is_joint, joints)
+    # get only the joint objects in our selection
+    jnt_array = filter(object_utils.is_joint, joints)
     mirror_array = ()
     for jnt in jnt_array:
         if axis == 'XY':
@@ -95,3 +101,20 @@ def set_joint_labels():
         if side:
             cmds.setAttr(j_name+'.otherType', j_name.replace(side, ''), type='string')
     return True
+
+
+def create_joint_at_transform(transform_name="", name=""):
+    """
+    creates joints at the same position as the transform object.
+    :param transform_name: <str> the transform name to get values from.
+    :param name: <str> the name to use when creating joints.
+    :return: <str> joint name.
+    """
+    if not name:
+        jnt_name = joint_name(transform_name)
+    else:
+        jnt_name = name
+    tfm = transform_utils.Transform(transform_name)
+    cmds.joint(name=jnt_name)
+    cmds.xform(jnt_name, m=tfm.inclusive_matrix_list(), ws=True)
+    return jnt_name

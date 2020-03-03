@@ -27,6 +27,7 @@ line = re.sub(r'''
 # import standard modules
 import re
 import types
+import collections
 
 # import maya modules
 from maya import cmds
@@ -47,13 +48,16 @@ node_types = {
     'blendWeighted': OpenMaya.MFn.kBlendWeighted,
     'transform': OpenMaya.MFn.kTransform,
     'follicle': OpenMaya.MFn.kFollicle
+    'follicle': OpenMaya.MFn.kFollicle,
+    'dag': OpenMaya.MFn.kDagNode,
+    'joint': OpenMaya.MFn.kJoint,
     }
 
 # define private variables
 __verbosity__ = 0
 
 
-def verbose(*args):
+def vprint(*args):
     """
     print only if verbosity is > 0.
     :param args: array items.
@@ -61,6 +65,20 @@ def verbose(*args):
     """
     if __verbosity__:
         print(args)
+
+
+def flatten(array):
+    """
+    flatten list generator.
+    :param array: <tuple>, <list> array of objects to flatten.
+    :return: <str> item.
+    """
+    for el in array:
+        if isinstance(el, collections.Iterable) and not isinstance(el, basestring):
+            for sub in flatten(el):
+                yield sub
+        else:
+            yield el
 
 
 def get_dag(object_name=""):
@@ -106,6 +124,19 @@ def get_shape_obj(object_name="", shape_type=""):
     return get_m_shape(get_m_obj(object_name), shape_type=shape_type, as_strings=False)
 
 
+def is_exists(object_name):
+    """
+    check if the object name exists, or OpenMaya.MObject is valid.
+    :param object_name: <str>, <OpenMaya.MObject> the object to check.
+    :return: <bool> True, yes it exists. <bool> False, no it does not exist.
+    """
+    try:
+        m_obj = get_m_obj(object_name)
+    except RuntimeError:
+        return False
+    return not m_obj.isNull()
+
+
 def is_shape_curve(object_name):
     """
     check if the object name has nurbs curve shape object.
@@ -131,6 +162,42 @@ def is_shape_mesh(object_name):
     :return: <bool> True for yes, <bool> False for no.
     """
     return bool(get_shape_name(object_name, shape_type="mesh"))
+
+
+def is_joint(object_name):
+    """
+    confirm if the object is a joint type.
+    :param object_name: <str>, <OpenMaya.MObject> the object to check.
+    :return: <bool> is of type joint.
+    """
+    return bool(has_fn(get_m_obj(object_name), 'joint'))
+
+
+def is_dag(object_name):
+    """
+    confirm if the object is of a dag type.
+    :param object_name: <str>, <OpenMaya.MObject> the object to check.
+    :return: <bool> is of type dag.
+    """
+    return bool(has_fn(get_m_obj(object_name), 'dag'))
+
+
+def is_transform(object_name):
+    """
+    confirm if the object is of a transform type.
+    :param object_name: <str>, <OpenMaya.MObject> the object to check.
+    :return: <bool> is of type transform.
+    """
+    return bool(has_fn(get_m_obj(object_name), 'transform'))
+
+
+def is_shape_camera(object_name):
+    """
+    confirm if the object has a camera shape type.
+    :param object_name: <str>, <OpenMaya.MObject> the object to check.
+    :return: <bool> is of type camera.
+    """
+    return bool(get_shape_name(object_name, shape_type="camera"))
 
 
 def is_shape_nurbs_surface(object_name):
@@ -287,13 +354,13 @@ def get_selected_node(single=True):
     return tuple(cmds.ls(sl=1))
 
 
-def connect_attr(driver_attribute="", blend_attribute=""):
+def connect_attr(src_attribute="", dst_attribute=""):
     """
     perform connection
     :return: <bool> True for success. <bool> False for failure.
     """
-    if not cmds.isConnected(driver_attribute, blend_attribute):
-        cmds.connectAttr(driver_attribute, blend_attribute)
+    if not cmds.isConnected(src_attribute, dst_attribute):
+        cmds.connectAttr(src_attribute, dst_attribute)
     return True
 
 
@@ -383,12 +450,14 @@ def compare_objects(object_1, object_2, fn=False, shape_type=False):
     return False
 
 
-def get_scene_objects(name='', as_strings=False, node_type=''):
+def get_scene_objects(name='', as_strings=False, node_type='', find_attr='', dag=False):
     """
     finds all objects in the current scene.
     :param as_strings: <bool> return a list of node strings instead of a list of OpenMaya.MObject(s).
     :param name: <str> get scene objects containing this name.
     :param node_type: <str> find this node type in the current scene.
+    :param find_attr: <str> find this attribute in the objects found in scene.
+    :param dag: <bool> if set to True, get only the transform items.
     :return: <list> of scene items. <bool> False for failure.
     """
     scene_it = OpenMaya.MItDependencyNodes()
@@ -400,24 +469,41 @@ def get_scene_objects(name='', as_strings=False, node_type=''):
                 o_name = get_m_object_name(cur_item)
             else:
                 o_name = cur_item
-            if node_type and node_type.lower() in cur_item.apiTypeStr().lower():
-                if name and name in o_name:
+            if dag and has_fn(cur_item, 'dag'):
+                if node_type and has_fn(cur_item, node_type):
+                    if name and name in o_name:
+                        items += o_name,
+                    else:
+                        items += o_name,
+                elif not node_type:
                     items += o_name,
-                else:
+            elif not dag:
+                if node_type and has_fn(cur_item, node_type):
+                    if name and name in o_name:
+                        items += o_name,
+                    else:
+                        items += o_name,
+                elif not node_type:
                     items += o_name,
-            else:
-                items += o_name,
         scene_it.next()
-    return tuple(items)
+
+    # filter all items that contains this attribute name
+    if find_attr:
+        items = filter(lambda x: has_attr(x, find_attr), items)
+
+    # flatten the resultant array
+    return tuple(flatten(items))
 
 
 def check_fn_shape(m_object=None, m_type=None):
     """
-    confirm the shape type for this object.
+    confirm the shape type for this object. Only checks the first child for shape.
     :param m_object: <OpenMaya.MObject>
     :param m_type: <OpenMaya.MFn.kType>
     :return: <OpenMaya.MObject> if True, <NoneType> False if not.
     """
+    # confirm the incoming parameter is an MObject
+    m_object = get_m_obj(m_object)
     fn_item = OpenMaya.MFnDagNode(m_object)
     c_count = fn_item.childCount()
     if c_count:
@@ -530,12 +616,28 @@ def has_fn(item_name, shape_type):
     :param shape_type: <str>, <OpenMaya.MFn.kType> the type id.
     :return: <bool> True for type is match. <bool> for no match.
     """
+    if isinstance(item_name, (str, unicode)):
+        item_name = get_m_obj(item_name)
     if isinstance(shape_type, str):
         if shape_type not in node_types:
             return False
         return item_name.hasFn(node_types[shape_type])
     if isinstance(shape_type, int):
         return item_name.hasFn(shape_type)
+
+
+def has_attr(item_obj, attr_name):
+    """
+    check if the current object has this attribute name.
+    :param item_obj: <object> item object to find the attribute in.
+    :param attr_name: <str> the attribute name to find in the item object.
+    :return: <bool> True attribute has been found. <bool> False, no attribute found.
+    """
+    if not item_obj:
+        return False
+    if isinstance(item_obj, (str, unicode)):
+        item_obj = get_m_obj(item_obj)
+    return Item(item_obj).has_plug(attr_name)
 
 
 def get_m_shape(m_object=None, shape_type="", as_strings=False):
@@ -621,6 +723,7 @@ def get_m_child(m_object=None, find_child=True, with_shape='', transform=False, 
                 ch_item = o_path.partialPathName()
             else:
                 ch_item = ch_node
+
             # return a child that matches a name
             if isinstance(find_child, (str, unicode)) and find_child in o_path.partialPathName():
                 # find the shape associated with the node object node.
@@ -658,6 +761,15 @@ def get_parent_name(object_name):
     return get_transform_relatives(object_name, find_parent=True, as_strings=True)
 
 
+def get_parent_obj(object_name):
+    """
+    finds the parent node.
+    :param object_name: <str> object to get the parent relative transform from.
+    :return: <str> parent object node.
+    """
+    return get_transform_relatives(object_name, find_parent=True, as_strings=True)
+
+
 def get_transform_relatives(object_name='', find_parent='', find_child=False, with_shape='', as_strings=False):
     """
     get parent/ child transforms relative to the object name provided.
@@ -680,6 +792,10 @@ def get_transform_relatives(object_name='', find_parent='', find_child=False, wi
     return_data = ()
     m_object = get_m_obj(object_name)
 
+    # transform relatives can only work on kDagNode type
+    if not has_fn(m_object, 'dag'):
+        return ()
+
     if m_object:
         if find_parent:
             return_data += tuple(get_m_parent(
@@ -694,7 +810,7 @@ def get_transform_relatives(object_name='', find_parent='', find_child=False, wi
 
 def get_connected_nodes(object_name="", find_node_type=OpenMaya.MFn.kAnimCurve,
                         as_strings=False, find_attr="", down_stream=True,
-                        up_stream=False, with_shape=None):
+                        up_stream=False, with_shape=None, search_name=""):
     """
     get connected nodes from node provided.
     :param object_name: <str> string object to use for searching frOpenMaya.
@@ -704,6 +820,7 @@ def get_connected_nodes(object_name="", find_node_type=OpenMaya.MFn.kAnimCurve,
     :param down_stream: <bool> find nodes down stream.
     :param with_shape: <str> shape name.
     :param up_stream: <bool> find nodes up stream.
+    :param search_name: <str> search for this name.
     """
     direction = None
     if up_stream:
@@ -904,7 +1021,7 @@ def get_mesh_points(object_name):
     mesh_fn, mesh_ob, mesh_dag = get_mesh_fn(object_name)
     mesh_it = OpenMaya.MItMeshVertex(mesh_ob)
     mesh_vertexes = []
-    verbose("[Number of Vertices] :: {}".format(mesh_fn.numVertices()))
+    vprint("[Number of Vertices] :: {}".format(mesh_fn.numVertices()))
     while not mesh_it.isDone():
         mesh_vertexes.append(mesh_it.position())
         mesh_it.next()
@@ -918,11 +1035,19 @@ def get_mesh_points_cmds(object_name):
     :return:
     """
     mesh_vertices = cmds.ls(object_name + '.vtx[*]', flatten=1)
-    verbose("[Number of Vertices] :: {}".format(len(mesh_vertices)))
+    vprint("[Number of Vertices] :: {}".format(len(mesh_vertices)))
     nums = []
     for i in mesh_vertices:
         nums.append(i)
     return nums
+
+
+def get_selected_objects_gen():
+    """
+    returns a generator object for selected items.
+    :return:
+    """
+    return iter(get_selected_node(single=False))
 
 
 def get_mesh_fn(target):
@@ -1143,12 +1268,19 @@ def get_plugs(o_node=None, source=True, ignore_nodes=(), ignore_attrs=(), attr_n
 
 
 class Item(OpenMaya.MObject):
+    NODE = None
+
     def __init__(self, *args):
+        args = get_m_obj(*args),
         super(Item, self).__init__(*args)
+        self.update_node_variable()
+
+    def update_node_variable(self):
+        self.NODE = OpenMaya.MFnDependencyNode(self)
 
     @property
     def node(self):
-        return OpenMaya.MFnDependencyNode(self)
+        return self.NODE
 
     def name(self):
         return self.node.name()
@@ -1156,14 +1288,147 @@ class Item(OpenMaya.MObject):
     def type(self):
         return self.apiTypeStr()
 
-    def plug(self, attribute_name=""):
-        return self.node.attribute(attribute_name)
+    def has_plug(self, attribute_name=""):
+        """
+        check if attribute exists for this node.
+        :param attribute_name: <str> the attribute string to compare and check.
+        :return: <bool> True for yes. <bool> False for no.
+        """
+        return filter(lambda x: attribute_name in x, self.get_plug_names(full_name=False))
 
     def source_plugs(self):
+        """
+        get all incoming connection plugs.
+        :return: <tuple> array of plug names.
+        """
         return get_plugs(self, source=True)
 
     def destination_plugs(self, ignore_nodes=()):
+        """
+        get all outgoing connection plugs.
+        :return: <tuple> array of plug names.
+        """
         return get_plugs(self, source=False, ignore_nodes=ignore_nodes)
+
+    @property
+    def attr_count(self):
+        """
+        count the number of available attributes for this node.
+        :return: <int> attribute count.
+        """
+        return self.node.attributeCount()
+
+    def get_plugs(self, name=''):
+        """
+        return an array of available plug objects by this item.
+        :return: <tuple> plug arrays.
+        """
+        plugs = ()
+        for a_i in xrange(self.attr_count):
+            a_obj = self.node.attribute(a_i)
+            a_plug = OpenMaya.MPlug(self, a_obj)
+            if name and name in a_plug.name():
+                plugs += a_plug,
+            else:
+                plugs += a_plug,
+        return plugs
+
+    def get_plug_obj(self, name=''):
+        """
+        return an attribute MObject by name.
+        :param name: <str> get the plug object by this name.
+        :return: <tuple> the plug object.
+        """
+        return self.get_plugs(name)
+
+    def get_plug_names(self, full_name=True):
+        """
+        return an array of available plug objects by this item.
+        :return: <tuple> plug arrays.
+        """
+        plugs = ()
+        for a_i in xrange(self.attr_count):
+            a_obj = self.node.attribute(a_i)
+            if full_name:
+                plugs += OpenMaya.MPlug(self, a_obj).name(),
+            else:
+                plugs += OpenMaya.MPlug(self, a_obj).name().rpartition('.')[-1],
+        return plugs
+
+    @staticmethod
+    def split_attr_names(array_items=()):
+        """
+        split the attribute names from their dot separators.
+        :return: <tuple> modified attribute array items.
+        """
+        return tuple([a.rpartition('.')[-1] for a in array_items])
+
+    def filter_plugs_by_name(self, search=""):
+        """
+        filters the plug names by name.
+        :param search: <str> the string name to filter the array with.
+        :return: <tuple> array of filtered items.
+        """
+        return filter(lambda x: search in x, self.get_plug_names(full_name=False))
+
+    def filter_plugs_by_regex(self, search="", ignore_case=False, dot_all=False, verbose=False):
+        """
+        filters the plugs by regex.
+        :return: <tuple> filtered objects.
+        """
+        return self.filter_array_by_regex(self.get_plug_names(
+            full_name=False), search=search, ignore_case=ignore_case, dot_all=dot_all, verbose=verbose)
+
+    def filter_source_plugs_by_regex(self, search="", ignore_case=False, dot_all=False, verbose=False):
+        """
+        filters the source plugs by regex.
+        :return: <tuple> filtered objects.
+        """
+        return self.filter_array_by_regex(
+            self.source_plugs(), search=search, ignore_case=ignore_case, dot_all=dot_all, verbose=verbose)
+
+    def filter_source_plugs_by_name(self, search=""):
+        """
+        filters the incoming plugs by name.
+        :return: <tuple> array of filtered plug names.
+        """
+        return filter(lambda x: search in x, self.source_plugs())
+
+    def filter_destination_plugs_by_regex(self, search="", ignore_case=False, dot_all=False, verbose=False):
+        """
+        filters the outgoing plugs by regex.
+        :return: <tuple> filtered objects.
+        """
+        return self.filter_array_by_regex(
+            self.destination_plugs(), search=search, ignore_case=ignore_case, dot_all=dot_all, verbose=verbose)
+
+    def filter_source_plugs_by_name(self, search=""):
+        """
+        filters the outgoing plugs by name.
+        :return: <tuple> array of filtered plug names.
+        """
+        return filter(lambda x: search in x, self.destination_plugs())
+
+    @staticmethod
+    def filter_array_by_regex(array_objects=(), search="", ignore_case=False, dot_all=False, verbose=False):
+        """
+        filters the array of names by regex.
+        :param array_objects: <tuple> array of objects to filter from.
+        :param search: <str> the string name to filter the array with.
+        :param ignore_case: <bool> adds re.IGNORECASE flag to the re.compile
+        :param dot_all: <bool> adds re.IGNORECASE flag to the re.compile
+        :param verbose: <bool> adds re.VERBOSE flag to the re.compile
+        :return: <tuple> array of filtered items.
+        """
+        if ignore_case:
+            re_search = re.compile(search, re.I)
+        elif dot_all:
+            re_search = re.compile(search, re.S)
+        elif verbose:
+            re_search = re.compile(search, re.X)
+        else:
+            re_search = re.compile(search)
+        return filter(lambda x: re_search.search(x), array_objects)
 
     def compare(self, m_obj=None):
         """

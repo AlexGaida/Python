@@ -97,12 +97,14 @@ def closest_point_curve_node_name(object_name):
     return '{}_{}_{}'.format(object_name, length_of_nodes, CLOSEST_POINT_ON_CURVE_SUFFIX)
 
 
-def create_follicle(name=""):
+def create_follicle_node(name=""):
     """
-    creates the follicle object and snap it against a surface object.
+    creates the follicle node. Checks and concatenates the "Shape" string name.
     :param name: <str> the name of the follicle node.
     :return: <str> follicle object name.
     """
+    if 'Shape' not in name:
+        name += 'Shape'
     return cmds.createNode('follicle', name=follicle_node_name(name))
 
 
@@ -118,16 +120,51 @@ def attr_connect(attr_src, attr_trg):
     return True
 
 
-def attr_name(object_name, attr):
+def attr_add_float(node_name, attribute_name):
+    """
+    add the new attribute to this node.
+    :param node_name: <str> valid node name.
+    :param attribute_name: <str> valid attribute name.
+    :return: <str> new attribute name.
+    """
+    cmds.addAttr(node_name, at='float', ln=attribute_name)
+    cmds.setAttr(attr_name(node_name, attribute_name), k=1)
+    return attr_name(node_name, attribute_name)
+
+
+def attr_get_value(node_name, attribute_name):
+    """
+    add the new attribute to this node.
+    :param node_name: <str> valid node name
+    :param attribute_name: <str> valid attribute name.
+    :return: <str> new attribute name.
+    """
+    return cmds.getAttr(attr_name(node_name, attribute_name))
+
+
+def attr_name(object_name, attribute_name):
     """
     concatenate strings to make an attribute name.
     checks to see if the attribute is valid.
     :return: <str> attribute name.
     """
-    attr_str = '{}.{}'.format(object_name, attr)
+    attr_str = '{}.{}'.format(object_name, attribute_name)
     if not cmds.objExists(attr_str):
-        raise ValueError('[AttrName :: attribute name does not exit.]')
+        raise ValueError('[AttrNameError] :: attribute name does not exit: {}]'.format(attr_str))
     return attr_str
+
+
+def attr_set(object_name, value, attribute_name=""):
+    """
+    set the values to this attribute name.
+    :param object_name: <str> the object node to set attributes to.
+    :param attribute_name: <str> the attribute name to set value to.
+    :param value: <int>, <float>, <str> the value to set to the attribute name.
+    :return: <bool> True for success.
+    """
+    if '.' in object_name:
+        return cmds.setAttr(object_name, value)
+    return cmds.setAttr(attr_name(object_name, attribute_name), value)
 
 
 def create_node(node_type, node_name=""):
@@ -142,19 +179,11 @@ def create_node(node_type, node_name=""):
     return node_name
 
 
-def create_follicle_node(name=""):
-    """
-    creates a follicle node.
-    :param name: <str> use this base name to create the follicle with.
-    :return: <str> follicle node.
-    """
-    return create_node('follicle', follicle_node_name(name) + 'Shape')
-
-
-def attach_follicle(mesh_name, follicle_name=""):
+def attach_follicle(mesh_name, follicle_object="", follicle_name=""):
     """
     attaches a follicle to the specified mesh object.
-    :param follicle_name: <str> the follicle object name.
+    :param follicle_object: <str> the follicle object to use.
+    :param follicle_name: <str> the follicle name to use when creating new follicle nodes.
     :param mesh_name: <str> the shape object name. Could be a nurbsSurface to a mesh object.
     :return: <bool> True for success. <bool> False for failure.
     """
@@ -164,11 +193,19 @@ def attach_follicle(mesh_name, follicle_name=""):
     follicles = ()
 
     for shape_m_obj, shape_name in zip(shape_m_obj_array, shape_name_array):
-        if not follicle_name:
-            follicle_shape_name = create_follicle_node(mesh_name)
+        if follicle_name:
+            follicle_shape_name = create_follicle_node(name=follicle_name)
             follicle_name = object_utils.get_parent_name(follicle_shape_name)[0]
+        elif not follicle_name and follicle_object:
+            if object_utils.has_fn(follicle_object, 'transform'):
+                follicle_shape_name = object_utils.get_shape_name(follicle_object)[0]
+                follicle_name = follicle_object
+            elif object_utils.has_fn(follicle_object, 'follicle'):
+                follicle_name = object_utils.get_parent_name(follicle_object)[0]
+                follicle_shape_name = follicle_object
         else:
-            follicle_shape_name = object_utils.get_shape_name(follicle_name)[0]
+            follicle_shape_name = create_follicle_node(name=mesh_name)
+            follicle_name = object_utils.get_parent_name(follicle_shape_name)[0]
 
         follicles += follicle_name,
 
@@ -182,7 +219,7 @@ def attach_follicle(mesh_name, follicle_name=""):
 
         elif object_utils.check_shape_type_name(shape_m_obj, 'nurbsCurve'):
             attr_connect(attr_name(shape_name, 'worldMatrix[0]'), attr_name(follicle_shape_name, 'inputWorldMatrix'))
-            attr_connect(attr_name(shape_name, 'outCurve'), attr_name(follicle_shape_name, 'inputCurve'))
+            attr_connect(attr_name(shape_name, 'worldSpace[0]'), attr_name(follicle_shape_name, 'inputCurve'))
 
         attr_connect(attr_name(follicle_shape_name, 'outRotate'), attr_name(follicle_name, 'rotate'))
         attr_connect(attr_name(follicle_shape_name, 'outTranslate'), attr_name(follicle_name, 'translate'))
@@ -209,16 +246,21 @@ def set_closest_uv_follicles(driver_objs, mesh_name, follicles_array=()):
     return True
 
 
-def get_attached_follicles(mesh_name=""):
+def get_attached_follicles(mesh_name="", search_name=""):
     """
     gets the attached follicles from the mesh name provided.
     :param mesh_name: <str> mesh name to check for connected follicles.
+    :param search_name: <str> search for this name in the array of follicles found.
     :return: <tuple> array of follicles found.
     """
     shape_obj_array = object_utils.get_shape_obj(mesh_name)
     follicles = ()
     for shape_obj in shape_obj_array:
-        follicles += object_utils.get_connected_nodes(shape_obj, find_node_type='follicle')
+        nodes = object_utils.get_connected_nodes(shape_obj, find_node_type='follicle')
+        if not search_name:
+            follicles += nodes
+        else:
+            follicles += filter(lambda x: search_name in x, nodes)
     return follicles
 
 
@@ -426,3 +468,87 @@ def unpack_vector(m_vector=None):
         return m_vector.x, m_vector.y, m_vector.z,
     else:
         return None, None, None,
+
+
+def create_follicles_from_objects(driver_objects_array=(), mesh_name="", attach_offsets=True):
+    """
+    creates the follicle objects from specified objects.
+    :param driver_objects_array: <tuple>, <list> array of objects to get closest point from.
+    :param mesh_name: <str> the mesh name to connect the follicle nodes to.
+    :param attach_offsets: <bool> if set to true, attaches the offset attributes to the follicle nodes.
+    :return: <tuple> created follicles.
+    """
+    follicles_array = ()
+    for obj_name in driver_objects_array:
+        follicles = attach_follicle(mesh_name, follicle_object=create_follicle_node(obj_name))
+        for foll_name in follicles:
+            # there is only ever one follicle shape object.
+            follicle_shape_name = object_utils.get_shape_name(foll_name)[0]
+            u, v = get_closest_uv(obj_name, mesh_name)
+            cmds.setAttr(attr_name(follicle_shape_name, 'parameterU'), u)
+            cmds.setAttr(attr_name(follicle_shape_name, 'parameterV'), v)
+            follicles_array += foll_name,
+    if attach_offsets:
+        attach_offset_nodes_to_follicles(follicles_array)
+    return follicles_array
+
+
+def attach_offset_nodes_to_follicles(follicles_array=()):
+    """
+    attaching the plusMinusAverage offset nodes to follicle nodes.
+    :param follicles_array: <tuple> array of follicle nodes.
+    :return: <tuple> array of plusMinusAverage nodes.
+    """
+    nodes_array = ()
+    for idx, follicle_node in enumerate(follicles_array):
+        if object_utils.has_fn(follicle_node, 'transform'):
+            follicle_shape_name = object_utils.get_shape_name(follicle_node)[0]
+        else:
+            follicle_shape_name = follicle_node
+            follicle_node = object_utils.get_parent_name(follicle_node)[0]
+
+        add_node_name_u = '{}_U_{}_add'.format(follicle_node, idx)
+        add_node_u = create_node('addDoubleLinear', add_node_name_u)
+        add_input_1_u = attr_name(add_node_u, 'input1')
+        add_input_2_u = attr_name(add_node_u, 'input2')
+
+        add_node_name_v = '{}_V_{}_add'.format(follicle_node, idx)
+        add_node_v = create_node('addDoubleLinear', add_node_name_v)
+        add_input_1_v = attr_name(add_node_v, 'input1')
+        add_input_2_v = attr_name(add_node_v, 'input2')
+
+        # offset node output attributes
+        add_output_u = attr_name(add_node_u, 'output')
+        add_output_v = attr_name(add_node_v, 'output')
+
+        # add attributes to the follicle node
+        offset_u_attr = attr_add_float(follicle_node, 'offset_u')
+        offset_v_attr = attr_add_float(follicle_node, 'offset_v')
+
+        offset_default_u_attr = attr_add_float(follicle_node, 'default_u')
+        offset_default_v_attr = attr_add_float(follicle_node, 'default_v')
+
+        # get default values
+        value_u = attr_get_value(follicle_shape_name, 'parameterU')
+        value_v = attr_get_value(follicle_shape_name, 'parameterV')
+
+        attr_set(offset_default_u_attr, value_u)
+        attr_set(offset_default_v_attr, value_v)
+
+        # now connect the attributes
+        attr_connect(offset_default_u_attr, add_input_1_u)
+        attr_connect(offset_default_v_attr, add_input_1_v)
+
+        # connect the attributes
+        param_u_attr = attr_name(follicle_shape_name, 'parameterU')
+        param_v_attr = attr_name(follicle_shape_name, 'parameterV')
+
+        attr_connect(offset_u_attr, add_input_2_u)
+        attr_connect(offset_v_attr, add_input_2_v)
+
+        # finally connect the output of the add nodes to the follicle shape node
+        attr_connect(add_output_u, param_u_attr)
+        attr_connect(add_output_v, param_v_attr)
+
+        nodes_array += follicle_node, add_node_u, add_node_v,
+    return nodes_array

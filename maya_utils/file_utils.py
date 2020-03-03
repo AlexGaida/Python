@@ -2,16 +2,44 @@
 Creating and reading file objects, as well as manipulating the maya files.
 """
 # import standard modules
-import sys
+import posixpath
+import re
 import os
 import xml.etree.cElementTree as ET
 import json
 
-# import local modules
-from deformers import deform_utils
-
 # import maya modules
 from maya import cmds
+
+# define local variables
+# re_slash = re.compile(r'[^\\/]+|[\\/]')
+re_slash = re.compile('(\\\\|/)')
+
+
+def has_ext(file_name, ext_name=""):
+    """
+    check if the file name string has the extension name.
+    :param file_name: <str> file name to check.
+    :param ext_name: <str> check this extension string name.
+    :return: <bool> True for yes. <bool> False for no.
+    """
+    name, ext = os.path.splitext(file_name)
+    if ext_name and ext_name != ext:
+        return False
+    elif not ext:
+        return False
+    return True
+
+
+def add_extension(file_name, ext_name=""):
+    """
+    add this extension name to the file name variable.
+    :param file_name: <str> the file name to add the extension to.
+    :param ext_name: <str> the extension string name to add to the file name.
+    :return: <str> file name with extension string.
+    """
+    name, ext = os.path.splitext(file_name)
+    return name + '.{}'.format(ext_name.strip('.'))
 
 
 def is_file(file_name):
@@ -41,15 +69,117 @@ def open_current_file():
     return True
 
 
-class JSONSerializer(json):
+def split_file_ext(file_name):
+    """
+    splits the extension from the file name.
+    :param file_name:
+    :return:
+    """
+    return os.path.splitext(file_name)[1]
+
+
+def split_file_name(file_name):
+    """
+    splits the name from the file name.
+    :param file_name:
+    :return:
+    """
+    return os.path.splitext(file_name)[0]
+
+
+def get_file_splits(file_name):
+    """
+    split the current file string.
+    :return: <tuple> array of file directory file names.
+    """
+    return tuple(filter(lambda x: x not in ('', '/', '\\'), re_slash.split(file_name)))
+
+
+def get_this_directory():
+    """
+    return this directory path.
+    :return:
+    """
+    return '/'.join(get_file_splits(__file__)[:-1])
+
+
+def _parent_level(level):
+    """
+    inverts the integer.
+    :param level:
+    :return:
+    """
+    return -1 * xrange(level+1)[-1]
+
+
+def get_this_directory_parent(level=0):
+    """
+    get the directory parent path from level.
+    :return: <str> get the file path string.
+    """
+    return '/'.join(get_file_splits(__file__)[:_parent_level(level)])
+
+
+def directory_name(file_name):
+    """
+    return the directory name from the file name.
+    :param file_name:
+    :return:
+    """
+    return os.path.dirname(file_name)
+
+
+def controller_data_dir():
+    """
+    gets the relative path for the controller data folder directory.
+    :return: <str> directory path name.
+    """
+    dir_name = get_this_directory_parent(level=2)
+    return posixpath.join(dir_name, 'rig_utils', 'controller_data')
+
+
+def list_files(file_name):
+    """
+    lists files in a file path given.
+    :param file_name:
+    :return: <tuple> array of available files.
+    """
+    if is_file(file_name):
+        return tuple(os.listdir(directory_name(file_name)))
+    return tuple(os.listdir(file_name))
+
+
+def list_controller_files():
+    """
+    lists all the files in the controller directory
+    :return: <tuple> array of available controller files.
+    """
+    return list_files(controller_data_dir())
+
+
+def concatenate_path(*args):
+    """
+    concatenate the strings into one path.
+    :param args:
+    :return: <str> directory file path name.
+    """
+    return posixpath.join(*args)
+
+
+class JSONSerializer:
+    """
+    json serializer data class in case we want to manipulate json data.
+    """
     READ_DATA = {}
     FILE_NAME = ""
     INCOMING_DATA = {}
+    EXT_NAME = "json"
 
     def __init__(self, file_name="", data={}):
-        super(JSONSerializer, self).__init__()
         self._get_data(data)
         self._get_file_name(file_name)
+        if not self.is_directory_valid:
+            raise IOError('Invalid directory: {}'.format(self.FILE_NAME))
 
     def _get_file_name(self, file_name):
         """
@@ -60,6 +190,8 @@ class JSONSerializer(json):
         if not file_name:
             return self.FILE_NAME
         else:
+            if not has_ext(file_name, 'json'):
+                file_name = add_extension(file_name, self.EXT_NAME)
             self._update_file_name_variable(file_name)
             return file_name
 
@@ -100,7 +232,7 @@ class JSONSerializer(json):
         :return: <bool> True for success. <bool> False for failure.
         """
         with open(self._get_file_name(file_name), "w") as write_file:
-            self.dump(self._get_data(data), write_file, indent=4, sort_keys=True)
+            json.dump(self._get_data(data), write_file, indent=4, sort_keys=True)
 
     def read(self, file_name=""):
         """
@@ -109,7 +241,7 @@ class JSONSerializer(json):
         :return: <bool> True for success. <bool> False for failure.
         """
         with open(self._get_file_name(file_name), "r") as read_file:
-            return self.loads(read_file)
+            return json.load(read_file)
 
     @property
     def read_data(self):
@@ -120,16 +252,22 @@ class JSONSerializer(json):
         return self.FILE_NAME
 
     @property
+    def is_directory_valid(self):
+        if has_ext(self.FILE_NAME):
+            return is_dir(directory_name(self.FILE_NAME))
+        return is_dir(self.FILE_NAME)
+
+    @property
     def is_file_valid(self):
         return is_file(self.FILE_NAME)
 
     @property
     def is_data_valid(self):
-        return isinstance(self.DATA, dict)
+        return isinstance(self.READ_DATA, dict)
 
     @property
     def has_data(self):
-        return bool(self.DATA)
+        return bool(self.READ_DATA)
 
 
 class XMLSerializer:
@@ -198,3 +336,31 @@ class XMLSerializer:
         """
         if key_name not in self.READ_DATA:
             self.READ_DATA[key_name] = value
+
+
+def scanf(file_name, token):
+    """
+    returns scanf functionality using regex.
+    :return: <regex>
+    """
+    if token == '%c':
+        re_compiled = re.compile('.', re.DOTALL)
+    elif token == '%5c':
+        re_compiled = re.compile('.{5}')
+    elif token == '%d':
+        re_compiled = re.compile('[-+]?\d+')
+    elif token in ('%e', '%E', '%f', '%g'):
+        re_compiled = re.compile('[-+]?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?')
+    elif token == '%i':
+        re_compiled = re.compile('[-+]?(0[xX][\dA-Fa-f]+|0[0-7]*|\d+)')
+    elif token == '%o':
+        re_compiled = re.compile('[-+]?[0-7]+')
+    elif token == '%s':
+        re_compiled = re.compile('\S+')
+    elif token == '%u':
+        re_compiled = re.compile('\d+')
+    elif token in ('%x', '%X'):
+        re_compiled = re.compile('[-+]?(0[xX])?[\dA-Fa-f]+')
+    else:
+        raise ValueError('[ScanF] :: No token found.')
+    return re_compiled.findall(file_name)

@@ -12,6 +12,65 @@ from maya import cmds
 import object_utils
 
 
+def get_plug_value(in_plug):
+    """
+    Gets the value of the given plug.
+    """
+    pAttribute = in_plug.attribute()
+    apiType = pAttribute.apiType()
+
+    # Float Groups - rotate, translate, scale; Compounds
+    if apiType in [OpenMaya.MFn.kAttribute3Double, OpenMaya.MFn.kAttribute3Float, OpenMaya.MFn.kCompoundAttribute]:
+        result = ()
+
+        if in_plug.isCompound():
+            for c in xrange(in_plug.numChildren()):
+                result += get_plug_value(in_plug.child(c)),
+            return result
+
+    # Distance
+    elif apiType in [OpenMaya.MFn.kDoubleLinearAttribute, OpenMaya.MFn.kFloatLinearAttribute]:
+        return in_plug.asMDistance().asCentimeters()
+
+    # Angle
+    elif apiType in [OpenMaya.MFn.kDoubleAngleAttribute, OpenMaya.MFn.kFloatAngleAttribute]:
+        return in_plug.asMAngle().asDegrees()
+
+    # TYPED
+    elif apiType == OpenMaya.MFn.kTypedAttribute:
+        pType = OpenMaya.MFnTypedAttribute(pAttribute).attrType()
+
+        # Matrix
+        if pType == OpenMaya.MFnData.kMatrix:
+            return OpenMaya.MFnMatrixData(in_plug.asMObject()).matrix()
+
+        # String
+        elif pType == OpenMaya.MFnData.kString:
+            return in_plug.asString()
+
+    # MATRIX
+    elif apiType == OpenMaya.MFn.kMatrixAttribute:
+        return OpenMaya.MFnMatrixData(in_plug.asMObject()).matrix()
+
+    # NUMBERS
+    elif apiType == OpenMaya.MFn.kNumericAttribute:
+        pType = OpenMaya.MFnNumericAttribute(pAttribute).unitType()
+
+        if pType == OpenMaya.MFnNumericData.kBoolean:
+            return in_plug.asBool()
+
+        elif pType in [OpenMaya.MFnNumericData.kShort, OpenMaya.MFnNumericData.kInt, OpenMaya.MFnNumericData.kLong,
+                       OpenMaya.MFnNumericData.kByte]:
+            return in_plug.asInt()
+
+        elif pType in [OpenMaya.MFnNumericData.kFloat, OpenMaya.MFnNumericData.kDouble, OpenMaya.MFnNumericData.kAddr]:
+            return in_plug.asDouble()
+
+    # Enum
+    elif apiType == OpenMaya.MFn.kEnumAttribute:
+        return in_plug.asInt()
+
+
 class Transform(OpenMaya.MFnTransform):
     MAYA_STR_OBJECT = None
     M_SCRIPT_UTIL = OpenMaya.MScriptUtil()
@@ -45,6 +104,22 @@ class Transform(OpenMaya.MFnTransform):
         self.MAYA_M_DAG_PATH = object_utils.get_m_dag_path(maya_node)
         self.OBJECT_NODE_TYPE = self.MAYA_MFN_OBJECT.typeName()
         super(Transform, self).__init__(self.MAYA_M_OBJECT)
+
+    @property
+    def m_object(self):
+        return self.MAYA_M_OBJECT
+
+    @property
+    def mfn_object(self):
+        return self.MAYA_MFN_OBJECT
+
+    @property
+    def mdag_object(self):
+        return self.MAYA_M_DAG_PATH
+
+    @property
+    def node_type(self):
+        return self.OBJECT_NODE_TYPE
 
     def scale_values(self, as_m_vector=False):
         """
@@ -83,6 +158,12 @@ class Transform(OpenMaya.MFnTransform):
 
     def get_world_translation_list(self):
         return [self.get_translation(world=True)[t] for t in range(3)]
+
+    def get_world_matrix(self):
+        return self.matrix_values(world=True)
+
+    def get_local_matrix(self):
+        return self.matrix_values(world=False)
 
     def get_rotation_order_name(self, idx=0):
         return self.ROTATION_ORDER_NAMES[idx]
@@ -170,21 +251,66 @@ class Transform(OpenMaya.MFnTransform):
         grabs the world matrix from plug.
         :return: <OpenMaya.MMatrix> world matrix object.
         """
-        return self.matrix_data_fn(
-            self.m_attr_index(
-                self.m_attr_plug(
-                    self.world_matrix_attr()), 0)).matrix()
+        self.world_matrix_attr_plug()
 
-    def world_matrix_attr(self):
-        return self.MAYA_MFN_OBJECT.attribute('worldMatrix')
+    def world_matrix_attr_index(self):
+        """
+        returns an worldMatrix attribute MObject
+        :return: <OpenMaya.MObject> attribute object. <bool> False for nothing found.
+        """
+        for a_idx in xrange(self.attr_count()):
+            attr_obj = self.MAYA_MFN_OBJECT.attribute(a_idx)
+            if not attr_obj.isNull():
+                a_plug = OpenMaya.MPlug(self.MAYA_M_OBJECT, attr_obj)
+                if 'worldMatrix' in a_plug.name():
+                    return a_idx
+        return False
+
+    def get_plug(self, attr_name=""):
+        """
+        get this plug
+        :return:
+        """
+        return self.MAYA_MFN_OBJECT.findPlug(attr_name)
+
+    def world_matrix_attr_plug(self):
+        """
+        returns an worldMatrix attribute MObject
+        :return: <OpenMaya.MObject> attribute object. <bool> False for nothing found.
+        """
+        for a_idx in xrange(self.attr_count()):
+            attr_obj = self.MAYA_MFN_OBJECT.attribute(a_idx)
+            if not attr_obj.isNull():
+                a_plug = OpenMaya.MPlug(self.MAYA_M_OBJECT, attr_obj)
+                if 'worldMatrix' in a_plug.name():
+                    return a_plug
+        return False
+
+    def world_matrix_attr_obj(self):
+        """
+        returns an worldMatrix attribute MObject
+        :return: <OpenMaya.MObject> attribute object. <bool> False for nothing found.
+        """
+        for a_idx in xrange(self.attr_count()):
+            attr_obj = self.MAYA_MFN_OBJECT.attribute(a_idx)
+            if not attr_obj.isNull():
+                a_plug = OpenMaya.MPlug(self.MAYA_M_OBJECT, attr_obj)
+                if 'worldMatrix' in a_plug.name():
+                    return attr_obj
+        return False
+
+    def attr_count(self):
+        return self.MAYA_MFN_OBJECT.attributeCount()
 
     def m_attr_plug(self, attr):
         return OpenMaya.MPlug(self.MAYA_M_OBJECT, attr)
 
-    def m_attr_index(self, m_plug, idx):
+    @staticmethod
+    def m_attr_index(m_plug, idx):
         return m_plug.elementByLogicalIndex(idx)
 
-    def matrix_data_fn(self, m_plug):
+    @staticmethod
+    def matrix_data_fn(m_plug):
         return OpenMaya.MFnMatrixData(m_plug.asMObject())
 
     def get_transformatrion_matrix(self, matrix=None):

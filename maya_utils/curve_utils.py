@@ -69,7 +69,7 @@ def get_nurb_obj_cv_data(curve_obj=None):
     return return_data
 
 
-def get_nurb_obj_knot_data(curve_obj=None):
+def get_nurb_obj_knot_data_old(curve_obj=None):
     """
     get the knot information from nurbsCurves.
     Maya returns 2 knots less than it should.
@@ -96,6 +96,19 @@ def get_nurb_obj_knot_data(curve_obj=None):
     else:
         knots += curve_fn.knot(number_of_knots - 1) + 1,
     return knots
+
+
+def get_nurb_obj_knot_data(curve_obj=None):
+    """
+    get the knot information from nurbsCurves.
+    Maya returns 2 knots less than it should.
+    :param curve_obj: <OpenMaya.MObject> nurbsCurve object.
+    :return: <tuple> array of curve knot data.
+    """
+    curve_fn = object_utils.get_fn(curve_obj)
+    knotArray = OpenMaya.MDoubleArray()
+    curve_fn.getKnotsInU(knotArray)
+    return list(knotArray)
 
 
 def get_nurb_obj_curve_degree(curve_obj=None):
@@ -137,6 +150,23 @@ def get_nurb_obj_curve_form(curve_obj=None):
         return {form_int: 'kPeriodic'}
 
 
+def get_nurb_obj_edit_points(curve_obj=None):
+    """
+
+    :param curve_obj:
+    :return:
+    """
+    curve_fn = object_utils.get_fn(curve_obj)
+    knots = get_nurb_obj_knot_data(curve_obj)
+
+    edit_pts_data = ()
+    edit_pnt = OpenMaya.MPoint()
+    for u in knots:
+        curve_fn.getPointAtParam(u, edit_pnt, OpenMaya.MFn.kObject)
+        edit_pts_data += (edit_pnt.x, edit_pnt.y, edit_pnt.z),
+    return edit_pts_data
+
+
 def create_curve_dict(nurb_objects=()):
     """
     create the nurbsCurve data dictionary.
@@ -150,6 +180,7 @@ def create_curve_dict(nurb_objects=()):
             nurb_data[crv_name] = {'cvs': (),
                                    'knots': (),
 
+                                   'editPts': (),
                                    'degree': (),
                                    'order': (),
                                    'form': ()}
@@ -169,6 +200,7 @@ def get_nurb_data(curve_name=""):
         curve_data[crv_name]['cvs'] = get_nurb_obj_cv_data(nurb_obj)
         curve_data[crv_name]['knots'] = get_nurb_obj_knot_data(nurb_obj)
 
+        curve_data[crv_name]['editPts'] = get_nurb_obj_edit_points(nurb_obj)
         curve_data[crv_name]['degree'] = get_nurb_obj_curve_degree(nurb_obj)
         curve_data[crv_name]['order'] = get_nurb_obj_curve_order(nurb_obj)
         curve_data[crv_name]['form'] = get_nurb_obj_curve_form(nurb_obj)

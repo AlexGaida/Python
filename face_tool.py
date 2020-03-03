@@ -41,15 +41,12 @@ _cls_mirror = read_sides.MirrorSides()
 __default_attribute_values = attribute_utils.Attributes.DEFAULT_ATTR_VALUES
 transform_type = object_utils.node_types['transform']
 locator_type = object_utils.node_types['locator']
+curve_type = object_utils.node_types['nurbsCurve']
 
 # define global variables
 SIDES = read_sides.Sides()
 MIRROR_SIDES = read_sides.MirrorSides()
 AXES = read_sides.Axes()
-
-
-if not cmds.objExists('on_face_control_grp'):
-    cmds.warning("[ObjectDoesNotExist] :: on_face_control_grp")
 
 
 def flatten_list(list_obj):
@@ -217,15 +214,22 @@ def connect_driver_to_active_target_blendshape(mesh_name=""):
     return True
 
 
-def get_selected_objects_gen():
-    return iter(object_utils.get_selected_node(single=False))
-
-
 def evaluate_blend_weighted_node(node_name, target_attr):
+    """
+    force the evaluation of the blend weighted node.
+    :param node_name:
+    :param target_attr:
+    :return:
+    """
     cmds.dgeval(animation_utils.get_connected_blend_weighted_node(node_name, target_attr))
 
 
 def math_get_sign(number=0.0):
+    """
+    returns the sign for number direction.
+    :param number:
+    :return:
+    """
     if number < 0:
         return -1
     else:
@@ -363,7 +367,7 @@ def find_non_zero_interface_controllers():
     :return: <tuple> list of all available controllers
     """
     ctrl_names = []
-    controllers = find_face_controls(interface=True)
+    controllers = find_interface_controllers()
     for ctrl_name in controllers:
         attrs = attribute_utils.Attributes(ctrl_name, keyable=True)
         if attrs.non_zero_attributes():
@@ -385,6 +389,12 @@ def get_list_index(ls_object=[], find_str=""):
 
 
 def get_blend_weighted_items(driven_object, driven_attr):
+    """
+    get blend weighteed objects.
+    :param driven_object:
+    :param driven_attr:
+    :return:
+    """
     return map(lambda x: round(x, 4), animation_utils.get_blend_weighted_values(
         node_name=driven_object, target_attr=driven_attr)[0])
 
@@ -403,7 +413,7 @@ def get_weighted_values_length(driven_object, driven_attr):
         # return len(tuple(filter(lambda x: round(x, 4) != 0.0, weighted_values)))
         return len(filter(None, map(rounder, weighted_values[0])))
     else:
-        0
+        return 0
 
 
 def get_original_weight_value(driven_object, driven_attr, interface_node, face_attr):
@@ -679,6 +689,24 @@ def flatten_keys(object_node=None):
     anim_data = get_anim_data(object_node=object_node)
     animation_utils.set_anim_data(anim_data=anim_data, rounded=True)
     return True
+
+
+def find_interface_controllers():
+    """
+    find the interface controller.
+    :return:
+    """
+    controller_objects = object_utils.get_scene_objects(find_attr='face_', dag=True)
+    controller_array = ()
+    for control_obj in controller_objects:
+        controller_array += object_utils.get_connected_nodes(
+            control_obj,
+            find_node_type=transform_type,
+            with_shape=curve_type,
+            as_strings=True,
+            up_stream=True,
+            down_stream=False)
+    return controller_array
 
 
 def find_face_system_controller(object_node=""):
@@ -1289,3 +1317,10 @@ def set_keys_on_face_controller(selected_node='', interface_ctrl="", driven_node
             verbose('\n')
             __set_key(interface_node, driven_node, driven_attr, face_attr, driven_val, face_value)
     return True
+
+
+def setup_follicle_eyelids(driver_objects, mesh_name):
+    """
+    create a follicle setup of eyelids on a surface object.
+    :return: <bool> True for success. <bool> False for failure.
+    """
