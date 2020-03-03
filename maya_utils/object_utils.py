@@ -26,7 +26,6 @@ line = re.sub(r'''
 """
 # import standard modules
 import re
-import types
 import collections
 
 # import maya modules
@@ -47,7 +46,6 @@ node_types = {
     'unitConversion': OpenMaya.MFn.kUnitConversion,
     'blendWeighted': OpenMaya.MFn.kBlendWeighted,
     'transform': OpenMaya.MFn.kTransform,
-    'follicle': OpenMaya.MFn.kFollicle
     'follicle': OpenMaya.MFn.kFollicle,
     'dag': OpenMaya.MFn.kDagNode,
     'joint': OpenMaya.MFn.kJoint,
