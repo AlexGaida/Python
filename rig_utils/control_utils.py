@@ -356,12 +356,45 @@ def create_control(shape_name, name='', groups=('grp',)):
     :param groups: <tuple> array of group suffixes to create.
     :return: <tuple> group names belonging to this controller name.
     """
+    return_data = {}
     curve_names = create_controller_shape(shape_name)
     curve_name = parent_curve_shapes(curve_names)
     if name:
         curve_name = cmds.rename(curve_name, name)
     else:
         curve_name = cmds.rename(curve_name, shape_name)
-    group_names = map(lambda x: '{}_{}'.format(shape_name, x), groups)
-    insert_groups(curve_name, names=group_names)
-    return group_names
+    return_data['controller'] = curve_name
+    group_names = map(lambda x: '{}_{}'.format(curve_name, x), groups)
+    grps = insert_groups(curve_name, names=group_names)
+    return_data['group_names'] = grps
+    return return_data
+
+
+def create_control_at_transform(object_name, name='', shape_name="cube"):
+    """
+    creates a controller object at the same space as the transform.
+    :param shape_name: <str> build this shape.
+    :return: <str> control grp.
+    """
+    tfm = transform_utils.Transform(object_name)
+    ctrl_data = create_control(shape_name, name=name)
+    grps = ctrl_data['group_names']
+    cmds.xform(grps[-1], m=tfm.world_matrix(), ws=1)
+    return ctrl_data
+
+
+def create_controls(objects_array, name, shape_name="cube"):
+    """
+    creates controllers at this transform object name.
+    :param name: <str> create curves with this object name.
+    :param objects_array: <tuple> array of objects.
+    :param shape_name: <str> build this shape.
+    :return:
+    """
+    names = ()
+    for idx in range(len(objects_array)):
+        names += '{}_{}_ctrl'.format(name, idx),
+    groups = ()
+    for trfm_name, obj_name in zip(objects_array, names):
+        groups += create_control_at_transform(trfm_name, obj_name, shape_name),
+    return groups

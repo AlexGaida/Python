@@ -235,7 +235,7 @@ class Transform(OpenMaya.MFnTransform):
         return self.MAYA_M_DAG_PATH.inclusiveMatrix()
 
     def world_matrix(self):
-        return self.world_matrix_from_plug()
+        return self.inclusive_matrix_list()
 
     def matrix(self):
         return self.transformation().asMatrix()

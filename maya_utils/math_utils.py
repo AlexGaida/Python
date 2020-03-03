@@ -11,7 +11,6 @@ from maya import cmds
 # import local modules
 import math
 import decimal
-import numpy
 
 # define global variables
 M_PI = 3.14159265358979323846

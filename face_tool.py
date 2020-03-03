@@ -504,10 +504,12 @@ def inspect_interface_attributes():
     """
     s_ctrls = object_utils.get_selected_node(single=False)
     for f_ctrl in s_ctrls:
-        face_loc = find_face_system_controller(f_ctrl)
+        # face_loc = find_face_system_controller(f_ctrl)
+        # if not face_loc:
+        face_loc = find_system_locator(f_ctrl)
         attr = attribute_utils.Attributes(face_loc[0], custom=1, keyable=True)
         print(f_ctrl, face_loc, ">>", attr.__dict__())
-        print(get_specified_key_time(face_loc))
+        # print(get_specified_key_time(face_loc))
     return True
 
 
@@ -725,6 +727,28 @@ def find_face_system_controller(object_node=""):
                                             find_node_type=transform_type,
                                             with_shape=locator_type,
                                             find_attr="face_",
+                                            as_strings=True,
+                                            up_stream=False,
+                                            down_stream=True)
+
+
+def find_system_locator(object_node=""):
+    """
+    finds the locator node thats being driven by the controller object.
+    :param object_node:
+    :return:
+    """
+    if not object_node:
+        object_node = object_utils.get_selected_node()
+    if not object_node:
+        raise ValueError("[FindFaceSystemController] :: no valid object parameter given.")
+    face_attrs = get_face_attributes(object_node)
+    if face_attrs:
+        return object_node
+    return object_utils.get_connected_nodes(object_node,
+                                            find_node_type=transform_type,
+                                            with_shape=locator_type,
+                                            find_attr="",
                                             as_strings=True,
                                             up_stream=False,
                                             down_stream=True)
