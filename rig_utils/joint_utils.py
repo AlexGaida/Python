@@ -16,6 +16,20 @@ JNT_SUFFIX = 'jnt'
 BND_JNT_SUFFIX = 'bnd_{}'.format(JNT_SUFFIX)
 
 
+def reload_selection(func):
+    """
+    a decorator that deselects and then selects again after the function is complete.
+    :param func:
+    :return:
+    """
+    def wrapper(*args, **kwargs):
+        objects = cmds.ls(sl=1)
+        cmds.select(d=1)
+        func(*args, **kwargs)
+        cmds.select(objects)
+    return wrapper
+
+
 def joint_name(name="", idx=-1):
     """
     concatenate the strings to form a joint name.
@@ -103,6 +117,7 @@ def set_joint_labels():
     return True
 
 
+@reload_selection
 def create_joint_at_transform(transform_name="", name=""):
     """
     creates joints at the same position as the transform object.
@@ -118,3 +133,18 @@ def create_joint_at_transform(transform_name="", name=""):
     cmds.joint(name=jnt_name)
     cmds.xform(jnt_name, m=tfm.inclusive_matrix_list(), ws=True)
     return jnt_name
+
+
+@reload_selection
+def create_joints(objects_array, name):
+    """
+    create joints at transform objects.
+    :return: <tuple> array of joints.
+    """
+    names = ()
+    for idx in range(len(objects_array)):
+        names += '{}_{}_{}'.format(name, idx, JNT_SUFFIX),
+    joints = ()
+    for trfm_name, obj_name in zip(objects_array, names):
+        joints += create_joint_at_transform(trfm_name, obj_name),
+    return joints

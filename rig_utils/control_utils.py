@@ -17,11 +17,11 @@ from maya_utils import curve_utils
 from maya import cmds
 
 # define private variables
-__ctrl_suffix__ = 'ctrl'
-__locator_suffix__ = 'loc'
 __control_folder_dir__ = file_utils.controller_data_dir()
 
 # define local variables
+CTRL_SUFFIX = 'ctrl'
+LOCATOR_SUFFIX = 'loc'
 re_brackets = re.compile(r'\[|]')
 transform_attrs = attribute_utils.Attributes.DEFAULT_ATTR_VALUES
 side_cls = read_sides.Sides()
@@ -32,7 +32,7 @@ def get_controllers():
     get all controllers in scene.
     :return: <tuple> controller objects.
     """
-    return tuple(cmds.ls('*_{}'.format(__ctrl_suffix__)))
+    return tuple(cmds.ls('*_{}'.format(CTRL_SUFFIX)))
 
 
 def get_selected_ctrl():
@@ -85,7 +85,7 @@ def create_locators():
             matrix = True
             translate = False
             name = sl
-        locator_name = name + '_{}'.format(__locator_suffix__)
+        locator_name = name + '_{}'.format(LOCATOR_SUFFIX)
         cmds.createNode('locator', name=locator_name + 'Shape')
         object_utils.snap_to_transform(locator_name, sl, matrix=matrix, translate=translate)
     return True
@@ -109,7 +109,7 @@ def check_locator_suffix_name(object_name):
     :param object_name:
     :return:
     """
-    suffix_name = '_{}'.format(__locator_suffix__)
+    suffix_name = '_{}'.format(LOCATOR_SUFFIX)
     if suffix_name in object_name:
         return True
     return False
@@ -121,7 +121,7 @@ def remove_locator_suffix_name(object_name):
     :param object_name:
     :return:
     """
-    suffix_name = '_{}'.format(__locator_suffix__)
+    suffix_name = '_{}'.format(LOCATOR_SUFFIX)
     return object_name.rpartition(suffix_name)[0]
 
 
@@ -131,7 +131,7 @@ def check_control_suffix_name(object_name):
     :param object_name: <str> the object name to split.
     :return: <str> formatted name.
     """
-    suffix_name = '_{}'.format(__ctrl_suffix__)
+    suffix_name = '_{}'.format(CTRL_SUFFIX)
     if suffix_name in object_name:
         return True
     return False
@@ -143,7 +143,7 @@ def remove_control_suffix_name(object_name):
     :param object_name: <str> the object name to split.
     :return: <str> formatted name.
     """
-    return object_name.rpartition('_{}'.format(__ctrl_suffix__))[0]
+    return object_name.rpartition('_{}'.format(CTRL_SUFFIX))[0]
 
 
 def snap_control_to_selected_locator():
@@ -393,7 +393,7 @@ def create_controls(objects_array, name, shape_name="cube"):
     """
     names = ()
     for idx in range(len(objects_array)):
-        names += '{}_{}_ctrl'.format(name, idx),
+        names += '{}_{}_{}'.format(name, idx, CTRL_SUFFIX),
     groups = ()
     for trfm_name, obj_name in zip(objects_array, names):
         groups += create_control_at_transform(trfm_name, obj_name, shape_name),
