@@ -6,11 +6,11 @@ In this repository I saved my pipeline development work in case I lose all my wo
 
 ## What's in it
 
-Right now I only have the following folder structure:
+Home repository of projects that I work from home. I code with OpenMaya 1.0 because it is closer to Maya C++ style of coding.
 
-1. deformers
-2. maya_utils
+I have encapsulated the OpenMaya.MScriptUtil module in a class object so that I can easily source pointer objects.
 
+Lots of _rigging_ utility modules to help me solve problems relating to the projects I work on better.
 
 ### The maya_utils:
 
@@ -22,7 +22,18 @@ In this directory I store anything relating to manipulation of Maya objects insi
 * math_utils       -- Standard math functions and manipulating vector operations.
 * object_utils     --  Manipulating and traversing the Maya scene objects and connections.
 * transform_utils  --  Transform module for finding, creating and setting attributes
-* ui_utils
+* ui_utils -- Maya interface tools.
+* curve_utils -- MFnNurbsCurve utility functions.
+* follicle_utils -- Follicle creation module.
+* mesh_utils -- Mesh data tools.
+
+### The rig_utils
+
+In this directory I store anything relating to the utility of rigging.
+
+* control_utils -- Creation of kNurbsCurve control objects.
+* joint_utils -- Creation of kJoint objects.
+* name_utils -- Getting and retrieving nomenclature data.
 
 
 ### The deformers
