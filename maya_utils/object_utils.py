@@ -1077,12 +1077,15 @@ def get_mesh_fn(target):
         raise TypeError('Target must be of type kMesh')
 
 
-def create_container(name=""):
+def create_container(name="", nodes=()):
     """
     creates container nodes. Only for containing controller utility nodes.
+    :param name: <str> the name to create.
+    :param nodes: <tuple> the array of nodes to lock in a container. If left empty, the container will add ndoes in.
     :return: <bool> True for success. <bool> False for failure.
     """
-    nodes = get_selected_node(single=False)
+    if not nodes:
+        nodes = get_selected_node(single=False)
     if not nodes:
         return False
     if not cmds.objExists(name):

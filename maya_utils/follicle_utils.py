@@ -127,8 +127,9 @@ def attr_add_float(node_name, attribute_name):
     :param attribute_name: <str> valid attribute name.
     :return: <str> new attribute name.
     """
-    cmds.addAttr(node_name, at='float', ln=attribute_name)
-    cmds.setAttr(attr_name(node_name, attribute_name), k=1)
+    if not cmds.objExists(attr_name(node_name, attribute_name)):
+        cmds.addAttr(node_name, at='float', ln=attribute_name)
+        cmds.setAttr(attr_name(node_name, attribute_name), k=1)
     return attr_name(node_name, attribute_name)
 
 
@@ -142,14 +143,14 @@ def attr_get_value(node_name, attribute_name):
     return cmds.getAttr(attr_name(node_name, attribute_name))
 
 
-def attr_name(object_name, attribute_name):
+def attr_name(object_name, attribute_name, check=False):
     """
     concatenate strings to make an attribute name.
     checks to see if the attribute is valid.
     :return: <str> attribute name.
     """
     attr_str = '{}.{}'.format(object_name, attribute_name)
-    if not cmds.objExists(attr_str):
+    if check and not cmds.objExists(attr_str):
         raise ValueError('[AttrNameError] :: attribute name does not exit: {}]'.format(attr_str))
     return attr_str
 
@@ -226,11 +227,13 @@ def attach_follicle(mesh_name, follicle_object="", follicle_name=""):
     return follicles
 
 
-def set_closest_uv_follicles(driver_objs, mesh_name, follicles_array=()):
+def set_closest_uv_follicles(driver_objs, mesh_name, follicles_array=(), u_attr="", v_attr=""):
     """
     set the closest uv coordinates onto the follicle nodes.
     :param driver_objs: <tuple> array of driver objects.
     :param follicles_array: <tuple> array of follicle objects.
+    :param u_attr: <tuple> set the value to the custom parameterU attr
+    :param v_attr: <tuple> set the value to the custom parameterV attr
     :return: <bool> True for success.
     """
     if not follicles_array:
@@ -241,8 +244,13 @@ def set_closest_uv_follicles(driver_objs, mesh_name, follicles_array=()):
 
     for driver_node, follicle_node in zip(driver_objs, follicles_array):
         u, v = get_closest_uv(driver_node, mesh_name)
-        cmds.setAttr(attr_name(follicle_node, 'parameterU'), u)
-        cmds.setAttr(attr_name(follicle_node, 'parameterV'), v)
+        if u_attr:
+            cmds.setAttr(u_attr, u)
+        if v_attr:
+            cmds.setAttr(v_attr, v)
+        elif not u_attr or v_attr:
+            cmds.setAttr(attr_name(follicle_node, 'parameterU'), u)
+            cmds.setAttr(attr_name(follicle_node, 'parameterV'), v)
     return True
 
 
@@ -489,14 +497,16 @@ def create_follicles_from_objects(driver_objects_array=(), mesh_name="", attach_
             cmds.setAttr(attr_name(follicle_shape_name, 'parameterV'), v)
             follicles_array += foll_name,
     if attach_offsets:
-        attach_offset_nodes_to_follicles(follicles_array)
+        attach_offset_nodes_to_follicles(follicles_array, create_container=False)
     return follicles_array
 
 
-def attach_offset_nodes_to_follicles(follicles_array=()):
+def attach_offset_nodes_to_follicles(follicles_array=(), add_limit_attrs=True, create_container=False):
     """
     attaching the plusMinusAverage offset nodes to follicle nodes.
     :param follicles_array: <tuple> array of follicle nodes.
+    :param add_limit_attrs: <bool> if set to True, creates limit nodes.
+    :param create_container: <bool> if True, creates containers on the created nodes.
     :return: <tuple> array of plusMinusAverage nodes.
     """
     nodes_array = ()
@@ -547,8 +557,94 @@ def attach_offset_nodes_to_follicles(follicles_array=()):
         attr_connect(offset_v_attr, add_input_2_v)
 
         # finally connect the output of the add nodes to the follicle shape node
-        attr_connect(add_output_u, param_u_attr)
-        attr_connect(add_output_v, param_v_attr)
+        if add_limit_attrs:
+            nodes_array += attach_limit_attrs(
+                add_output_u, param_u_attr, value_u, add_attrs_on_obj=attr_name(follicle_node, 'parameterU'))
+            nodes_array += attach_limit_attrs(
+                add_output_v, param_v_attr, value_v, add_attrs_on_obj=attr_name(follicle_node, 'parameterV'))
+        else:
+            attr_connect(add_output_u, param_u_attr)
+            attr_connect(add_output_v, param_v_attr)
 
         nodes_array += follicle_node, add_node_u, add_node_v,
+
+        if create_container:
+            object_utils.create_container(follicle_node + '_container', nodes_array)
     return nodes_array
+
+
+def attach_limit_attrs(driver_attr, driven_attr, default_value=0.0, add_attrs_on_obj=""):
+    """
+    attaching a min max condition nodes to their corresponding min/ max attributes.
+    :param driver_attr: <str> the driver attribute. node_name.attr_name
+    :param driven_attr: <str> the driven attribute. node_name.attr_name
+    :param default_value: <float> (optional), the default value to set.
+    :param add_attrs_on_obj: <str> (optional), add the min/ max attributes to this node instead.
+    :return: <tuple> array of nodes created.
+    """
+    nodes = ()
+    driver_node_name, drv_attr = attr_split(driver_attr)
+
+    # add attributes to the follicle node for max
+    if not add_attrs_on_obj:
+        max_u_attr = attr_add_float(driver_node_name, '{}_max'.format(drv_attr))
+        min_u_attr = attr_add_float(driver_node_name, '{}_min'.format(drv_attr))
+    elif add_attrs_on_obj:
+        obj_name, obj_attr = attr_split(add_attrs_on_obj)
+        max_u_attr = attr_add_float(obj_name, '{}_max'.format(obj_attr))
+        min_u_attr = attr_add_float(obj_name, '{}_min'.format(obj_attr))
+
+    max_node_name = '{}_{}_max_cond'.format(driver_node_name, drv_attr)
+    create_node('condition', max_node_name)
+    nodes += max_node_name,
+
+    min_node_name = '{}_{}_min_cond'.format(driver_node_name, drv_attr)
+    create_node('condition', min_node_name)
+    nodes += min_node_name,
+
+    clamp_name = '{}_clamp'.format(driver_node_name)
+    create_node('clamp', clamp_name)
+    nodes += clamp_name,
+
+    # set to less than
+    attr_set(min_node_name, 4, 'operation')
+
+    # set to greater than
+    attr_set(max_node_name, 2, 'operation')
+
+    # set the default value to the condition nodes
+    attr_set(max_node_name, default_value, 'secondTerm')
+    attr_set(min_node_name, default_value, 'secondTerm')
+
+    # set the default value to the output min/ max
+    attr_set(max_u_attr, default_value)
+    attr_set(min_u_attr, default_value)
+
+    # connect attributes
+    attr_connect(driver_attr, attr_name(min_node_name, 'colorIfFalseR'))
+    attr_connect(driver_attr, attr_name(max_node_name, 'colorIfFalseR'))
+
+    attr_connect(max_u_attr, attr_name(max_node_name, 'colorIfTrueR'))
+    attr_connect(max_u_attr, attr_name(max_node_name, 'firstTerm'))
+
+    attr_connect(min_u_attr, attr_name(min_node_name, 'colorIfTrueR'))
+    attr_connect(min_u_attr, attr_name(min_node_name, 'firstTerm'))
+
+    attr_connect(attr_name(min_node_name, 'outColorR'), attr_name(clamp_name, 'minR'))
+    attr_connect(attr_name(max_node_name, 'outColorR'), attr_name(clamp_name, 'maxR'))
+
+    attr_connect(driver_attr, attr_name(clamp_name, 'inputR'))
+
+    attr_connect(attr_name(clamp_name, 'outputR'), driven_attr)
+    return nodes
+
+
+def attr_split(a_name):
+    """
+    split the attribute name into their respective strings
+    :param a_name: <str> attribute name.
+    :return: <tuple> node name, attr name.
+    """
+    return tuple(a_name.split('.'))
+
+
