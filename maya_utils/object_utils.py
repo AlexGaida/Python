@@ -79,17 +79,67 @@ def flatten(array):
             yield el
 
 
-def get_dag(object_name=""):
+def get_dag(object_name="", shape=False):
     """
     returns a dag path object.
     :param object_name: <str> object to get dag path from.
+    :param shape: <bool> returns the OpenMaya.MDag() shape instead.
     :return: <OpenMaya.MDagPath>
     """
     m_sel = OpenMaya.MSelectionList()
-    m_sel.add(object_name)
+    if not shape:
+        m_sel.add(object_name)
+    elif shape:
+        shapes_len = get_shapes_len(get_m_obj(object_name))
+        if shapes_len > 0:
+            for i in xrange(shapes_len):
+                m_sel.add(get_shape_name(object_name)[i])
+        elif not shapes_len and not has_fn(get_shape_name(object_name), 'transform'):
+            m_sel.add(object_name)
     m_dag = OpenMaya.MDagPath()
     m_sel.getDagPath(0, m_dag)
     return m_dag
+
+
+def get_m_selection_iter(objects_array=()):
+    """
+    gets an selection list iter.
+    :param objects_array: <tuple> or <list> array of items to add.
+    :return: <OpenMaya.MItSelectionList>
+    """
+    m_list = OpenMaya.MSelectionList()
+    if not objects_array:
+        OpenMaya.MGlobal.getActiveSelectionList(m_list)
+    elif objects_array:
+        map(m_list.add, objects_array)
+    return OpenMaya.MItSelectionList(m_list, OpenMaya.MFn.kInvalid)
+
+
+def iterate_items(objects_array=()):
+    """
+    iterate through the selected items. Retrieve the MDagPath and MComponent objects.
+    :return: <tuple> array of selected items.
+    """
+    m_iter = get_m_selection_iter(objects_array)
+    items = ()
+    while not m_iter.isDone():
+        m_dag = OpenMaya.MDagPath()
+        m_component = OpenMaya.MObject()
+        m_iter.getDagPath(m_dag, m_component)
+        items += m_dag, m_component,
+        m_iter.next()
+    return items
+
+
+def get_shape_dag(object_name=""):
+    """
+    returns the dagNode of the object.
+    :param object_name:
+    :return:
+    """
+    if not object_name:
+        object_name = get_selected_node()
+    return get_dag(object_name, shape=True)
 
 
 def get_shape_fn(object_name=""):
@@ -247,6 +297,12 @@ class ScriptUtil(OpenMaya.MScriptUtil):
         if 'as_float_ptr' in kw:
             self.createFromDouble(*a)
             self.ptr = self.asFloatPtr()
+        if 'as_float2_ptr' in kw:
+            # self.createFromDouble(*a)
+            self.ptr = self.asFloat2Ptr()
+        if 'as_double2_ptr' in kw:
+            self.createFromList([0.0, 0.0], 2)
+            self.ptr = self.asDouble2Ptr()
         if 'as_double3_ptr' in kw:
             self.createFromList([0.0, 0.0, 0.0], 3)
             self.ptr = self.asDouble3Ptr()
@@ -269,6 +325,9 @@ class ScriptUtil(OpenMaya.MScriptUtil):
     def as_float(self):
         return self.ptr.asFloat()
 
+    def as_float2(self):
+        return self.ptr.asFloat2()
+
     def as_float3(self):
         return self.ptr.asFloat3()
 
@@ -284,14 +343,20 @@ class ScriptUtil(OpenMaya.MScriptUtil):
     def get_float(self):
         return self.getFloat(self.ptr)
 
-    def get_float3_item(self, idx=0):
-        return self.getFloat3ArrayItem(self.ptr, idx)
+    def get_float3_item(self, r=0, c=0):
+        return self.getFloat3ArrayItem(self.ptr, r, c)
+
+    def get_float2_item(self, r=0, c=0):
+        return self.getFloat2ArrayItem(self.ptr, r, c)
 
     def get_int(self):
         return self.getInt(self.ptr)
 
     def double_array_item(self, idx=0):
         return self.getDoubleArrayItem(self.ptr, idx)
+
+    def float_array_item(self, idx=0):
+        return self.getFloatArrayItem(self.ptr, idx)
 
     def matrix_from_list(self, matrix_list=()):
         self.createMatrixFromList(matrix_list, self.MATRIX)
@@ -638,6 +703,23 @@ def has_attr(item_obj, attr_name):
     return Item(item_obj).has_plug(attr_name)
 
 
+def get_shapes_len(m_object=None):
+    """
+    returns the number of shapes children.
+    :return:
+    """
+    fn_item = OpenMaya.MFnDagNode(m_object)
+    ch_shapes = ()
+    ch_count = fn_item.childCount()
+    if ch_count:
+        for i in xrange(ch_count):
+            ch_item = fn_item.child(i)
+            if has_fn(ch_item, 'transform'):
+                continue
+            ch_shapes += i,
+    return len(ch_shapes)
+
+
 def get_m_shape(m_object=None, shape_type="", as_strings=False):
     """
     get the MObject children object(s).
@@ -648,14 +730,21 @@ def get_m_shape(m_object=None, shape_type="", as_strings=False):
     """
     return_items = ()
     fn_item = OpenMaya.MFnDagNode(m_object)
-    for i in xrange(fn_item.childCount()):
-        ch_item = fn_item.child(i)
-        if shape_type and not has_fn(ch_item, shape_type):
-            continue
-        if as_strings:
-            return_items += OpenMaya.MFnDependencyNode(ch_item).name(),
-        elif not as_strings:
-            return_items += ch_item,
+    ch_count = fn_item.childCount()
+    if ch_count:
+        for i in xrange(ch_count):
+            ch_item = fn_item.child(i)
+            if shape_type and not has_fn(ch_item, shape_type):
+                continue
+            if has_fn(ch_item, 'transform'):
+                continue
+            if as_strings:
+                return_items += OpenMaya.MFnDependencyNode(ch_item).name(),
+            elif not as_strings:
+                return_items += ch_item,
+    elif not ch_count:
+        if has_fn(m_object, shape_type):
+            return_items += m_object,
     return return_items
 
 
@@ -967,7 +1056,7 @@ def get_m_dag(object_str=""):
     try:
         om_sel = OpenMaya.MSelectionList()
         om_sel.add(object_str)
-        node = OpenMaya.MDag()
+        node = OpenMaya.MDagPath()
         om_sel.getDagPath(0, node)
         return node
     except:
