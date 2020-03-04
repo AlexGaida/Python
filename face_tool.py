@@ -1341,10 +1341,3 @@ def set_keys_on_face_controller(selected_node='', interface_ctrl="", driven_node
             verbose('\n')
             __set_key(interface_node, driven_node, driven_attr, face_attr, driven_val, face_value)
     return True
-
-
-def setup_follicle_eyelids(driver_objects, mesh_name):
-    """
-    create a follicle setup of eyelids on a surface object.
-    :return: <bool> True for success. <bool> False for failure.
-    """

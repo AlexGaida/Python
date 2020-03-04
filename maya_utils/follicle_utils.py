@@ -237,24 +237,25 @@ def set_closest_uv_follicles(driver_objs, mesh_name, follicles_array=(), u_attr=
     :return: <bool> True for success.
     """
     if not follicles_array:
-        follicles_array = get_attached_follicles(mesh_name)
+        follicles_array = get_attached_follicles(mesh_name, as_strings=True, as_transform=True)
 
     if not isinstance(driver_objs, (tuple, list)):
         driver_objs = driver_objs,
 
-    for driver_node, follicle_node in zip(driver_objs, follicles_array):
-        u, v = get_closest_uv(driver_node, mesh_name)
-        if u_attr:
-            cmds.setAttr(u_attr, u)
-        if v_attr:
-            cmds.setAttr(v_attr, v)
-        elif not u_attr or v_attr:
-            cmds.setAttr(attr_name(follicle_node, 'parameterU'), u)
-            cmds.setAttr(attr_name(follicle_node, 'parameterV'), v)
+    for driver_node in driver_objs:
+        for follicle_node in follicles_array:
+            u, v = get_closest_uv(driver_node, mesh_name)
+            if u_attr:
+                cmds.setAttr(attr_name(follicle_node, u_attr), u)
+            if v_attr:
+                cmds.setAttr(attr_name(follicle_node, v_attr), v)
+            elif not u_attr or v_attr:
+                cmds.setAttr(attr_name(follicle_node, 'parameterU'), u)
+                cmds.setAttr(attr_name(follicle_node, 'parameterV'), v)
     return True
 
 
-def get_attached_follicles(mesh_name="", search_name=""):
+def get_attached_follicles(mesh_name="", search_name="", as_strings=False, as_transform=False):
     """
     gets the attached follicles from the mesh name provided.
     :param mesh_name: <str> mesh name to check for connected follicles.
@@ -264,11 +265,17 @@ def get_attached_follicles(mesh_name="", search_name=""):
     shape_obj_array = object_utils.get_shape_obj(mesh_name)
     follicles = ()
     for shape_obj in shape_obj_array:
-        nodes = object_utils.get_connected_nodes(shape_obj, find_node_type='follicle')
+        nodes = object_utils.get_connected_nodes(shape_obj, find_node_type='follicle', as_strings=as_strings)
         if not search_name:
             follicles += nodes
         else:
             follicles += filter(lambda x: search_name in x, nodes)
+
+        if as_transform:
+            foll_array = ()
+            for foll in follicles:
+                foll_array += object_utils.get_parent_name(foll)[0],
+            return foll_array
     return follicles
 
 
@@ -501,7 +508,7 @@ def create_follicles_from_objects(driver_objects_array=(), mesh_name="", attach_
     return follicles_array
 
 
-def attach_offset_nodes_to_follicles(follicles_array=(), add_limit_attrs=True, create_container=False):
+def attach_offset_nodes_to_follicles(follicles_array=(), add_limit_attrs=False, create_container=False):
     """
     attaching the plusMinusAverage offset nodes to follicle nodes.
     :param follicles_array: <tuple> array of follicle nodes.
@@ -648,3 +655,53 @@ def attr_split(a_name):
     return tuple(a_name.split('.'))
 
 
+def attach_follicle_to_control(follicle_node, control_node, default_ratio=0.1):
+    """
+    create a follicle setup of eyelids on a surface object.
+    :param follicle_node: <str> the follicle node to be connecting to.
+    :param control_node: <str> the controller object to add attributes and connect to the follicle node.
+    :param default_ratio: <float> the default ratio to set.
+    :return: <bool> True for success. <bool> False for failure.
+    """
+    attr_offset_u = attr_name(follicle_node, 'offset_u')
+    attr_offset_v = attr_name(follicle_node, 'offset_v')
+
+    attr_translate = attr_name(control_node, 'translate')
+
+    # manage the ratio of movement
+    ratio_node = create_node('multiplyDivide', node_name='{}_ratio'.format(control_node))
+
+    # add the ratio movement attribute
+    ratio_attr = attr_add_float(control_node, 'ratio')
+    input_attr = attr_name(ratio_node, 'input1')
+
+    # set the default ratio
+    attr_set(attr_offset_u, default_ratio)
+    attr_set(attr_offset_v, default_ratio)
+
+    # connect the attributes
+    attr_connect(attr_translate, input_attr)
+    attr_connect(ratio_attr, attr_name(ratio_node, 'input2X'))
+    attr_connect(ratio_attr, attr_name(ratio_node, 'input2Y'))
+    attr_connect(ratio_attr, attr_name(ratio_node, 'input2Z'))
+
+    attr_connect(attr_name(ratio_node, 'outputY'), attr_offset_v)
+    attr_connect(attr_name(ratio_node, 'outputZ'), attr_offset_u)
+    return True
+
+
+def attach_follicles_to_controls(follicles_array, controls_array, default_ratio=0.1):
+    """
+    attach array of follicles to an array of controller objects.
+    the array lengths must match.
+    :param follicles_array: <tuple> or <list>, array of follicle objects.
+    :param controls_array: <tuple> or <list>, array of control objects.
+    :param default_ratio: <float> default ratio (control transform attribute values to follicle UV) to set.
+    :return: <bool> True for success. <bool> False for failure.
+    """
+    if len(follicles_array) != len(controls_array):
+        raise ValueError("[AttachFolliclesToControls] :: array lengths do not match.")
+
+    for follicle_name, control_name in zip(follicles_array, controls_array):
+        attach_follicle_to_control(follicle_name, control_name, default_ratio)
+    return True
