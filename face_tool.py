@@ -23,6 +23,7 @@ from maya_utils import object_utils
 from deformers import deform_utils
 from maya_utils import math_utils
 from maya_utils import ui_utils
+from maya_utils import follicle_utils
 
 # reload modules
 reload(attribute_utils)
@@ -50,6 +51,11 @@ AXES = read_sides.Axes()
 
 
 def flatten_list(list_obj):
+    """
+    flatten array objects.
+    :param list_obj:
+    :return:
+    """
     return tuple([item for sublist in list_obj for item in sublist])
 
 
@@ -326,7 +332,7 @@ def copy_keys_left_to_right(interface_ctrl="", mirror_interface=True):
     else:
         mirror_interface_ctrl = interface_ctrl
 
-    for sel_obj in get_selected_objects_gen():
+    for sel_obj in object_utils.get_selected_objects_gen():
         # get the opposing side string
         mirror_sel_obj = MIRROR_SIDES.replace_side_string(sel_obj)
 
@@ -1341,3 +1347,17 @@ def set_keys_on_face_controller(selected_node='', interface_ctrl="", driven_node
             verbose('\n')
             __set_key(interface_node, driven_node, driven_attr, face_attr, driven_val, face_value)
     return True
+
+
+def connect_control_locators_to_follicle(control_array=(), follicle_array=()):
+    """
+    connects the locator systems to the follicle nodes.
+    :param control_array:
+    :param follicle_array:
+    :return:
+    """
+    print(object_utils.compare_array_lengths(control_array, follicle_array))
+    if not object_utils.compare_array_lengths(control_array, follicle_array):
+        return False
+    locators_array = flatten_list(map(find_system_locator, control_array))
+    return follicle_utils.attach_controls_to_follicles(locators_array, follicle_array)

@@ -5,16 +5,19 @@ Standard math functions and manipulating vector operations.
 from collections import Iterable
 
 # import maya modules
-from maya.OpenMaya import MVector, MMatrix, MPoint
+from maya.OpenMaya import MVector, MMatrix, MPoint, MTransformationMatrix
 from maya import cmds
 
 # import local modules
 import math
-import decimal
+import transform_utils
+import object_utils
 
 # define global variables
 M_PI = 3.14159265358979323846
 EXP = 2.718281
+RADIANS_2_DEGREES = 57.2958
+DEGREES_2_RADIANS = 0.0174533
 
 
 def squared_difference(num_array=()):
@@ -254,7 +257,7 @@ def magnitude(*args):
         return abs(data**0.5)
 
     # if a list of head vector values are fed.
-    elif len(args)== 1:
+    elif len(args) == 1:
         head = args[0]
         if not type(head) is list:
             raise ValueError("Please use a list of 3 floats or intergers")
@@ -418,3 +421,46 @@ class Vector:
                 pass
 
         return Vector(data)
+
+
+def look_at(source, target, up_vector=(0, -1, 0)):
+    """
+    allows the transform object to look at another target vector object.
+    :return: <tuple> rotational vector.
+    """
+    source_world = transform_utils.Transform(source).world_matrix_list()
+    target_world = transform_utils.Transform(target).world_matrix_list()
+    source_parent_name = object_utils.get_parent_name(source_world)
+    parent_world = transform_utils.Transform(source_parent_name).world_matrix_list()
+
+    # build normalized vector
+    z = MVector(target_world[12] - source_world[12],
+                target_world[13] - source_world[13],
+                target_world[14] - source_world[14])
+    z.normalize()
+
+    # get normalized cross the z with the up vector at origin
+    x = z ^ MVector(-up_vector[0], -up_vector[1], -up_vector[2])
+    x.normalize()
+
+    # get the normalized y vector
+    y = x ^ z
+    y.normalize()
+
+    # build the aim matrix
+    local_matrix_list = (
+        x.x, x.y, x.z, 0,
+        y.x, y.y, y.z, 0,
+        z.x, z.y, z.z, 0,
+        0, 0, 0, 1)
+
+    matrix = object_utils.ScriptUtil(local_matrix_list, matrix_from_list=True)
+
+    if source_parent_name:
+        # transform the matrix in the local space of the parent object
+        parent_matrix = object_utils.ScriptUtil(parent_world, matrix_from_list=True)
+        matrix *= parent_matrix.inverse()
+
+    # retrieve the desired rotation for "source" to aim at "target", in degrees
+    rotation = MTransformationMatrix(matrix).eulerRotation() * RADIANS_2_DEGREES
+    return rotation[0], rotation[1], rotation[2],

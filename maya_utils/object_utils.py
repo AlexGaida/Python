@@ -79,6 +79,16 @@ def flatten(array):
             yield el
 
 
+def compare_array_lengths(array_1, array_2):
+    """
+    compare the array lengths from array_1, to array_2
+    :param array_1:
+    :param array_2:
+    :return: <bool> True for yes. <bool> False for no.
+    """
+    return len(array_1) == len(array_2)
+
+
 def get_dag(object_name="", shape=False):
     """
     returns a dag path object.
@@ -148,7 +158,11 @@ def get_shape_fn(object_name=""):
     """
     if not object_name:
         object_name = get_selected_node()
-    return get_fn(get_m_shape(get_dag(object_name)))
+    m_shapes = get_m_shape(get_dag(object_name))
+    shape_array = ()
+    for shape in m_shapes:
+        shape_array += get_fn(shape),
+    return shape_array
 
 
 def get_shape_name(object_name="", shape_type=""):

@@ -320,7 +320,7 @@ def get_closest_normal(driver_name, mesh_name):
     :param mesh_name:  <str> the mesh object.
     :return: <tuple> U, V,
     """
-    shape_fn = object_utils.get_shape_fn(mesh_name)
+    shape_fn = object_utils.get_shape_fn(mesh_name)[0]
     if object_utils.is_shape_nurbs_surface(mesh_name):
         u, v = get_closest_uv(driver_name, mesh_name)
         return shape_fn.normal(u, v)
@@ -333,11 +333,12 @@ def get_closest_uv(driver_name, mesh_name):
     :param mesh_name:  <str> the mesh object.
     :return: <tuple> U, V,
     """
-    shape_fn = object_utils.get_shape_fn(mesh_name)
+    shape_fn = object_utils.get_shape_fn(mesh_name)[0]
     if object_utils.is_shape_nurbs_surface(mesh_name):
         param_u = object_utils.ScriptUtil(0.0, as_double_ptr=True)
         param_v = object_utils.ScriptUtil(0.0, as_double_ptr=True)
         cpos = get_closest_point(driver_name, mesh_name, as_point=True)
+        print(cpos.x, cpos.y, cpos.z)
         shape_fn.getParamAtPoint(cpos, param_u.ptr, param_v.ptr, OpenMaya.MSpace.kObject)
         return param_u.get_double(), param_v.get_double(),
 
@@ -350,7 +351,7 @@ def get_closest_parameter(driver_name, curve_name, normalize=False):
     :param normalize: <bool> if set True, returns a normalized parameter value.
     :return: <tuple> parameter value.
     """
-    shape_fn = object_utils.get_shape_fn(curve_name)
+    shape_fn = object_utils.get_shape_fn(curve_name)[0]
     cpoc = get_closest_point(driver_name, curve_name, as_point=True)
     param_u = object_utils.ScriptUtil(0.0, as_double_ptr=True)
     shape_fn.getParamAtPoint(cpoc, param_u.ptr)
@@ -367,7 +368,7 @@ def get_parameter_normal(driver_name, curve_name):
     :param curve_name:  <str> the mesh object.
     :return: <tuple> normal value.
     """
-    shape_fn = object_utils.get_shape_fn(curve_name)
+    shape_fn = object_utils.get_shape_fn(curve_name)[0]
     c_param = get_closest_parameter(driver_name, curve_name)
     normal = object_utils.ScriptUtil(0.0, as_double_ptr=True)
     shape_fn.normal(c_param, normal.ptr)
@@ -381,7 +382,7 @@ def get_parameter_tangent(driver_name, curve_name):
     :param curve_name:  <str> the mesh object.
     :return: <tuple> normal value.
     """
-    shape_fn = object_utils.get_shape_fn(curve_name)
+    shape_fn = object_utils.get_shape_fn(curve_name)[0]
     c_param = get_closest_parameter(driver_name, curve_name)
     tangent = object_utils.ScriptUtil(0.0, as_double_ptr=True)
     shape_fn.tangent(c_param, tangent.ptr)
@@ -395,7 +396,7 @@ def get_closest_curve_distance(driver_name, curve_name):
     :param curve_name:  <str> the mesh object.
     :return: <tuple> normal value.
     """
-    shape_fn = object_utils.get_shape_fn(curve_name)
+    shape_fn = object_utils.get_shape_fn(curve_name)[0]
     c_point = get_closest_point(driver_name, curve_name, as_point=True)
     distance = shape_fn.distanceToPoint(c_point)
     return distance,
@@ -406,7 +407,7 @@ def get_curve_length(curve_name):
     for nurbs curves only. get the curve length.
     :return: <float> curve length.
     """
-    shape_fn = object_utils.get_shape_fn(curve_name)
+    shape_fn = object_utils.get_shape_fn(curve_name)[0]
     return shape_fn.length()
 
 
@@ -415,7 +416,7 @@ def get_param_length(curve_name):
     for nurbs curves only. get the parameter length.
     :return: <float> curve length.
     """
-    shape_fn = object_utils.get_shape_fn(curve_name)
+    shape_fn = object_utils.get_shape_fn(curve_name)[0]
     return shape_fn.findParamFromLength(shape_fn.length())
 
 
@@ -428,12 +429,12 @@ def get_closest_point(driver_name, mesh_name, as_point=False, tree_based=False):
     :param tree_based: <bool> get the closest point on nurbsSurface using treeBased algorithm.
     :return: <tuple> x, y, z. <OpenMaya.MPoint>.
     """
-    shape_fn = object_utils.get_shape_fn(mesh_name)
+    shape_fn = object_utils.get_shape_fn(mesh_name)[0]
     # the get_shape_obj function returns a tuple of children items, so we only need one.
     shape_obj = object_utils.convert_list_to_str(object_utils.get_shape_obj(mesh_name))
 
     mesh_dag = object_utils.get_dag(mesh_name)
-    driver_vector = transform_utils.Transform(driver_name).translate_values(as_m_vector=True)
+    driver_vector = transform_utils.Transform(driver_name).translate_values(as_m_vector=True, world=True)
 
     m_matrix = mesh_dag.inclusiveMatrixInverse()
 
@@ -502,6 +503,7 @@ def create_follicles_from_objects(driver_objects_array=(), mesh_name="", attach_
             u, v = get_closest_uv(obj_name, mesh_name)
             cmds.setAttr(attr_name(follicle_shape_name, 'parameterU'), u)
             cmds.setAttr(attr_name(follicle_shape_name, 'parameterV'), v)
+            print(mesh_name, u, v)
             follicles_array += foll_name,
     if attach_offsets:
         attach_offset_nodes_to_follicles(follicles_array, create_container=False)
@@ -655,7 +657,7 @@ def attr_split(a_name):
     return tuple(a_name.split('.'))
 
 
-def attach_follicle_to_control(follicle_node, control_node, default_ratio=0.1):
+def attach_control_to_follicle(control_node, follicle_node, default_ratio=0.1):
     """
     create a follicle setup of eyelids on a surface object.
     :param follicle_node: <str> the follicle node to be connecting to.
@@ -663,6 +665,7 @@ def attach_follicle_to_control(follicle_node, control_node, default_ratio=0.1):
     :param default_ratio: <float> the default ratio to set.
     :return: <bool> True for success. <bool> False for failure.
     """
+    print(control_node, follicle_node)
     attr_offset_u = attr_name(follicle_node, 'offset_u')
     attr_offset_v = attr_name(follicle_node, 'offset_v')
 
@@ -672,12 +675,12 @@ def attach_follicle_to_control(follicle_node, control_node, default_ratio=0.1):
     ratio_node = create_node('multiplyDivide', node_name='{}_ratio'.format(control_node))
 
     # add the ratio movement attribute
-    ratio_attr = attr_add_float(control_node, 'ratio')
+    ratio_attr = attr_add_float(follicle_node, 'ratio')
     input_attr = attr_name(ratio_node, 'input1')
 
     # set the default ratio
-    attr_set(attr_offset_u, default_ratio)
-    attr_set(attr_offset_v, default_ratio)
+    attr_set(ratio_attr, default_ratio)
+    attr_set(ratio_attr, default_ratio)
 
     # connect the attributes
     attr_connect(attr_translate, input_attr)
@@ -690,18 +693,18 @@ def attach_follicle_to_control(follicle_node, control_node, default_ratio=0.1):
     return True
 
 
-def attach_follicles_to_controls(follicles_array, controls_array, default_ratio=0.1):
+def attach_controls_to_follicles(controls_array, follicles_array, default_ratio=0.1):
     """
     attach array of follicles to an array of controller objects.
-    the array lengths must match.
+    the array lengths *_must_* match.
     :param follicles_array: <tuple> or <list>, array of follicle objects.
     :param controls_array: <tuple> or <list>, array of control objects.
     :param default_ratio: <float> default ratio (control transform attribute values to follicle UV) to set.
     :return: <bool> True for success. <bool> False for failure.
     """
-    if len(follicles_array) != len(controls_array):
-        raise ValueError("[AttachFolliclesToControls] :: array lengths do not match.")
+    if not object_utils.compare_array_lengths(controls_array, follicles_array):
+        raise ValueError('[AttachFolliclesToControls] :: array lengths do not match')
 
-    for follicle_name, control_name in zip(follicles_array, controls_array):
-        attach_follicle_to_control(follicle_name, control_name, default_ratio)
+    for control_name, follicle_name in zip(controls_array, follicles_array):
+        attach_control_to_follicle(control_name, follicle_name, default_ratio)
     return True
