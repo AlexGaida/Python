@@ -299,6 +299,27 @@ def get_nice_name(object_name=''):
     return '_'.join(object_name.split(':'))
 
 
+def space_k_world():
+    """
+    :return: MSpace.kWorld
+    """
+    return OpenMaya.MSpace.kWorld
+
+
+def space_k_object():
+    """
+    :return: MSpace.kObject
+    """
+    return OpenMaya.MSpace.kObject
+
+
+def space_k_transform():
+    """
+    :return: MSpace.kTransform
+    """
+    return OpenMaya.MSpace.kTransform
+
+
 class ScriptUtil(OpenMaya.MScriptUtil):
     ptr = None
     MATRIX = OpenMaya.MMatrix()
