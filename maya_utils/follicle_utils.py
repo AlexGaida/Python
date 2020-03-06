@@ -8,6 +8,8 @@ from maya import OpenMaya
 # import local modules
 import object_utils
 import transform_utils
+import mesh_utils
+from rig_utils import name_utils
 
 # define local variables
 FOLLICLE_SUFFIX = 'foll'
@@ -64,6 +66,7 @@ def follicle_node_name(object_name):
     :return: <str> the follicle object name.
     """
     length_of_nodes = len(find_objects_by_suffix(FOLLICLE_SUFFIX))
+    object_name = name_utils.search_replace_brackets_name(object_name)
     return '{}_{}_{}'.format(object_name, length_of_nodes, FOLLICLE_SUFFIX)
 
 
@@ -105,7 +108,11 @@ def create_follicle_node(name=""):
     """
     if 'Shape' not in name:
         name += 'Shape'
-    return cmds.createNode('follicle', name=follicle_node_name(name))
+    follicle_name = follicle_node_name(name)
+    if not cmds.objExists(follicle_name):
+        return cmds.createNode('follicle', name=follicle_name)
+    else:
+        return follicle_name
 
 
 def attr_connect(attr_src, attr_trg):
@@ -188,11 +195,11 @@ def attach_follicle(mesh_name, follicle_object="", follicle_name=""):
     :param mesh_name: <str> the shape object name. Could be a nurbsSurface to a mesh object.
     :return: <bool> True for success. <bool> False for failure.
     """
-    shape_m_obj_array = object_utils.get_shape_obj(mesh_name)
-    shape_name_array = object_utils.get_shape_name(mesh_name)
+    # get the first mesh shape, we don't want a Shape Orig
+    shape_m_obj_array = object_utils.get_shape_obj(mesh_name)[0],
+    shape_name_array = object_utils.get_shape_name(mesh_name)[0],
 
     follicles = ()
-
     for shape_m_obj, shape_name in zip(shape_m_obj_array, shape_name_array):
         if follicle_name:
             follicle_shape_name = create_follicle_node(name=follicle_name)
@@ -204,9 +211,13 @@ def attach_follicle(mesh_name, follicle_object="", follicle_name=""):
             elif object_utils.has_fn(follicle_object, 'follicle'):
                 follicle_name = object_utils.get_parent_name(follicle_object)[0]
                 follicle_shape_name = follicle_object
-        else:
-            follicle_shape_name = create_follicle_node(name=mesh_name)
-            follicle_name = object_utils.get_parent_name(follicle_shape_name)[0]
+            elif object_utils.has_fn(follicle_object, 'component'):
+                follicle_shape_name = object_utils.get_shape_name(follicle_object)[0]
+                follicle_name = object_utils.get_parent_name(follicle_object)[0]
+            else:
+                m_obj = object_utils.get_m_obj(follicle_object)
+                print(m_obj.apiTypeStr())
+                raise NotImplementedError("[AttachFollicle] :: Could not get follicle node name.")
 
         follicles += follicle_name,
 
@@ -338,7 +349,6 @@ def get_closest_uv(driver_name, mesh_name):
         param_u = object_utils.ScriptUtil(0.0, as_double_ptr=True)
         param_v = object_utils.ScriptUtil(0.0, as_double_ptr=True)
         cpos = get_closest_point(driver_name, mesh_name, as_point=True)
-        print(cpos.x, cpos.y, cpos.z)
         shape_fn.getParamAtPoint(cpos, param_u.ptr, param_v.ptr, OpenMaya.MSpace.kObject)
         return param_u.get_double(), param_v.get_double(),
 
@@ -434,7 +444,11 @@ def get_closest_point(driver_name, mesh_name, as_point=False, tree_based=False):
     shape_obj = object_utils.convert_list_to_str(object_utils.get_shape_obj(mesh_name))
 
     mesh_dag = object_utils.get_dag(mesh_name)
-    driver_vector = transform_utils.Transform(driver_name).translate_values(as_m_vector=True, world=True)
+    try:
+        driver_vector = transform_utils.Transform(driver_name).translate_values(as_m_vector=True, world=True)
+    except RuntimeError:
+        # object is incompatible with this method
+        driver_vector = mesh_utils.get_component_position(driver_name, as_m_vector=True, world_space=True)
 
     m_matrix = mesh_dag.inclusiveMatrixInverse()
 
@@ -496,14 +510,14 @@ def create_follicles_from_objects(driver_objects_array=(), mesh_name="", attach_
     """
     follicles_array = ()
     for obj_name in driver_objects_array:
-        follicles = attach_follicle(mesh_name, follicle_object=create_follicle_node(obj_name))
+        follicles = attach_follicle(mesh_name, follicle_name=obj_name)
         for foll_name in follicles:
             # there is only ever one follicle shape object.
             follicle_shape_name = object_utils.get_shape_name(foll_name)[0]
             u, v = get_closest_uv(obj_name, mesh_name)
             cmds.setAttr(attr_name(follicle_shape_name, 'parameterU'), u)
             cmds.setAttr(attr_name(follicle_shape_name, 'parameterV'), v)
-            print(mesh_name, u, v)
+            # print(mesh_name, u, v)
             follicles_array += foll_name,
     if attach_offsets:
         attach_offset_nodes_to_follicles(follicles_array, create_container=False)
@@ -665,7 +679,6 @@ def attach_control_to_follicle(control_node, follicle_node, default_ratio=0.1):
     :param default_ratio: <float> the default ratio to set.
     :return: <bool> True for success. <bool> False for failure.
     """
-    print(control_node, follicle_node)
     attr_offset_u = attr_name(follicle_node, 'offset_u')
     attr_offset_v = attr_name(follicle_node, 'offset_v')
 

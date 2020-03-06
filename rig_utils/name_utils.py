@@ -1,7 +1,6 @@
 """
 name_utils module for dealing anything related with naming.
 """
-
 # import standard modules
 import re
 
@@ -10,6 +9,19 @@ from maya import cmds
 
 # import local modules
 from maya_utils import object_utils
+
+# define local variables
+re_brackets = re.compile(r"\[?\]?")
+# re_brackets = re.compile("[|]")
+
+
+def search_replace_brackets_name(name):
+    """
+    replaces the brackets with an empty string.
+    :param name:
+    :return: <str> string without brackets.
+    """
+    return re_brackets.sub('', name)
 
 
 def search_replace_names(objects_array, search_str="", replace_str=""):

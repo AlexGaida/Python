@@ -49,6 +49,7 @@ node_types = {
     'follicle': OpenMaya.MFn.kFollicle,
     'dag': OpenMaya.MFn.kDagNode,
     'joint': OpenMaya.MFn.kJoint,
+    'component': OpenMaya.MFn.kComponent
     }
 
 # define private variables
@@ -297,6 +298,22 @@ def get_nice_name(object_name=''):
     :return: <str> nice name.
     """
     return '_'.join(object_name.split(':'))
+
+
+def get_k_space(space='world'):
+    """
+    get the OpenMaya.MFn.kSpace index type object.
+    :param space: <str> the space to get.
+    :return: <int> index type.
+    """
+    if space == 'world':
+        return space_k_world()
+    elif space == 'object':
+        return space_k_object()
+    elif space == 'transform':
+        return space_k_transform()
+    else:
+        raise NotImplementedError("[GetKSpace] :: {}, is invalid.".format(space))
 
 
 def space_k_world():

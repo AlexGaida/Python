@@ -1,6 +1,9 @@
 """
 mesh_utils.py utility node relating to mesh functions
 """
+# import standatd modules
+from pprint import pprint
+
 # import maya modules
 from maya import OpenMaya
 
@@ -10,17 +13,53 @@ import object_utils
 # define local variables
 DATA_DICT = {}
 
+# define private variables
+__verbosity__ = False
+
+
+def pprint_verbosity(*args):
+    """
+    if the module's verbosity is set to True, pprint the incoming data.
+    :param args:
+    :return:
+    """
+    if __verbosity__:
+        return pprint(args)
+
+
+def check_and_convert_obj_into_array(object_name=""):
+    """
+    converts the object into an array tuple.
+    :param object_name:
+    :return:
+    """
+    if not isinstance(object_name, (list, tuple)):
+        return object_name,
+    return object_name
+
 
 def init_data_dict(key_name):
+    """
+    initialize a data dictionary.
+    :param key_name:
+    :return:
+    """
     if key_name not in DATA_DICT:
         DATA_DICT[key_name] = {}
     return DATA_DICT
 
 
 def updata_data_dict(key_name, data_key, data_value):
+    """
+    updates the data dictionary
+    :param key_name:
+    :param data_key:
+    :param data_value:
+    :return:
+    """
     if data_key not in DATA_DICT[key_name]:
         DATA_DICT[key_name][data_key] = ()
-    DATA_DICT[key_name][data_key] += data_value,
+    DATA_DICT[key_name][data_key] = data_value,
     return DATA_DICT
 
 
@@ -53,15 +92,22 @@ def is_array_component(objects_array=()):
     return True
 
 
-def get_component_data(objects_array=(), index=False, uv=True, position=True):
+def get_space(world_space=False, object_space=False):
+    if world_space:
+        return object_utils.get_k_space(space='world')
+    if object_space:
+        return object_utils.get_k_space(space='object')
+
+
+def get_component_data(objects_array=(), uv=False, position=True, as_m_vector=False, world_space=True, object_space=False):
     """
-    get the component indices
+    get the component indices data
     :param objects_array: <tuple> (optional) array of objects. to iterate over. Else iterates over selected items.
-    :param index: <bool> get component index.
     :param position: <bool> get X, Y, Z position values from component index selected.
     :param uv: <bool> get UV data, not implemented correctly.
     :return: <dict> tuples of indices.
     """
+    objects_array = check_and_convert_obj_into_array(objects_array)
     m_iter = object_utils.get_m_selection_iter(objects_array)
 
     items = {}
@@ -78,14 +124,14 @@ def get_component_data(objects_array=(), index=False, uv=True, position=True):
             m_component = OpenMaya.MObject()
             sel.getDagPath(0, m_dag, m_component)
 
-        key_name = m_dag.partialPathName()
-        items.update(init_data_dict(key_name))
+        # key_name = m_dag.partialPathName()
 
         if object_utils.is_shape_nurbs_surface(m_dag):
             s_iter = OpenMaya.MItSurfaceCV(m_dag, m_component)
             while not s_iter.isDone():
-                if index:
-                    items.update(updata_data_dict(key_name, 'index', s_iter.index()))
+                key_name = s_iter.index()
+                items = init_data_dict(key_name)
+                # items.update(updata_data_dict(key_name, 'index', s_iter.index()))
 
                 if uv:
                     int_u = object_utils.ScriptUtil(as_int_ptr=True)
@@ -95,15 +141,21 @@ def get_component_data(objects_array=(), index=False, uv=True, position=True):
                     items.update(updata_data_dict(key_name, 'uv', (int_u.get_int(), int_v.get_int())))
 
                 if position:
-                    m_point = s_iter.position(OpenMaya.MSpace.kWorld)
-                    items.update(updata_data_dict(key_name, 'position', (m_point.x, m_point.y, m_point.z)))
+                    m_point = s_iter.position(get_space(world_space, object_space))
+                    if as_m_vector:
+                        vector = OpenMaya.MVector(m_point)
+                    elif not as_m_vector:
+                        vector = m_point.x, m_point.y, m_point.z,
+                    items.update(updata_data_dict(key_name, 'position', vector))
                 s_iter.next()
 
         if object_utils.is_shape_mesh(m_dag):
             msh_iter = OpenMaya.MItMeshVertex(m_dag, m_component)
             while not msh_iter.isDone():
-                if index:
-                    items.update(updata_data_dict(key_name, 'index', msh_iter.index()))
+                key_name = msh_iter.index()
+                items = init_data_dict(key_name)
+                # items.update(updata_data_dict(key_name, 'index', msh_iter.index()))
+
                 if uv:
                     float2 = object_utils.ScriptUtil((0.0, 0.0), as_float2_ptr=True)
                     msh_iter.getUV(float2.ptr, 'map1')
@@ -111,11 +163,31 @@ def get_component_data(objects_array=(), index=False, uv=True, position=True):
                     items.update(updata_data_dict(key_name, 'uv', float2.get_float2_item()))
 
                 if position:
-                    m_point = msh_iter.position(OpenMaya.MSpace.kWorld)
-                    items.update(updata_data_dict(key_name, 'position', (m_point.x, m_point.y, m_point.z)))
+                    m_point = msh_iter.position(get_space(world_space, object_space))
+                    if as_m_vector:
+                        vector = OpenMaya.MVector(m_point)
+                    elif not as_m_vector:
+                        vector = m_point.x, m_point.y, m_point.z,
+                    items.update(updata_data_dict(key_name, 'position', vector))
                 msh_iter.next()
         m_iter.next()
     return items
+
+
+def get_component_position(object_name="", as_m_vector=False, world_space=True, object_space=False):
+    """
+    get the component position vector
+    :param object_name:
+    :param as_m_vector: <bool> return OpenMaya.MVector object
+    :param world_space: <bool> return position vector in world space.
+    :param object_space: <bool> return position vector in object space.
+    :return: <tuple> position X, Y, Z values
+    """
+    data = get_component_data(
+        object_name, position=True, as_m_vector=as_m_vector, world_space=world_space, object_space=object_space)
+    pprint_verbosity(data)
+    for index, component_data in data.items():
+        return component_data['position'][0]
 
 
 def is_points_on_same_edge(point_a, point_b):
