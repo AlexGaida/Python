@@ -1361,3 +1361,17 @@ def connect_control_locators_to_follicle(control_array=(), follicle_array=()):
         return False
     locators_array = flatten_list(map(find_system_locator, control_array))
     return follicle_utils.attach_controls_to_follicles(locators_array, follicle_array)
+
+
+def create_eyelid_follicle_system(driver_object="", selected_vertices=(), create_number=2):
+    """
+    creates follicle drivens that drives the joints that are driven by the driver controllers.
+    This is a complicated system that requires these steps:
+    1. select vertices.
+    2. get the closest UV from the start and end vertex selection.
+    3. get the default closest UV from the selected items.
+    4. store this in memory in a dictionary.
+    5. decide how many driven follicles need to be created on that selected edge loop.
+    6. create the follicles based on division of distance.
+    :return:
+    """

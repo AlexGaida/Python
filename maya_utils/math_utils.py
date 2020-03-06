@@ -289,7 +289,52 @@ def angle(vector1, vector2):
     return math.degrees(math.acos(data / (magnitude(vector1) * magnitude(vector2))))
 
 
-class Vector:
+class Vector(MVector):
+    RESULT = ()
+
+    def __init__(self, *args):
+        super(Vector, self).__init__(*args)
+
+    def do_division(self, amount=2):
+        """
+        divide the vector into sections.
+        :param amount: <int> divide the vector into these sections.
+        :return: <tuple> section vector.
+        """
+        self.RESULT = self.x / amount, self.y / amount, self.z / amount,
+        return self.RESULT
+
+    def do_multiply(self, amount=2):
+        """
+        multiply the vector by the amount.
+        :param amount: <int> divide the vector into these sections.
+        :return: <tuple> section vector.
+        """
+        self.RESULT = self.x * amount, self.y * amount, self.z * amount,
+        return self.RESULT
+
+    def get_position(self):
+        self.RESULT = self.x, self.y, self.z,
+        return self.RESULT
+
+    def divide_self(self, amount=2):
+        Vector(*self.RESULT)
+        return Vector(*self.do_division(amount=amount))
+
+    @property
+    def result(self):
+        return self.RESULT
+
+    @property
+    def m_vector_result(self):
+        return MVector(self.RESULT)
+
+    @property
+    def position(self):
+        return self.get_position()
+
+
+class OldVector:
     """
     INPUT:
         args: list() of three values, int(), int(), int() or float(), float(), float() types.
@@ -334,7 +379,6 @@ class Vector:
                 raise ValueError("Please use a list of 3 floats or intergers")
 
             self.data = head
-
             self.magnitude = magnitude(head)
 
             # Calculating magnitude of WorldSpace: sqrt((ax * ax) + (ay * ay) + (az * az))
@@ -355,7 +399,6 @@ class Vector:
             self.data = data
 
     def __str__(self):
-
         return repr(self.data)
 
     def __repr__(self):
@@ -381,6 +424,9 @@ class Vector:
             data.append(self.data[j] - other.data[j])
 
         return Vector(data)
+
+    def __div__(self, division):
+        data = list()
 
     def __mul__(self, other):
         data = list()
@@ -463,4 +509,31 @@ def look_at(source, target, up_vector=(0, -1, 0)):
 
     # retrieve the desired rotation for "source" to aim at "target", in degrees
     rotation = MTransformationMatrix(matrix).eulerRotation() * RADIANS_2_DEGREES
-    return rotation[0], rotation[1], rotation[2],
+    return rotation.x, rotation.y, rotation.z,
+
+
+def get_vector_position_2_points(position_1, position_2, divisions=2):
+    """
+    calculates the world space vector between the two positions.
+    :param position_1: <tuple> list vector
+    :param position_2: <tuple> list vector
+    :param divisions: <int> calculate the vector positions of divisions.
+    :return: <tuple> vector
+    """
+    vec_1 = Vector(*position_1)
+    vec_2 = Vector(*position_2)
+    new_vec = Vector(vec_1 - vec_2)
+    new_vec.do_division(divisions)
+    new_vec = Vector(*new_vec.result)
+    new_vec = Vector(new_vec + vec_2)
+    return new_vec.position
+
+
+def get_vector_positon_2_objects(object_1, object_2, divisions=2):
+    """
+    calculates the world space vector between the two points.
+    :return: <tuple> vector positions.
+    """
+    vector_1 = transform_utils.Transform(object_1).translate_values(world=True)
+    vector_2 = transform_utils.Transform(object_2).translate_values(world=True)
+    return get_vector_position_2_points(vector_1, vector_2, divisions)
