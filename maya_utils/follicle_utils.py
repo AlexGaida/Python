@@ -9,6 +9,7 @@ from maya import OpenMaya
 import object_utils
 import transform_utils
 import mesh_utils
+import math_utils
 from rig_utils import name_utils
 
 # define local variables
@@ -16,6 +17,14 @@ FOLLICLE_SUFFIX = 'foll'
 CLOSEST_POINT_ON_MESH_SUFFIX = 'cpom'
 CLOSEST_POINT_ON_SURFACE_SUFFIX = 'cpos'
 CLOSEST_POINT_ON_CURVE_SUFFIX = 'cpoc'
+
+attr_connect = object_utils.attr_connect
+attr_add_float = object_utils.attr_add_float
+attr_name = object_utils.attr_name
+attr_set = object_utils.attr_set
+create_node = object_utils.create_node
+attr_get_value = object_utils.attr_get_value
+attr_split = object_utils.attr_split
 
 
 def find_all_follicles():
@@ -113,78 +122,6 @@ def create_follicle_node(name=""):
         return cmds.createNode('follicle', name=follicle_name)
     else:
         return follicle_name
-
-
-def attr_connect(attr_src, attr_trg):
-    """
-    connect the attributes from the source attribute to the target attribute.
-    :param attr_src: <str> source attribute.
-    :param attr_trg: <str> target attribute.
-    :return: <bool> True for success. <bool> False for failure.
-    """
-    if not cmds.isConnected(attr_src, attr_trg):
-        cmds.connectAttr(attr_src, attr_trg)
-    return True
-
-
-def attr_add_float(node_name, attribute_name):
-    """
-    add the new attribute to this node.
-    :param node_name: <str> valid node name.
-    :param attribute_name: <str> valid attribute name.
-    :return: <str> new attribute name.
-    """
-    if not cmds.objExists(attr_name(node_name, attribute_name)):
-        cmds.addAttr(node_name, at='float', ln=attribute_name)
-        cmds.setAttr(attr_name(node_name, attribute_name), k=1)
-    return attr_name(node_name, attribute_name)
-
-
-def attr_get_value(node_name, attribute_name):
-    """
-    add the new attribute to this node.
-    :param node_name: <str> valid node name
-    :param attribute_name: <str> valid attribute name.
-    :return: <str> new attribute name.
-    """
-    return cmds.getAttr(attr_name(node_name, attribute_name))
-
-
-def attr_name(object_name, attribute_name, check=False):
-    """
-    concatenate strings to make an attribute name.
-    checks to see if the attribute is valid.
-    :return: <str> attribute name.
-    """
-    attr_str = '{}.{}'.format(object_name, attribute_name)
-    if check and not cmds.objExists(attr_str):
-        raise ValueError('[AttrNameError] :: attribute name does not exit: {}]'.format(attr_str))
-    return attr_str
-
-
-def attr_set(object_name, value, attribute_name=""):
-    """
-    set the values to this attribute name.
-    :param object_name: <str> the object node to set attributes to.
-    :param attribute_name: <str> the attribute name to set value to.
-    :param value: <int>, <float>, <str> the value to set to the attribute name.
-    :return: <bool> True for success.
-    """
-    if '.' in object_name:
-        return cmds.setAttr(object_name, value)
-    return cmds.setAttr(attr_name(object_name, attribute_name), value)
-
-
-def create_node(node_type, node_name=""):
-    """
-    creates this node name.
-    :param node_type: <str> create this type of node.
-    :param node_name: <str> create a node with this name.
-    :return: <str> node name.
-    """
-    if not cmds.objExists(node_name):
-        cmds.createNode(node_type, name=node_name)
-    return node_name
 
 
 def attach_follicle(mesh_name, follicle_object="", follicle_name=""):
@@ -450,6 +387,7 @@ def get_closest_point(driver_name, mesh_name, as_point=False, tree_based=False):
         # object is incompatible with this method
         driver_vector = mesh_utils.get_component_position(driver_name, as_m_vector=True, world_space=True)
 
+    # get the parent inverse matrix
     m_matrix = mesh_dag.inclusiveMatrixInverse()
 
     if object_utils.is_shape_nurbs_surface(mesh_name):
@@ -660,15 +598,6 @@ def attach_limit_attrs(driver_attr, driven_attr, default_value=0.0, add_attrs_on
 
     attr_connect(attr_name(clamp_name, 'outputR'), driven_attr)
     return nodes
-
-
-def attr_split(a_name):
-    """
-    split the attribute name into their respective strings
-    :param a_name: <str> attribute name.
-    :return: <tuple> node name, attr name.
-    """
-    return tuple(a_name.split('.'))
 
 
 def attach_control_to_follicle(control_node, follicle_node, default_ratio=0.1):

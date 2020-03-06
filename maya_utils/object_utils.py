@@ -80,6 +80,26 @@ def flatten(array):
             yield el
 
 
+def selection_order(func):
+    """
+    selection order decorator
+    :param func: <functionObject> the function object to run
+    :return: <functionWrapper>
+    """
+    def wrapper(*args, **kwargs):
+        set_pref = 0
+        select_pref = cmds.selectPref(trackSelectionOrder=1, q=1)
+        if not select_pref:
+            set_pref = 1
+            cmds.selectPref(trackSelectionOrder=1)
+        # run function
+        answer = func(*args, **kwargs)
+        if set_pref:
+            cmds.selectPref(trackSelectionOrder=select_pref)
+        return answer
+    return wrapper
+
+
 def compare_array_lengths(array_1, array_2):
     """
     compare the array lengths from array_1, to array_2
@@ -456,17 +476,19 @@ def get_double4_ptr():
     return util.asDouble4Ptr()
 
 
+@selection_order
 def get_selected_node(single=True):
     """
     grabs the current name of the selected object.
+    :param single: <bool> if False, get selection array.
     :return: <str> selected object. <str> empty list for failure.
     """
     if single:
         try:
-            return tuple(cmds.ls(sl=1)[0])
+            return cmds.ls(os=1, fl=1)[0]
         except IndexError:
             return ''
-    return tuple(cmds.ls(sl=1))
+    return tuple(cmds.ls(os=1, fl=1))
 
 
 def connect_attr(src_attribute="", dst_attribute=""):
@@ -1579,3 +1601,84 @@ class Item(OpenMaya.MObject):
         :return: <bool> True for good match. <bool> False for no match.
         """
         return compare_objects(self, m_obj, fn=True)
+
+
+def attr_connect(attr_src, attr_trg):
+    """
+    connect the attributes from the source attribute to the target attribute.
+    :param attr_src: <str> source attribute.
+    :param attr_trg: <str> target attribute.
+    :return: <bool> True for success. <bool> False for failure.
+    """
+    if not cmds.isConnected(attr_src, attr_trg):
+        cmds.connectAttr(attr_src, attr_trg)
+    return True
+
+
+def attr_add_float(node_name, attribute_name):
+    """
+    add the new attribute to this node.
+    :param node_name: <str> valid node name.
+    :param attribute_name: <str> valid attribute name.
+    :return: <str> new attribute name.
+    """
+    if not cmds.objExists(attr_name(node_name, attribute_name)):
+        cmds.addAttr(node_name, at='float', ln=attribute_name)
+        cmds.setAttr(attr_name(node_name, attribute_name), k=1)
+    return attr_name(node_name, attribute_name)
+
+
+def attr_get_value(node_name, attribute_name):
+    """
+    add the new attribute to this node.
+    :param node_name: <str> valid node name
+    :param attribute_name: <str> valid attribute name.
+    :return: <str> new attribute name.
+    """
+    return cmds.getAttr(attr_name(node_name, attribute_name))
+
+
+def attr_name(object_name, attribute_name, check=False):
+    """
+    concatenate strings to make an attribute name.
+    checks to see if the attribute is valid.
+    :return: <str> attribute name.
+    """
+    attr_str = '{}.{}'.format(object_name, attribute_name)
+    if check and not cmds.objExists(attr_str):
+        raise ValueError('[AttrNameError] :: attribute name does not exit: {}]'.format(attr_str))
+    return attr_str
+
+
+def attr_set(object_name, value, attribute_name=""):
+    """
+    set the values to this attribute name.
+    :param object_name: <str> the object node to set attributes to.
+    :param attribute_name: <str> the attribute name to set value to.
+    :param value: <int>, <float>, <str> the value to set to the attribute name.
+    :return: <bool> True for success.
+    """
+    if '.' in object_name:
+        return cmds.setAttr(object_name, value)
+    return cmds.setAttr(attr_name(object_name, attribute_name), value)
+
+
+def attr_split(a_name):
+    """
+    split the attribute name into their respective strings
+    :param a_name: <str> attribute name.
+    :return: <tuple> node name, attr name.
+    """
+    return tuple(a_name.split('.'))
+
+
+def create_node(node_type, node_name=""):
+    """
+    creates this node name.
+    :param node_type: <str> create this type of node.
+    :param node_name: <str> create a node with this name.
+    :return: <str> node name.
+    """
+    if not cmds.objExists(node_name):
+        cmds.createNode(node_type, name=node_name)
+    return node_name

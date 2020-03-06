@@ -295,7 +295,7 @@ class Vector(MVector):
     def __init__(self, *args):
         super(Vector, self).__init__(*args)
 
-    def do_division(self, amount=2):
+    def do_division(self, amount=2.0):
         """
         divide the vector into sections.
         :param amount: <int> divide the vector into these sections.
@@ -304,7 +304,7 @@ class Vector(MVector):
         self.RESULT = self.x / amount, self.y / amount, self.z / amount,
         return self.RESULT
 
-    def do_multiply(self, amount=2):
+    def do_multiply(self, amount=2.0):
         """
         multiply the vector by the amount.
         :param amount: <int> divide the vector into these sections.
@@ -317,17 +317,9 @@ class Vector(MVector):
         self.RESULT = self.x, self.y, self.z,
         return self.RESULT
 
-    def divide_self(self, amount=2):
-        Vector(*self.RESULT)
-        return Vector(*self.do_division(amount=amount))
-
     @property
     def result(self):
         return self.RESULT
-
-    @property
-    def m_vector_result(self):
-        return MVector(self.RESULT)
 
     @property
     def position(self):
@@ -509,10 +501,11 @@ def look_at(source, target, up_vector=(0, -1, 0)):
 
     # retrieve the desired rotation for "source" to aim at "target", in degrees
     rotation = MTransformationMatrix(matrix).eulerRotation() * RADIANS_2_DEGREES
-    return rotation.x, rotation.y, rotation.z,
+    vector = rotation.asVector()
+    return vector.x, vector.y, vector.z,
 
 
-def get_vector_position_2_points(position_1, position_2, divisions=2):
+def get_vector_position_2_points(position_1, position_2, divisions=2.0):
     """
     calculates the world space vector between the two positions.
     :param position_1: <tuple> list vector
@@ -520,13 +513,15 @@ def get_vector_position_2_points(position_1, position_2, divisions=2):
     :param divisions: <int> calculate the vector positions of divisions.
     :return: <tuple> vector
     """
-    vec_1 = Vector(*position_1)
-    vec_2 = Vector(*position_2)
-    new_vec = Vector(vec_1 - vec_2)
-    new_vec.do_division(divisions)
-    new_vec = Vector(*new_vec.result)
-    new_vec = Vector(new_vec + vec_2)
-    return new_vec.position
+    positions = ()
+    for i in xrange(1, divisions):
+        vec_1 = Vector(*position_1)
+        vec_2 = Vector(*position_2)
+        new_vec = Vector(vec_1 - vec_2)
+        div_vec = Vector(new_vec * (float(i) / float(divisions)))
+        result_vec = Vector(*div_vec.position)
+        positions += Vector(result_vec + vec_2).position,
+    return positions
 
 
 def get_vector_positon_2_objects(object_1, object_2, divisions=2):
@@ -537,3 +532,4 @@ def get_vector_positon_2_objects(object_1, object_2, divisions=2):
     vector_1 = transform_utils.Transform(object_1).translate_values(world=True)
     vector_2 = transform_utils.Transform(object_2).translate_values(world=True)
     return get_vector_position_2_points(vector_1, vector_2, divisions)
+

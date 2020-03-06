@@ -24,6 +24,7 @@ from deformers import deform_utils
 from maya_utils import math_utils
 from maya_utils import ui_utils
 from maya_utils import follicle_utils
+from maya_utils import mesh_utils
 
 # reload modules
 reload(attribute_utils)
@@ -44,10 +45,18 @@ transform_type = object_utils.node_types['transform']
 locator_type = object_utils.node_types['locator']
 curve_type = object_utils.node_types['nurbsCurve']
 
-# define global variables
+# define local variables
 SIDES = read_sides.Sides()
 MIRROR_SIDES = read_sides.MirrorSides()
 AXES = read_sides.Axes()
+
+attr_connect = object_utils.attr_connect
+attr_add_float = object_utils.attr_add_float
+attr_name = object_utils.attr_name
+attr_set = object_utils.attr_set
+create_node = object_utils.create_node
+attr_get_value = object_utils.attr_get_value
+attr_split = object_utils.attr_split
 
 
 def flatten_list(list_obj):
@@ -1363,7 +1372,7 @@ def connect_control_locators_to_follicle(control_array=(), follicle_array=()):
     return follicle_utils.attach_controls_to_follicles(locators_array, follicle_array)
 
 
-def create_eyelid_follicle_system(driver_object="", selected_vertices=(), create_number=2):
+def create_eyelid_follicle_system(driver_object="", selected_vertices=(), surface_mesh_name=""):
     """
     creates follicle drivens that drives the joints that are driven by the driver controllers.
     This is a complicated system that requires these steps:
@@ -1373,5 +1382,57 @@ def create_eyelid_follicle_system(driver_object="", selected_vertices=(), create
     4. store this in memory in a dictionary.
     5. decide how many driven follicles need to be created on that selected edge loop.
     6. create the follicles based on division of distance.
-    :return:
+    :return: <tuple> array of follicles, <dict> animation data.
     """
+    start_vertex = selected_vertices[0]
+    middle_vertices = selected_vertices[1:-1]
+    end_vertex = selected_vertices[-1]
+
+    # get us the created follicles
+    follicle_objs = follicle_utils.create_follicles_from_objects(middle_vertices, mesh_name=surface_mesh_name)
+
+    # get the min and max (U, V) values
+    max_uv = follicle_utils.get_closest_uv(start_vertex, surface_mesh_name)
+    min_uv = follicle_utils.get_closest_uv(end_vertex, surface_mesh_name)
+    driver_attr = 'translateY'
+
+    # calculate the min/ max offset UV against the default UV value
+    anim_data = {}
+    for foll_name in follicle_objs:
+        driven_attr = 'offset_v'
+        # default_foll_u = attr_get_value(foll_name, 'default_u')
+        default_foll_v = attr_get_value(foll_name, 'default_v')
+
+        max_uv_default = default_foll_v - max_uv[0]
+        min_uv_default = default_foll_v - min_uv[0]
+
+        # define this min max relationship by creating set driven keys.
+        animation_utils.set_driven_key(
+            driver_node=driver_object,
+            driver_attr=driver_attr,
+            driven_node=foll_name,
+            driven_attr=driven_attr,
+            driven_value=0.0,
+            driver_value=0.0)
+        anim_data.update({0.0: 0.0})
+
+        # set maximum value
+        animation_utils.set_driven_key(
+            driver_node=driver_object,
+            driver_attr=driver_attr,
+            driven_attr=driven_attr,
+            driven_node=foll_name,
+            driven_value=max_uv_default,
+            driver_value=1.0)
+        anim_data.update({1.0: max_uv_default})
+
+        # set minimum value
+        animation_utils.set_driven_key(
+            driver_node=driver_object,
+            driver_attr=driver_attr,
+            driven_attr=driven_attr,
+            driven_node=foll_name,
+            driven_value=min_uv_default,
+            driver_value=-1.0)
+        anim_data.update({-1.0: min_uv_default})
+    return follicle_objs, anim_data

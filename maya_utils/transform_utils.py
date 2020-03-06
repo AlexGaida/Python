@@ -141,10 +141,10 @@ class Transform(OpenMaya.MFnTransform):
         return the translate attribute values
         :return: <tuple> scale attribute values
         """
-        if world:
-            m_vector = self.getTranslation(self.WORLD_SPACE)
-        elif not world:
-            m_vector = self.getTranslation(self.OBJECT_SPACE)
+        # if world:
+        #     m_vector = self.getTranslation(self.WORLD_SPACE)
+        # elif not world:
+        m_vector = self.getTranslation(self.OBJECT_SPACE)
         if not as_m_vector:
             x = round(m_vector.x, 4)
             y = round(m_vector.y, 4)
