@@ -1384,6 +1384,8 @@ def create_eyelid_follicle_system(driver_object="", selected_vertices=(), surfac
     6. create the follicles based on division of distance.
     :return: <tuple> array of follicles, <dict> animation data.
     """
+    if not len(selected_vertices) > 2:
+        raise ValueError("[createEyelidFollicleSystem] :: You need at least 3 selections.")
     start_vertex = selected_vertices[0]
     middle_vertices = selected_vertices[1:-1]
     end_vertex = selected_vertices[-1]
@@ -1403,8 +1405,8 @@ def create_eyelid_follicle_system(driver_object="", selected_vertices=(), surfac
         # default_foll_u = attr_get_value(foll_name, 'default_u')
         default_foll_v = attr_get_value(foll_name, 'default_v')
 
-        max_uv_default = default_foll_v - max_uv[0]
-        min_uv_default = default_foll_v - min_uv[0]
+        max_uv_default = max_uv[1] - default_foll_v
+        min_uv_default = min_uv[1] - default_foll_v
 
         # define this min max relationship by creating set driven keys.
         animation_utils.set_driven_key(
