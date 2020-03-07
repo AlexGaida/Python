@@ -136,15 +136,41 @@ def create_joint_at_transform(transform_name="", name=""):
 
 
 @reload_selection
-def create_joints(objects_array, name):
+def create_joints(objects_array, name, bind=False):
     """
     create joints at transform objects.
+    :param objects_array: <tuple> array of transform objects.
+    :param name: <str> the name to use when creating the joints.
+    :param bind: <bool> create bind joint name.
     :return: <tuple> array of joints.
     """
     names = ()
     for idx in range(len(objects_array)):
-        names += '{}_{}_{}'.format(name, idx, JNT_SUFFIX),
+        if bind:
+            names += '{}_{}_{}'.format(name, idx, BND_JNT_SUFFIX),
+        else:
+            names += '{}_{}_{}'.format(name, idx, JNT_SUFFIX),
     joints = ()
     for trfm_name, obj_name in zip(objects_array, names):
         joints += create_joint_at_transform(trfm_name, obj_name),
     return joints
+
+
+def create_joints_at_selection(name):
+    """
+    creates the joints at selected transform objects.
+    :param name: <str> the name to use when creating the joints.
+    :return: <tuple> array of joints created.
+    """
+    objects = object_utils.get_selected_node(single=False)
+    return create_joints(objects, name)
+
+
+def create_bind_joints_at_selection(name):
+    """
+    creates the joints at selected transform objects.
+    :param name: <str> the name to use when creating the joints.
+    :return: <tuple> array of joints created.
+    """
+    objects = object_utils.get_selected_node(single=False)
+    return create_joints(objects, name, bind=True)

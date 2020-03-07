@@ -383,18 +383,115 @@ def create_control_at_transform(object_name, name='', shape_name="cube"):
     return ctrl_data
 
 
-def create_controls(objects_array, name, shape_name="cube"):
+def create_controls(objects_array, name, shape_name="cube", apply_constraints=None, maintain_offset=False):
     """
     creates controllers at this transform object name.
     :param name: <str> create curves with this object name.
     :param objects_array: <tuple> array of objects.
     :param shape_name: <str> build this shape.
-    :return:
+    :param apply_constraints: <tuple> array or constraints to create.
+    :param maintain_offset: <bool> create constraints with maintain offset.
+    :return: <tuple> controller data.
     """
     names = ()
     for idx in range(len(objects_array)):
         names += '{}_{}_{}'.format(name, idx, CTRL_SUFFIX),
+
+    apply_constraints = object_utils.convert_str_to_list(apply_constraints)
+
     groups = ()
     for trfm_name, obj_name in zip(objects_array, names):
-        groups += create_control_at_transform(trfm_name, obj_name, shape_name),
+        data = create_control_at_transform(trfm_name, obj_name, shape_name)
+
+        if apply_constraints:
+            if 'parent' in apply_constraints:
+                apply_parent_constraint(data['controller'], trfm_name, maintain_offset)
+            if 'scale' in apply_constraints:
+                apply_scale_constraint(data['controller'], trfm_name, maintain_offset)
+            if 'point' in apply_constraints:
+                apply_point_constraint(data['controller'], trfm_name, maintain_offset)
+            if 'orient' in apply_constraints:
+                apply_orient_constraint(data['controller'], trfm_name, maintain_offset)
+        groups += data,
     return groups
+
+
+def create_controllers_with_standard_constraints(name, objects_array=(), shape_name="cube", maintain_offset=False):
+    """
+    creates controllers with constraints on the objects in the array.
+    :param name: <str>
+    :param objects_array: <tuple> (optional) if not given, the objects will depend on your selection.
+    :param shape_name: <str>
+    :param maintain_offset: <bool> create constraints with maintain offset.
+    :return: <tuplw>
+    """
+    if not objects_array:
+        objects_array = object_utils.get_selected_node(single=False)
+        print(objects_array)
+    return create_controls(
+        objects_array, name,
+        shape_name=shape_name,
+        apply_constraints=('parent', 'scale'),
+        maintain_offset=maintain_offset)
+
+
+def create_controllers_with_point_constraints(name, objects_array=(), shape_name="cube", maintain_offset=False):
+    """
+    creates controllers with constraints on the objects in the array.
+    :param name: <str>
+    :param objects_array: <tuple> (optional) if not given, the objects will depend on your selection.
+    :param shape_name: <str>
+    :param maintain_offset: <bool> create constraints with maintain offset.
+    :return: <tuplw>
+    """
+    if not objects_array:
+        objects_array = object_utils.get_selected_node(single=False)
+    return create_controls(
+        objects_array, name,
+        shape_name=shape_name,
+        apply_constraints=['point'],
+        maintain_offset=maintain_offset)
+
+
+def apply_parent_constraint(source_obj, target_obj, maintain_offset=True):
+    """
+    create parent constraint.
+    :param source_obj:
+    :param target_obj:
+    :param maintain_offset:
+    :return:
+    """
+    return cmds.parentConstraint(source_obj, target_obj, mo=maintain_offset)[0]
+
+
+def apply_scale_constraint(source_obj, target_obj, maintain_offset=True):
+    """
+    create scale constraint.
+    :param source_obj:
+    :param target_obj:
+    :param maintain_offset:
+    :return:
+    """
+    return cmds.scaleConstraint(source_obj, target_obj, mo=maintain_offset)[0]
+
+
+def apply_point_constraint(source_obj, target_obj, maintain_offset=True):
+    """
+    create point constraint.
+    :param source_obj:
+    :param target_obj:
+    :param maintain_offset:
+    :return:
+    """
+    return cmds.pointConstraint(source_obj, target_obj, mo=maintain_offset)[0]
+
+
+def apply_orient_constraint(source_obj, target_obj, maintain_offset=True):
+    """
+    create orient constraint
+    :param source_obj:
+    :param target_obj:
+    :param maintain_offset:
+    :return:
+    """
+    return cmds.orientConstraint(source_obj, target_obj, mo=maintain_offset)[0]

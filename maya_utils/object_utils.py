@@ -709,6 +709,17 @@ def convert_list_to_str(array_obj):
     return array_obj
 
 
+def convert_str_to_list(array_obj):
+    """
+    change the array object into a string object.
+    :param array_obj: <tuple>, <list> array object to convert.
+    :return: <str> object.
+    """
+    if isinstance(array_obj, (str, unicode)) and len(array_obj) == 1:
+        return array_obj,
+    return array_obj
+
+
 def get_fn(m_object):
     """
     returns the fn object from the m_object supplied.
