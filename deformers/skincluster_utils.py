@@ -204,14 +204,16 @@ def get_skin_cluster(source_obj=None):
     :param source_obj: <OpenMaya.MObject> start iteration from this source node.
     :return: <str> skin cluster node name. <False> for failure.
     """
-    m_it_graph = OpenMaya.MItDependencyGraph(source_obj,
+    m_it_graph = OpenMaya.MItDependencyGraph(object_utils.get_shape_obj(source_obj)[0],
                                              OpenMaya.MItDependencyGraph.kUpstream,
                                              OpenMaya.MItDependencyGraph.kPlugLevel)
     while not m_it_graph.isDone():
         cur_item = m_it_graph.currentItem()
         m_depend_node = OpenMaya.MFnDependencyNode(cur_item)
         if cur_item.hasFn(OpenMaya.MFn.kSkin):
-                return m_depend_node, m_depend_node.name()
+            return OpenMayaAnim.MFnSkinCluster(cur_item), m_depend_node.name()
+        if cur_item.hasFn(OpenMaya.MFn.kSkinClusterFilter):
+            return OpenMayaAnim.MFnSkinCluster(cur_item), m_depend_node.name()
         m_it_graph.next()
     return False
 
@@ -243,18 +245,17 @@ def connect(source_obj, source_plug_name, destination_obj, destination_plug_name
     mg_mod.doIt()
 
 
-def get_skin_data(skin_obj=None):
+def get_skin_data(mesh_obj=None):
     """
     Returns a dictionary of skinCluster influences and weights.
-    :param skin_obj: <OpenMaya.MObject> the mesh shape name.
+    :param mesh_obj: <OpenMaya.MObject> the mesh shape name.
     :return: <dict> skinCluster values. <bool> False for failure.
     """
     weights = {}
-    skin_fn = get_skin_cluster(skin_obj)
+    skin_fn, skin_name = get_skin_cluster(mesh_obj)
 
     # get the MDagPath for all influence
     inf_dag_arr = OpenMaya.MDagPathArray()
-    vertex_arr = OpenMaya.MArrayDataHandle()
     skin_fn.influenceObjects(inf_dag_arr)
 
     # create a dictionary whose key is the MPlug indice id and
@@ -264,25 +265,16 @@ def get_skin_data(skin_obj=None):
     weights["influences"] = []
     for x in xrange(inf_dag_arr.length()):
         inf_path = inf_dag_arr[x].fullPathName()
-        inf_id = int(inf_dag_arr.indexForInfluenceObject(inf_dag_arr[x]))
+        inf_id = int(skin_fn.indexForInfluenceObject(inf_dag_arr[x]))
         inf_ids[inf_id] = x
         influences.append(inf_path)
     weights["influences"] = influences
-
-    # get the mesh vertices and id  components
-    weights["vertices"] = 0
-    OpenMaya.MItMeshVertex(vertex_arr)
-    indices = vertex_arr.elementCount()
-    weights["vertices"] = indices
-    single_index_component = OpenMaya.MFnSingleIndexedComponent()
-    vertex_component = single_index_component.create(OpenMaya.MFn.kMeshVertComponent)
-    single_index_component.addElements(indices)
 
     # get the MPlug for the weightList and weights attributes
     weight_list_plug = skin_fn.findPlug('weightList')
     weights_plug = skin_fn.findPlug('weights')
     weight_list_attr_plug = weight_list_plug.attribute()
-    weights_plug = weights_plug.attribute()
+    weights_attr = weights_plug.attribute()
     weight_int_arr = OpenMaya.MIntArray()
 
     # the weights are stored in dictionary, the key is the vert id,
@@ -301,7 +293,7 @@ def get_skin_data(skin_obj=None):
         inf_plug = OpenMaya.MPlug(weights_plug)
         for inf_id in weight_int_arr:
             # tell the inf_plug it represents the current influence id
-            inf_plug.selectAncestorLogicalIndex(inf_id, weights_plug)
+            inf_plug.selectAncestorLogicalIndex(inf_id, weights_attr)
 
             # add this influence and its weight to this verts weights
             try:
@@ -310,9 +302,10 @@ def get_skin_data(skin_obj=None):
                 # assumes a removed influence
                 pass
         weights["weights"][v_id] = weight_values
+    return weights
 
 
-def normalize_weights(skin_name="", mesh_name="", influences=[]):
+def normalize_weights(skin_name="", mesh_name="", influences=()):
     """
     Normalizes the weights.
     :return: <bool> True for success. <bool> False for failure.
@@ -329,23 +322,23 @@ def normalize_weights(skin_name="", mesh_name="", influences=[]):
 
     # restore normalize setting
     if skinNorm != 0:
-        cmds.setAttr('%s.normalizeWeights' % mesh_name, skinNorm)
+        cmds.setAttr('%s.normalizeWeights' % skin_name, skinNorm)
 
 
-def set_weights(skin_fn=None, weights={}):
+def set_weights(mesh_obj=None, weights={}):
     """
     Using the  dictionary provided, set the skinCluster weights.
-    :param skin_fn: <OpenMayaAnim.MFnSkinCluster> the skin cluster function set.
+    :param mesh_obj: set weights to this object.
     :param weights: <dict> weight dictionary data.
     :return: <bool> True for success.  <bool> False for failure.
     """
-    m_int_array = OpenMaya.MIntArray()
-    skin_fn.influenceObjects(m_int_array)
-    skin_name = object_utils.get_m_object_name(skin_fn)
+    skin_fn, skin_name = get_skin_cluster(mesh_obj)
+    normalize_weights(skin_name, mesh_obj, weights['influences'])
 
-    for vert_id, weightData in weights.items():
-        weight_list_attr_plug = '%s.weightList[%s]' % (skin_name, vert_id)
+    for vert_id, weightData in weights['weights'].items():
+        weight_attr_plug = '%s.weightList[%s]' % (skin_name, vert_id)
         for inf_id, infValue in weightData.items():
             weight_attr = '.weights[%s]' % inf_id
-            cmds.setAttr(weight_list_attr_plug + weight_attr, infValue)
+            cmds.setAttr(weight_attr_plug + weight_attr, infValue)
+    print("Weights set on: {}".format(skin_name))
     return True

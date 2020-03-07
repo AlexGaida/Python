@@ -1350,7 +1350,7 @@ def snap_to_transform(source="", target="", matrix=False, translate=False, rotat
     return True
 
 
-def insert_transform(sel_obj='', name=''):
+def insert_transform(sel_obj='', name='', suffix_name=''):
     """
     insert a transform object above this given object.
     :param sel_obj: <str> maya scene object name.
@@ -1363,6 +1363,8 @@ def insert_transform(sel_obj='', name=''):
         return False
     if name:
         i_name = name
+    elif suffix_name:
+        i_name = sel_obj + '_{}'.format(suffix_name)
     else:
         i_name = sel_obj + '_par'
     mat = cmds.xform(sel_obj, q=1, ws=1, m=1)
