@@ -32,7 +32,7 @@ def get_controllers():
     get all controllers in scene.
     :return: <tuple> controller objects.
     """
-    return tuple(cmds.ls('*_{}'.format(CTRL_SUFFIX)))
+    return tuple(cmds.ls('*_{}'.format(CTRL_SUFFIX)) + cmds.ls('*:*_{}'.format(CTRL_SUFFIX)))
 
 
 def get_selected_ctrl():
@@ -208,6 +208,10 @@ def zero_controllers():
     for ctrl_name in get_controllers():
         for attr_name, attr_val in transform_attrs.items():
             ctrl_attribute = attr_str(ctrl_name, attr_name)
+            if not object_utils.is_attr_keyable(ctrl_name, attr_name):
+                continue
+            if object_utils.is_attr_connected(ctrl_name, attr_name):
+                continue
             cmds.setAttr(ctrl_attribute, attr_val)
     return True
 

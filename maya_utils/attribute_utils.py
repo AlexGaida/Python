@@ -30,7 +30,7 @@ class ImmutableDict(dict):
         return type(self)(dict(self).fromkeys(sequence, v))
 
 
-class Attributes(OpenMaya.MDagModifier):
+class Attributes:
     MAYA_STR_OBJECT = None
     SCALE_ATTRS = ['scaleX', 'scaleY', 'scaleZ']
     DEFAULT_ATTR_VALUES = {'translateX': 0.0,
@@ -61,7 +61,6 @@ class Attributes(OpenMaya.MDagModifier):
                           OpenMaya.MFnNumericData.kAddr)
 
     def __init__(self, maya_node="", all_attrs=False, keyable=False, custom=False, connected=False):
-        super(Attributes, self).__init__()
         self.MAYA_M_OBJECT = object_utils.get_m_obj(maya_node)
         self.MAYA_MFN_OBJECT = object_utils.get_mfn_obj(maya_node)
         self.OBJECT_NODE_TYPE = self.MAYA_MFN_OBJECT.typeName()

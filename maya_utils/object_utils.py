@@ -301,6 +301,46 @@ def is_shape_nurbs_curve(object_name):
     return bool(get_shape_name(object_name, shape_type="nurbsCurve"))
 
 
+def is_attr_locked(object_node, attr_str):
+    """
+    check if attribute is locked.
+    :param object_node: <str> object node name.
+    :param attr_str: <str> attribute name.
+    :return: <bool> True for yes, <bool> False for no.
+    """
+    return get_plug(object_node, attr_str).isLocked()
+
+
+def is_attr_connected(object_node, attr_str):
+    """
+    check if attribute is connected.
+    :param object_node: <str> object node name.
+    :param attr_str: <str> attribute name.
+    :return: <bool> True for yes, <bool> False for no.
+    """
+    return get_plug(object_node, attr_str).isConnected()
+
+
+def attr_info(object_node, attr_str):
+    """
+    get plug info
+    :param object_node: <str> object node name.
+    :param attr_str: <str> attribute name.
+    :return: <bool> True for yes, <bool> False for no.
+    """
+    return get_plug(object_node, attr_str).info()
+
+
+def is_attr_keyable(object_node, attr_str):
+    """
+    check if attribute is keyable.
+    :param object_node: <str> object node name.
+    :param attr_str: <str> attribute name.
+    :return: <bool> True for yes, <bool> False for no.
+    """
+    return get_plug(object_node, attr_str).isKeyable()
+
+
 def check_object_type(object_name="", object_type=""):
     """
     compare two objects' types.
@@ -527,6 +567,16 @@ def get_m_object_name(m_object=OpenMaya.MObject):
     :return: <str> object name.
     """
     return OpenMaya.MFnDependencyNode(m_object).name()
+
+
+def get_plug(object_name, attr_str):
+    """
+    get the MPlug from object attribute name.
+    :param object_name: <str> object name to get the MFnPlug from.
+    :param attr_str: <str> attribute name to find.
+    :return: <OpenMaya.MPlug>
+    """
+    return get_fn(get_m_obj(object_name)).findPlug(attr_str)
 
 
 def get_object_types(find_str=""):
