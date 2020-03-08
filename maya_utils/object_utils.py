@@ -49,7 +49,10 @@ node_types = {
     'follicle': OpenMaya.MFn.kFollicle,
     'dag': OpenMaya.MFn.kDagNode,
     'joint': OpenMaya.MFn.kJoint,
-    'component': OpenMaya.MFn.kComponent
+    'component': OpenMaya.MFn.kComponent,
+    'lattice': OpenMaya.MFn.kLattice,
+    'blendShape': OpenMaya.MFn.kBlendShape,
+    'animCurve': OpenMaya.MFn.kAnimCurve,
     }
 
 # define private variables
@@ -130,6 +133,17 @@ def get_dag(object_name="", shape=False):
     m_dag = OpenMaya.MDagPath()
     m_sel.getDagPath(0, m_dag)
     return m_dag
+
+
+def get_selection_iter():
+    """
+    returns the selection iterator.
+    :return:
+    """
+    models = OpenMaya.MSelectionList()
+    for model in cmds.ls(transforms=True):
+        models.add(model)
+    return OpenMaya.MItSelectionList(models)
 
 
 def get_m_selection_iter(objects_array=()):
@@ -558,6 +572,56 @@ def get_connections_destination(object_name=""):
     :return:
     """
     return tuple(cmds.listConnections(object_name, source=False, destination=True, plugs=True))
+
+
+def get_m_obj_array(objects=()):
+    """
+    returns the objects as MObjectArray
+    :param objects:
+    :return:
+    """
+    m_array = OpenMaya.MObjectArray()
+    for obj in objects:
+        m_obj = get_m_obj(obj)
+        m_array.append(m_obj)
+    return m_array
+
+
+def get_m_shape_obj_array(objects=()):
+    """
+    returns the objects as MObjectArray
+    :param objects:
+    :return:
+    """
+    m_array = OpenMaya.MObjectArray()
+    for obj in objects:
+        m_obj = get_shape_obj(obj)[0]
+        m_array.append(m_obj)
+    return m_array
+
+
+def convert_obj_array_to_string_array(object_array):
+    """
+    returns the string version of the MObjectArray
+    :return:
+    """
+    objects = ()
+    for i in xrange(object_array.length()):
+        objects += get_m_object_name(object_array[i]),
+    return objects
+
+
+def rename_node(object_name, this_name):
+    """
+    renames the object name to this name.
+    :param object_name:
+    :param this_name:
+    :return: <str> modified name.
+    """
+    m_dag_mod = OpenMaya.MDagModifier()
+    m_dag_mod.renameNode(get_m_obj(object_name), this_name)
+    m_dag_mod.doIt()
+    return this_name
 
 
 def get_m_object_name(m_object=OpenMaya.MObject):
@@ -1030,7 +1094,7 @@ def get_transform_relatives(object_name='', find_parent='', find_child=False, wi
     return return_data
 
 
-def get_connected_nodes(object_name="", find_node_type=OpenMaya.MFn.kAnimCurve,
+def get_connected_nodes(object_name="", find_node_type='animCurve',
                         as_strings=False, find_attr="", down_stream=True,
                         up_stream=False, with_shape=None, search_name=""):
     """
