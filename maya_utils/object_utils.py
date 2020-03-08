@@ -39,20 +39,25 @@ import transform_utils
 
 # define local variables
 node_types = {
-    'nurbsCurve': OpenMaya.MFn.kNurbsCurve,
-    'locator': OpenMaya.MFn.kLocator,
-    'mesh': OpenMaya.MFn.kMesh,
-    'nurbsSurface': OpenMaya.MFn.kNurbsSurface,
-    'unitConversion': OpenMaya.MFn.kUnitConversion,
-    'blendWeighted': OpenMaya.MFn.kBlendWeighted,
-    'transform': OpenMaya.MFn.kTransform,
-    'follicle': OpenMaya.MFn.kFollicle,
-    'dag': OpenMaya.MFn.kDagNode,
-    'joint': OpenMaya.MFn.kJoint,
-    'component': OpenMaya.MFn.kComponent,
-    'lattice': OpenMaya.MFn.kLattice,
-    'blendShape': OpenMaya.MFn.kBlendShape,
-    'animCurve': OpenMaya.MFn.kAnimCurve,
+    'nurbsCurve':           OpenMaya.MFn.kNurbsCurve,
+    'locator':              OpenMaya.MFn.kLocator,
+    'mesh':                 OpenMaya.MFn.kMesh,
+    'nurbsSurface':         OpenMaya.MFn.kNurbsSurface,
+    'unitConversion':       OpenMaya.MFn.kUnitConversion,
+    'blendWeighted':        OpenMaya.MFn.kBlendWeighted,
+    'transform':            OpenMaya.MFn.kTransform,
+    'follicle':             OpenMaya.MFn.kFollicle,
+    'dag':                  OpenMaya.MFn.kDagNode,
+    'joint':                OpenMaya.MFn.kJoint,
+    'component':            OpenMaya.MFn.kComponent,
+    'lattice':              OpenMaya.MFn.kLattice,
+    'blendShape':           OpenMaya.MFn.kBlendShape,
+    'animCurve':            OpenMaya.MFn.kAnimCurve,
+    'set':                  OpenMaya.MFn.kSet,
+    'camera':               OpenMaya.MFn.kCamera,
+    'skin':                 OpenMaya.MFn.kSkin,
+    'skinCluster':          OpenMaya.MFn.kSkinClusterFilter,
+    'tweak':                OpenMaya.MFn.kTweak
     }
 
 # define private variables
@@ -277,6 +282,15 @@ def is_dag(object_name):
     :return: <bool> is of type dag.
     """
     return bool(has_fn(get_m_obj(object_name), 'dag'))
+
+
+def is_set(object_name):
+    """
+    confirm if the object provided is of MFnSet type.
+    :param object_name: <str>, <OpenMaya.MObject> the object to check.
+    :return: <bool> is of type MfnSet.
+    """
+    return bool(has_fn(get_m_obj(object_name), 'set'))
 
 
 def is_transform(object_name):
@@ -606,7 +620,7 @@ def convert_obj_array_to_string_array(object_array):
     :return:
     """
     objects = ()
-    for i in xrange(object_array.length()):
+    for i in xrange(len(object_array)):
         objects += get_m_object_name(object_array[i]),
     return objects
 

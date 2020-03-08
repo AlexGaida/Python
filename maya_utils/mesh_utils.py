@@ -99,6 +99,68 @@ def get_space(world_space=False, object_space=False):
         return object_utils.get_k_space(space='object')
 
 
+def get_data(m_dag, m_component, world_space=True, index=False, uv=False,
+             position=False, as_m_vector=False, object_space=False, uv_map_name="map1"):
+    """
+    grabs the data from the m_dag and the m_component parameters given.
+    :param m_dag: <OpenMaya.MDagPath>
+    :param m_component: <OpenMaya.MObject>
+    :param world_space: <bool> if True, get the vectors in world space coordinates.
+    :param index: <bool> if True, get the vertex/ CV indices.
+    :param uv: <bool> if True, get the UV indices.
+    :param position: <bool> if True, get the position x y z.
+    :param as_m_vector: <bool> if True, return position in world space.
+    :param object_space: <bool> if True, return position in object space.
+    :return: <tuple> array of requested items.
+    """
+    data = ()
+
+    # if nurbsSurface shape
+    if object_utils.is_shape_nurbs_surface(m_dag):
+        s_iter = OpenMaya.MItSurfaceCV(m_dag, m_component)
+        while not s_iter.isDone():
+            if index:
+                data += s_iter.index(),
+
+            elif uv:
+                int_u = object_utils.ScriptUtil(as_int_ptr=True)
+                int_v = object_utils.ScriptUtil(as_int_ptr=True)
+                s_iter.getIndex(int_u.ptr, int_v.ptr)
+                data += int_u.get_int(), int_v.get_int(),
+
+            elif position:
+                m_point = s_iter.position(get_space(world_space, object_space))
+                if as_m_vector:
+                    vector = OpenMaya.MVector(m_point)
+                elif not as_m_vector:
+                    vector = m_point.x, m_point.y, m_point.z,
+                data += vector,
+            s_iter.next()
+        # end loop
+
+    # if mesh shape
+    if object_utils.is_shape_mesh(m_dag):
+        msh_iter = OpenMaya.MItMeshVertex(m_dag, m_component)
+        while not msh_iter.isDone():
+            if index:
+                data += msh_iter.index(),
+
+            if uv:
+                float2 = object_utils.ScriptUtil((0.0, 0.0), as_float2_ptr=True)
+                msh_iter.getUV(float2.ptr, uv_map_name)
+
+            elif position:
+                m_point = msh_iter.position(get_space(world_space, object_space))
+                if as_m_vector:
+                    vector = OpenMaya.MVector(m_point)
+                elif not as_m_vector:
+                    vector = m_point.x, m_point.y, m_point.z,
+                data += vector,
+            msh_iter.next()
+        # end loop
+    return data
+
+
 def get_component_data(objects_array=(), uv=False, position=True, as_m_vector=False, world_space=True, object_space=False):
     """
     get the component indices data

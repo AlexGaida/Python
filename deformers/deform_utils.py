@@ -4,10 +4,12 @@ module for dealing with deformers in Maya.
 # import maya modules
 from maya import mel
 from maya import cmds
-from maya import OpenMaya as OpenMaya
+from maya import OpenMaya
+from maya import OpenMayaAnim
 
 # import local modules
 from maya_utils import object_utils
+from maya_utils import mesh_utils
 
 
 def load_deformer_weights(file_name="", deformer_name=""):
@@ -145,27 +147,12 @@ def get_connected_object_sets(object_name=""):
     """
     grabs the connected blendShape node.
     :param object_name:
-    :return:
+    :return: <tuple> array of object set objects.
     """
     return object_utils.get_connected_nodes(get_fn_shape(object_name),
-                                            find_node_type=OpenMaya.MFn.kSet,
+                                            find_node_type='set',
                                             up_stream=True,
                                             down_stream=False)
-
-
-def get_deform_object_set_items(object_name=""):
-    """
-    get set items from deformer sets.
-    :param object_name:
-    :return:
-    """
-    for deform_set in get_connected_object_sets(object_name):
-        m_sel = OpenMaya.MSelectionList()
-        OpenMaya.MFnSet(deform_set).getMembers(m_sel, True)
-        for i in xrange(m_sel.length()):
-            node = OpenMaya.MObject()
-            print m_sel.getDependNode(i, node)
-            print object_utils._get_m_object_name(node)
 
 
 def get_name(m_object=None):
@@ -182,7 +169,8 @@ def extract_mesh_deltas(skin_mesh_name="", corrected_mesh_name=""):
     extracts deltas from the mesh provided.
     :return: <str> corrective mesh name.
     """
-    return mel.eval("extractDeltas -s {} -c {}".format(skin_mesh_name, corrected_mesh_name))
+    # return mel.eval("extractDeltas -s {} -c {}".format(skin_mesh_name, corrected_mesh_name))
+    return cmds.invertShape(skin_mesh_name, corrected_mesh_name)
 
 
 def get_blend_shape_name(object_name=''):
@@ -276,3 +264,40 @@ def remove_blendshape_target(mesh_name="", blend_name="", shape_name="", shape_i
     :return:
     """
     cmds.blendShape(blend_name, edit=True, remove=True, t=(mesh_name, shape_index, shape_name, 1.0))
+
+
+def get_set_members(deformer_name="", index=False, uv=False, position=False):
+    """
+    finds the deformers associated with the mesh name.
+    :param deformer_name: <str> the name of the deformer to get set data from.
+    :param index: <bool> if True, return index components.
+    :param uv: <bool> if True, return UV components.
+    :param position: <bool> if True, return position components.
+    :return: <dict> setName: (array of components) data.
+    """
+    deform_fn = OpenMayaAnim.MFnGeometryFilter(object_utils.get_m_obj(deformer_name))
+    set_obj = deform_fn.deformerSet()
+    set_fn = OpenMaya.MFnSet(set_obj)
+
+    members = OpenMaya.MSelectionList()
+    set_fn.getMembers(members, False)
+
+    sel_iter = OpenMaya.MItSelectionList(members)
+    data_dict = {}
+    while not sel_iter.isDone():
+        path = OpenMaya.MDagPath()
+        components = OpenMaya.MObject()
+        sel_iter.getDagPath(path, components)
+        data_dict[set_fn.name()] = mesh_utils.get_data(path, components, index=index, uv=uv, position=position)
+        sel_iter.next()
+    return data_dict
+
+
+def get_sets(mesh_name=""):
+    """
+    returns an array of deformers attached to this mesh object.
+    :param mesh_name:
+    :return:
+    """
+    sets_array = get_connected_object_sets(mesh_name)
+    return object_utils.convert_obj_array_to_string_array(sets_array)

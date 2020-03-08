@@ -120,10 +120,10 @@ def create_blendshape(mesh_objects, name=""):
     blend_fn = OpenMayaAnim.MFnBlendShapeDeformer()
     if isinstance(mesh_objects, (str, unicode)):
         mesh_obj = object_utils.get_m_obj(mesh_objects)
-        blend_fn.create(mesh_obj, origin)
+        blend_fn.create(mesh_obj, origin, normal_chain)
     elif len(mesh_objects) > 1 and isinstance(mesh_objects, (tuple, list)):
         mesh_obj_array = object_utils.get_m_obj_array(mesh_objects)
-        blend_fn.create(mesh_obj_array, origin, front_of_chain)
+        blend_fn.create(mesh_obj_array, origin, normal_chain)
     else:
         raise ValueError("Could not create blendshape.")
 
@@ -142,16 +142,19 @@ def add_target(targets_array, blend_name="", weight=1.0):
     """
     blend_fn = get_deformer_fn(blend_name)
     base_obj = get_base_object(blend_name)[0]
+    if isinstance(targets_array, (str, unicode)):
+        targets_array = targets_array,
     targets_array = object_utils.get_m_shape_obj_array(targets_array)
     length = targets_array.length()
+    index = get_weight_indices(blend_fn.name()).length() + 1
     # step = 1.0 / length - 1
     for i in xrange(0, length):
         # weight_idx = (i * step) * 1000/1000.0
-        blend_fn.addTarget(base_obj, 0, targets_array[i], weight)
+        blend_fn.addTarget(base_obj, index, targets_array[i], weight)
     return True
 
 
-def remove_target(targets_array, blend_name="", weight=1.0):
+def remove_target(targets_array, blend_name="", index=0, weight=1.0):
     """
     removes a blendshape target.
     :return:
@@ -163,20 +166,70 @@ def remove_target(targets_array, blend_name="", weight=1.0):
     # step = 1.0 / length - 1
     for i in xrange(0, length):
         # weight_idx = (i * step) * 1000/1000.0
-        blend_fn.removeTarget(base_obj, 0, targets_array[i], weight)
+        blend_fn.removeTarget(base_obj, index, targets_array[i], weight)
     return True
 
 
-def get_targets(blend_name=""):
+def get_targets_at_index(blend_name="", index=0):
     """
     returns targets.
-    :return:
+    :param blend_name: <str> the name of the blendShape node.
+    :param index: <int> shape index.
+    :return: <tuple> string array of targets at index.
     """
     blend_fn = get_deformer_fn(blend_name)
     base_obj = get_base_object(blend_name)[0]
     obj_array = OpenMaya.MObjectArray()
-    blend_fn.getTargets(base_obj, 0, obj_array)
+    blend_fn.getTargets(base_obj, index, obj_array)
     return object_utils.convert_obj_array_to_string_array(obj_array)
+
+
+def get_shapes(blend_name=""):
+    """
+    returns a dictionary data of all shapes from this blend shape object.
+    :return: <tuple> array of shapes and targets.
+    """
+    shapes = ()
+    indices = get_weight_indices(blend_name=blend_name)
+    for i in xrange(indices.length()):
+        shapes += get_targets_at_index(blend_name, indices[i])
+        # shapes += get_target_item_index(blend_name, i)
+    return shapes
+
+
+def get_weight_indices(blend_name=""):
+    """
+    get the weight indices from the blendShape name provided.
+    :param blend_name: <str> the name of the blendShape node.
+    :return: <OpenMaya.MIntArray>
+    """
+    blend_fn = get_deformer_fn(blend_name)
+    int_array = OpenMaya.MIntArray()
+    blend_fn.weightIndexList(int_array)
+    return int_array
+
+
+def get_num_weights(blend_name=""):
+    """
+    get the weight indices from the blendShape name provided.
+    :param blend_name: <str> the name of the blendShape node.
+    :return: <OpenMaya.MIntArray>
+    """
+    return get_deformer_fn(blend_name).numWeights()
+
+
+def get_target_item_index(blend_name="", index=0):
+    """
+    get the weight indices from the blendShape name provided.
+    :param blend_name: <str> the name of the blendShape node.
+    :param index: <int> the index of blendShape weights.
+    :return: <OpenMaya.MIntArray>
+    """
+    blend_fn = get_deformer_fn(blend_name)
+    base_obj = get_base_object(blend_name)[0]
+    m_tgt_array = OpenMaya.MIntArray()
+    blend_fn.targetItemIndexList(index, base_obj, m_tgt_array)
+    return m_tgt_array
 
 
 def delete_blendshapes(mesh_obj):
@@ -187,6 +240,18 @@ def delete_blendshapes(mesh_obj):
     """
     shape_obj = object_utils.get_shape_name(mesh_obj)[0]
     cmds.delete(get_connected_blendshape_names(shape_obj))
+
+
+def get_base_objects(blend_name=""):
+    """
+    return the base objects associated with this blend shape node.
+    :param blend_name: <str> the name of the blendShape node.
+    :return: <tuple> array of base objects
+    """
+    m_obj_array = OpenMaya.MObjectArray()
+    blend_fn = get_deformer_fn(blend_name)
+    blend_fn.getBaseObjects(m_obj_array)
+    return object_utils.convert_obj_array_to_string_array(m_obj_array)
 
 
 def get_point_data(blend_name=""):
