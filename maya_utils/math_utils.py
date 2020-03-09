@@ -563,20 +563,30 @@ def calculate_circle_collision(object_1, object_2, object_1_radius=0.0, object_2
     return mag(object_1, object_2) <= object_1_radius + object_2_radius
 
 
-def create_sine_ratio_driver(driver_object="", driven_object="",
+def create_sine_ratio_driver(driver_object="", driven_object="", add_clamp=True, radius=1.0,
                              driven_attribute='translateY', driver_attributes=('translateY', 'translateX')):
     """
     create a sine ratio from the driver vector co-ordinates to the driver object vector.
     :param driver_object: <str> driving object.
     :param driven_object: <str> driven object.
     :param driven_attribute: <str> driven attribute to drive.
+    :param add_clamp: <bool> adds a clamp node to clamp the values to not get the -1.0 return value.
+    :param radius: <float> the radius object from the origin of rotation.
     :param driver_attributes: <tuple> the two driving attributes to use. (numerator/ denominator)
     :return:
     """
     sine_ratio_node_name = "{}_sine_ratio".format(driver_object)
+    sine_clamp_node_name = "{}_sine_clamp".format(driver_object)
     sine_ratio_node = object_utils.create_node('multiplyDivide', node_name=sine_ratio_node_name)
+    sine_clamp_node = object_utils.create_node('clamp', node_name=sine_clamp_node_name)
     attr_set(attr_name(sine_ratio_node, 'operation'), 2)
+    attr_set(attr_name(sine_ratio_node, 'input2X'), radius)
     connect_attr(attr_name(driver_object, driver_attributes[0]), attr_name(sine_ratio_node, 'input1X'))
     # connect_attr(attr_name(driver_object, driver_attributes[1]), attr_name(sine_ratio_node, 'input2X'))
-    connect_attr(attr_name(sine_ratio_node, 'outputX'), attr_name(driven_object, driven_attribute))
+    attr_set(attr_name(sine_clamp_node, 'maxR'), 1.0)
+    if add_clamp:
+        connect_attr(attr_name(sine_ratio_node, 'outputX'), attr_name(sine_clamp_node, 'inputR'))
+        connect_attr(attr_name(sine_clamp_node, 'outputR'), attr_name(driven_object, driven_attribute))
+    elif not add_clamp:
+        connect_attr(attr_name(sine_ratio_node, 'outputX'), attr_name(driven_object, driven_attribute))
     return sine_ratio_node
