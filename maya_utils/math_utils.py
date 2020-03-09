@@ -13,13 +13,17 @@ import math
 import transform_utils
 import object_utils
 
-# define global variables
+# define local variables
 M_PI = 3.14159265358979323846
 CIRCLE = 360
 HALF_CIRCLE = 180
 EXP = 2.718281
 RADIANS_2_DEGREES = 57.2958
 DEGREES_2_RADIANS = 0.0174533
+
+connect_attr = object_utils.connect_attr
+attr_name = object_utils.attr_name
+attr_set = object_utils.attr_set
 
 
 def squared_difference(num_array=()):
@@ -545,3 +549,34 @@ def calculate_angle(vector1, vector2):
     v2 = Vector(*vector2)
     dot_product = v1 * v2
     return math.acos(dot_product) * 180 / M_PI
+
+
+def calculate_circle_collision(object_1, object_2, object_1_radius=0.0, object_2_radius=0.0):
+    """
+    return True if the two objects' radiuses collide with eachother.
+    :param object_1:
+    :param object_2:
+    :param object_1_radius:
+    :param object_2_radius:
+    :return: <bool> if the objects collide.
+    """
+    return mag(object_1, object_2) <= object_1_radius + object_2_radius
+
+
+def create_sine_ratio_driver(driver_object="", driven_object="",
+                             driven_attribute='translateY', driver_attributes=('translateY', 'translateX')):
+    """
+    create a sine ratio from the driver vector co-ordinates to the driver object vector.
+    :param driver_object: <str> driving object.
+    :param driven_object: <str> driven object.
+    :param driven_attribute: <str> driven attribute to drive.
+    :param driver_attributes: <tuple> the two driving attributes to use. (numerator/ denominator)
+    :return:
+    """
+    sine_ratio_node_name = "{}_sine_ratio".format(driver_object)
+    sine_ratio_node = object_utils.create_node('multiplyDivide', node_name=sine_ratio_node_name)
+    attr_set(attr_name(sine_ratio_node, 'operation'), 2)
+    connect_attr(attr_name(driver_object, driver_attributes[0]), attr_name(sine_ratio_node, 'input1X'))
+    # connect_attr(attr_name(driver_object, driver_attributes[1]), attr_name(sine_ratio_node, 'input2X'))
+    connect_attr(attr_name(sine_ratio_node, 'outputX'), attr_name(driven_object, driven_attribute))
+    return sine_ratio_node

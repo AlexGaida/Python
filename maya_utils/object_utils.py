@@ -1829,5 +1829,5 @@ def create_node(node_type, node_name=""):
     :return: <str> node name.
     """
     if not cmds.objExists(node_name):
-        cmds.createNode(node_type, name=node_name)
+        return cmds.createNode(node_type, name=node_name)
     return node_name
