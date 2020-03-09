@@ -15,6 +15,8 @@ import object_utils
 
 # define global variables
 M_PI = 3.14159265358979323846
+CIRCLE = 360
+HALF_CIRCLE = 180
 EXP = 2.718281
 RADIANS_2_DEGREES = 57.2958
 DEGREES_2_RADIANS = 0.0174533
@@ -533,3 +535,13 @@ def get_vector_positon_2_objects(object_1, object_2, divisions=2):
     vector_2 = transform_utils.Transform(object_2).translate_values(world=True)
     return get_vector_position_2_points(vector_1, vector_2, divisions)
 
+
+def calculate_angle(vector1, vector2):
+    """
+    calculates the angle from x, y values given
+    :return:
+    """
+    v1 = Vector(*vector1)
+    v2 = Vector(*vector2)
+    dot_product = v1 * v2
+    return math.acos(dot_product) * 180 / M_PI

@@ -57,7 +57,15 @@ node_types = {
     'camera':               OpenMaya.MFn.kCamera,
     'skin':                 OpenMaya.MFn.kSkin,
     'skinCluster':          OpenMaya.MFn.kSkinClusterFilter,
-    'tweak':                OpenMaya.MFn.kTweak
+    'tweak':                OpenMaya.MFn.kTweak,
+    'bend':                 OpenMaya.MFn.kDeformBend,
+    'squash':               OpenMaya.MFn.kDeformSquash,
+    'cluster':              OpenMaya.MFn.kCluster,
+    'deltaMush':            OpenMaya.MFn.kDeltaMush,
+    'wire':                 OpenMaya.MFn.kWire,
+    'sculpt':               OpenMaya.MFn.kSculpt,
+    'wrap':                 OpenMaya.MFn.kWrapFilter,
+    'shrinkWrap':           OpenMaya.MFn.kShrinkWrapFilter,
     }
 
 # define private variables
