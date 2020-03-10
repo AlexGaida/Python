@@ -563,6 +563,17 @@ def calculate_circle_collision(object_1, object_2, object_1_radius=0.0, object_2
     return mag(object_1, object_2) <= object_1_radius + object_2_radius
 
 
+def calculate_circle_point_collision(object_1, object_2, object_1_radius=0.0):
+    """
+    return True if the two objects' radiuses collide with each other.
+    :param object_1: the circle object.
+    :param object_2:
+    :param object_1_radius: the radius of the circle.
+    :return: <bool> if the objects collide.
+    """
+    return mag(object_1, object_2) <= object_1_radius
+
+
 def create_ratio_driver(driver_object="", driven_object="", add_clamp=True, radius=1.0, driver_type='sine',
                         driven_attribute='translateY', driver_attributes=('translateX', 'translateY')):
     """

@@ -7,9 +7,14 @@ from maya import cmds
 
 # import local modules
 import object_utils
+import math_utils
 
 # define local variables
 __shape_name__ = 'nurbsCurve'
+connect_attr = object_utils.connect_attr
+create_node = object_utils.create_node
+attr_name = object_utils.attr_name
+attr_set = object_utils.attr_set
 
 
 def get_all_nurb_objs():
@@ -227,3 +232,84 @@ def set_nurb_shape_color(shape_name="", color='yellow'):
         r, g, b = color
         cmds.setAttr(shape_name + '.overrideColorRGB', r, g, b, type='double3')
     return True
+
+
+def curve_info_matrix(point_on_curve=""):
+    """
+    get the matrix from point on curve info node.
+    :param point_on_curve:
+    :return: <tuple> matrix
+    """
+    point_on_curve_result_name = '{}.result'.format(point_on_curve)
+    normal_vector = math_utils.Vector(*cmds.getAttr('{}.normal'.format(point_on_curve_result_name))).normal()
+    tangent_vector = math_utils.Vector(*cmds.getAttr('{}.tangent'.format(point_on_curve_result_name))).normal()
+    cross_vector = normal_vector ^ tangent_vector
+    position = math_utils.Vector(*cmds.getAttr('{}.position'.format(point_on_curve_result_name)))
+    matrix = (
+         tangent_vector[0], tangent_vector[1], tangent_vector[2], 0,
+         normal_vector[0],  normal_vector[1],  normal_vector[2],  0,
+         cross_vector[0],   cross_vector[1],   cross_vector[2],   0,
+         position[0],       position[1],       position[2],       1
+    )
+    return matrix
+
+
+def attach_transform_to_curve(object_name="", curve_name=""):
+    """
+    attach a transform object to the curve object.
+    :return:
+    """
+    poc_node_name = "{}_poc".format(object_name)
+    cross_vector_name = "{}_cross".format(object_name)
+    cross_vector_name2 = "{}_cross2".format(object_name)
+    four_by_four_name = "{}_4by4".format(object_name)
+    decompose_name = "{}_decomp".format(object_name)
+    poc_node = create_node('pointOnCurveInfo', node_name=poc_node_name)
+    cross_vector_node = create_node('vectorProduct', node_name=cross_vector_name)
+    cross_vector_node2 = create_node('vectorProduct', node_name=cross_vector_name2)
+    four_by_four_node = create_node('fourByFourMatrix', node_name=four_by_four_name)
+    decompose_node = create_node('decomposeMatrix', node_name=decompose_name)
+
+    # set the vector product into cross product operation
+    attr_set(attr_name(cross_vector_name, 'operation'), 2)
+
+    # connect the curve shape into the point on curve node
+    connect_attr(object_utils.get_shape_name(curve_name)[0], attr_name(poc_node, 'inputCurve'))
+
+    # connect the position vector to the four by four matrix node
+    for out_attr, in_attr in zip(('positionX', 'positionY', 'positionZ'),
+                                 ('in30', 'in31', 'in32')):
+        connect_attr(attr_name(poc_node, out_attr), attr_name(four_by_four_node, in_attr))
+
+    # connect the normalized tangent vector to the cross product2 node
+    for out_attr, in_attr in zip(('normalizedTangentX', 'normalizedTangentY', 'normalizedTangentZ'),
+                                 ('input2X', 'input2Y', 'input2Z')):
+        connect_attr(attr_name(poc_node, out_attr), attr_name(cross_vector_node2, in_attr))
+
+    # connect the output
+
+    # connect the normalized tangent vector to the four by four matrix node
+    for out_attr, in_attr in zip(('normalizedTangentX', 'normalizedTangentY', 'normalizedTangentZ'),
+                                 ('in00', 'in01', 'in02')):
+        connect_attr(attr_name(poc_node, out_attr), attr_name(four_by_four_node, in_attr))
+
+    # connect the normalized normal and the normalized tangent into the vector product (crossProduct)
+    for out_attr, in_attr in zip(('normalizedNormalX', 'normalizedNormalY', 'normalizedNormalZ'),
+                                 ('input1X', 'input1Y', 'input1Z')):
+        connect_attr(attr_name(poc_node, out_attr), attr_name(cross_vector_node, in_attr))
+
+    for out_attr, in_attr in zip(('normalizedTangentX', 'normalizedTangentY', 'normalizedTangentZ'),
+                                 ('input2X', 'input2Y', 'input2Z')):
+        connect_attr(attr_name(poc_node, out_attr), attr_name(cross_vector_node, in_attr))
+
+    # connect the cross product output into the four by four matrix node
+    for out_attr, in_attr in zip(('outputX', 'outputY', 'outputZ'),
+                                 ('in20', 'in21', 'in22')):
+        connect_attr(attr_name(cross_vector_name, out_attr), attr_name(four_by_four_node, in_attr))
+
+    # connect the four by four node into the decompose matrix node.
+    connect_attr(attr_name(four_by_four_node, 'output'), attr_name(decompose_node, 'inputMatrix'))
+
+    # connect the decompose matrix into the transform node.
+    connect_attr(attr_name(decompose_node, 'outputRotate'), attr_name(object_name, 'rotate'))
+    connect_attr(attr_name(decompose_node, 'outputTranslate'), attr_name(object_name, 'translate'))

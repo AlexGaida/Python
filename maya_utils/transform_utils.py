@@ -308,6 +308,22 @@ class Transform(OpenMaya.MFnTransform):
     def m_attr_plug(self, attr):
         return OpenMaya.MPlug(self.MAYA_M_OBJECT, attr)
 
+    def print_4x4_local_matrix(self):
+        for m in [self.local_matrix[i:i + 4] for i in range(0, len(self.local_matrix), 4)]:
+            print m
+
+    def print_4x4_world_matrix(self):
+        for m in [self.world_matrix[i:i + 4] for i in range(0, len(self.world_matrix), 4)]:
+            print m
+
+    @property
+    def world_matrix(self):
+        return self.get_world_matrix()
+
+    @property
+    def local_matrix(self):
+        return self.get_local_matrix()
+
     @staticmethod
     def m_attr_index(m_plug, idx):
         return m_plug.elementByLogicalIndex(idx)
