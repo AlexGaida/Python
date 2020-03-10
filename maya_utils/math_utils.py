@@ -81,7 +81,7 @@ def exponential(x):
 
 
 def gaussian(x, x0, sigma):
-    return exponential(-power((x - x0)/sigma, 2.)/2.)
+    return exponential(-power((x - x0)/sigma, 2.0)/2.0)
 
 
 def float_range(start, stop, step):
@@ -109,11 +109,11 @@ def round_to_step(x, parts=4):
 
 
 def get_object_transform(item):
-    return map(float, cmds.xform(item, q=True, t=True, ws=True))
+    return tuple(map(float, cmds.xform(item, q=True, t=True, ws=True)))
 
 
 def get_object_matrix(item):
-    return cmds.xform(item, q=True, matrix=True, ws=True)
+    return tuple(cmds.xform(item, q=True, matrix=True, ws=True))
 
 
 def get_halfway_point(point1="", point2=""):
@@ -299,7 +299,10 @@ class Vector(MVector):
     RESULT = ()
 
     def __init__(self, *args):
-        super(Vector, self).__init__(*args)
+        if isinstance(args[0], str):
+            super(Vector, self).__init__(*get_object_transform(args[0]))
+        else:
+            super(Vector, self).__init__(*args)
 
     def do_division(self, amount=2.0):
         """
@@ -649,3 +652,63 @@ def create_cosine_ratio_driver(driver_object="", driven_object="", add_clamp=Tru
                                'cosine',
                                driven_attribute,
                                driver_attributes)
+
+
+def quadratic(v0, v1, v2, t):
+    """
+    calculates the quadratic curve interpolation
+    :param v0:
+    :param v1:
+    :param v2:
+    :param t:
+    :return:
+    """
+    point_final = {}
+    point_final.update(x=((1 - t) ** 2) * v0.x + (1 - t) * 2 * t * v1.x + t * t * v2.x)
+    point_final.update(y=((1 - t) ** 2) * v0.y + (1 - t) * 2 * t * v1.y + t * t * v2.y)
+    point_final.update(z=((1 - t) ** 2) * v0.z + (1 - t) * 2 * t * v1.z + t * t * v2.z)
+    return point_final
+
+
+def bezier(v0, v1, v2, v3, t):
+    """
+    calculates the bezier curve interpolation
+    :param v0:
+    :param v1:
+    :param v2:
+    :param t:
+    :return:
+    """
+    point_final = {}
+    point_final.update(x=((1 - t) ** 3) * v0.x + (1 - t) ** 2 * 3 * t * v1.x +
+                         (1 - t) * 3 * t * t * v2.x + t * t * t * v3.x)
+    point_final.update(y=((1 - t) ** 3) * v0.y + (1 - t) ** 2 * 3 * t * v1.y +
+                         (1 - t) * 3 * t * t * v2.y + t * t * t * v3.y)
+    point_final.update(z=((1 - t) ** 3) * v0.z + (1 - t) ** 2 * 3 * t * v1.z +
+                         (1 - t) * 3 * t * t * v2.z + t * t * t * v3.z)
+    return point_final
+
+
+def linear_cubic_interpolation(driver_array=(), divisions=20, interpolation='quadratic'):
+    """
+    interpolate the cubic line between points.
+    :return:
+    """
+
+    point_final = ()
+    if interpolation == 'quadratic':
+        for t in xrange(divisions):
+            v1 = Vector(driver_array[0])
+            v2 = Vector(driver_array[1])
+            v3 = Vector(driver_array[2])
+            point_final += quadratic(v1, v2, v3, float(t) / float(divisions)),
+        return point_final
+
+    elif interpolation == 'bezier':
+        for t in xrange(divisions):
+            v1 = Vector(driver_array[0])
+            v2 = Vector(driver_array[1])
+            v3 = Vector(driver_array[2])
+            v4 = Vector(driver_array[3])
+            point_final += bezier(v1, v2, v3, v4, float(t) / float(divisions))
+        return point_final
