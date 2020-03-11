@@ -657,44 +657,60 @@ def create_cosine_ratio_driver(driver_object="", driven_object="", add_clamp=Tru
 def quadratic(v0, v1, v2, t):
     """
     calculates the quadratic curve interpolation
-    :param v0:
-    :param v1:
-    :param v2:
-    :param t:
+    :param v0: <OpenMaya.MVector>
+    :param v1: <OpenMaya.MVector>
+    :param v2: <OpenMaya.MVector>
+    :param t: <float>
     :return:
     """
     point_final = {}
-    point_final.update(x=((1 - t) ** 2) * v0.x + (1 - t) * 2 * t * v1.x + t * t * v2.x)
-    point_final.update(y=((1 - t) ** 2) * v0.y + (1 - t) * 2 * t * v1.y + t * t * v2.y)
-    point_final.update(z=((1 - t) ** 2) * v0.z + (1 - t) * 2 * t * v1.z + t * t * v2.z)
+    point_final.update(x=((1 - t) ** 2) * v0.x +
+                          (1 - t) * 2 * t * v1.x +
+                           t * t * v2.x)
+
+    point_final.update(y=((1 - t) ** 2) * v0.y +
+                          (1 - t) * 2 * t * v1.y +
+                           t * t * v2.y)
+
+    point_final.update(z=((1 - t) ** 2) * v0.z +
+                          (1 - t) * 2 * t * v1.z +
+                           t * t * v2.z)
     return point_final
 
 
 def bezier(v0, v1, v2, v3, t):
     """
     calculates the bezier curve interpolation
-    :param v0:
-    :param v1:
-    :param v2:
-    :param t:
+    :param v0: <OpenMaya.MVector>
+    :param v1: <OpenMaya.MVector>
+    :param v2: <OpenMaya.MVector>
+    :param v3: <OpenMaya.MVector>
+    :param t: <float>
     :return:
     """
     point_final = {}
-    point_final.update(x=((1 - t) ** 3) * v0.x + (1 - t) ** 2 * 3 * t * v1.x +
-                         (1 - t) * 3 * t * t * v2.x + t * t * t * v3.x)
-    point_final.update(y=((1 - t) ** 3) * v0.y + (1 - t) ** 2 * 3 * t * v1.y +
-                         (1 - t) * 3 * t * t * v2.y + t * t * t * v3.y)
-    point_final.update(z=((1 - t) ** 3) * v0.z + (1 - t) ** 2 * 3 * t * v1.z +
-                         (1 - t) * 3 * t * t * v2.z + t * t * t * v3.z)
+    point_final.update(x=((1 - t) ** 3) * v0.x +
+                         (1 - t) ** 2 * 3 * t * v1.x +
+                         (1 - t) * 3 * t * t * v2.x +
+                          t * t * t * v3.x)
+
+    point_final.update(y=((1 - t) ** 3) * v0.y +
+                         (1 - t) ** 2 * 3 * t * v1.y +
+                         (1 - t) * 3 * t * t * v2.y +
+                          t * t * t * v3.y)
+
+    point_final.update(z=((1 - t) ** 3) * v0.z +
+                          (1 - t) ** 2 * 3 * t * v1.z +
+                          (1 - t) * 3 * t * t * v2.z +
+                           t * t * t * v3.z)
     return point_final
 
 
 def linear_cubic_interpolation(driver_array=(), divisions=20, interpolation='quadratic'):
     """
     interpolate the cubic line between points.
-    :return:
+    :return: <tuple> the array of point dictionary.
     """
-
     point_final = ()
     if interpolation == 'quadratic':
         for t in xrange(divisions):
@@ -712,3 +728,24 @@ def linear_cubic_interpolation(driver_array=(), divisions=20, interpolation='qua
             v4 = Vector(driver_array[3])
             point_final += bezier(v1, v2, v3, v4, float(t) / float(divisions))
         return point_final
+
+
+def normalize(num, max_num):
+    """
+    normalizes the number by the maximum number.
+    :param num:
+    :param max_num:
+    :return:
+    """
+    return num / max_num
+
+
+def lerp(norm, min, max):
+    """
+    returns a normalized value at offset.
+    :param norm:
+    :param min:
+    :param max:
+    :return:
+    """
+    return (max - min) * norm + min
