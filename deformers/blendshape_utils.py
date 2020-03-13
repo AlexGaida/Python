@@ -132,12 +132,56 @@ def create_blendshape(mesh_objects, name=""):
     return blend_fn
 
 
-def add_target(targets_array, blend_name="", weight=1.0):
+def find_blend_shape_index(target_name="", blend_name=""):
+    """
+    finds the index where the target resides.
+    :param target_name:
+    :param blend_name:
+    :return:
+    """
+    shape_names = get_shapes(blend_name)
+    for idx, shape in enumerate(shape_names):
+        if target_name in shape:
+            return idx
+    return False
+
+
+def add_in_between_target(shape_name, blend_name="", existing_target_name="", weight=0.5):
+    """
+    adds an in-between target.
+    :param shape_name: <str> the in between shape to add.
+    :param blend_name: <str> the blendShape to add.
+    :param existing_target_name: <str> the existing target shape to find.
+    :param weight: <float> the weight value of the in between shape.
+    :return:
+    """
+    # find the existing target index on the blend shape
+    index = find_blend_shape_index(existing_target_name, blend_name=blend_name)
+    if type(index) == bool:
+        raise ValueError("[AddInBetweenTarget] :: No valid index found with name: {}".format(existing_target_name))
+    return add_target(shape_name, blend_name, weight=0.5, index=index)
+
+
+def remove_in_between_target(shape_name, blend_name="", existing_target_name="", weight=0.5):
+    """
+    removes in-between target shape.
+    :return:
+    """
+    # find the existing target index on the blend shape
+    index = find_blend_shape_index(existing_target_name, blend_name=blend_name)
+    if type(index) == bool:
+        raise ValueError("[AddInBetweenTarget] :: No valid index found with name: {}".format(existing_target_name))
+    return remove_target(shape_name, blend_name, weight=weight, index=index)
+
+
+def add_target(targets_array, blend_name="", weight=1.0, index=0):
     """
     adds a new target with the weight to this blend shape.
     Maya has a fail-safe to get the inputTargetItem from 6000-5000
     :param targets_array: <tuple> array of mesh shapes designated as targets.
     :param blend_name: <str> the blendShape node to add targets to.
+    :param weight: <float> append this weight value to the target.
+    :param index: <int> specify the index in which to add a target to the blend node.
     :return:
     """
     blend_fn = get_deformer_fn(blend_name)
@@ -146,7 +190,8 @@ def add_target(targets_array, blend_name="", weight=1.0):
         targets_array = targets_array,
     targets_array = object_utils.get_m_shape_obj_array(targets_array)
     length = targets_array.length()
-    index = get_weight_indices(blend_fn.name()).length() + 1
+    if not index:
+        index = get_weight_indices(blend_fn.name()).length() + 1
     # step = 1.0 / length - 1
     for i in xrange(0, length):
         # weight_idx = (i * step) * 1000/1000.0
@@ -161,6 +206,8 @@ def remove_target(targets_array, blend_name="", index=0, weight=1.0):
     """
     blend_fn = get_deformer_fn(blend_name)
     base_obj = get_base_object(blend_name)[0]
+    if isinstance(targets_array, (str, unicode)):
+        targets_array = targets_array,
     targets_array = object_utils.get_m_shape_obj_array(targets_array)
     length = targets_array.length()
     # step = 1.0 / length - 1

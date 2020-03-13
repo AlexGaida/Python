@@ -628,8 +628,12 @@ def convert_obj_array_to_string_array(object_array):
     :return:
     """
     objects = ()
-    for i in xrange(len(object_array)):
-        objects += get_m_object_name(object_array[i]),
+    try:
+        for i in xrange(len(object_array)):
+            objects += get_m_object_name(object_array[i]),
+    except TypeError:
+        for i in xrange(object_array.length()):
+            objects += get_m_object_name(object_array[i]),
     return objects
 
 
@@ -1441,6 +1445,7 @@ def insert_transform(sel_obj='', name='', suffix_name=''):
     insert a transform object above this given object.
     :param sel_obj: <str> maya scene object name.
     :param name: <str> name the new group node.
+    :param suffix_name: <str> if provided, appends a suffix alternative name to the selected object.
     :return: <str> group name for success.
     """
     if not sel_obj:
