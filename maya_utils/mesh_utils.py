@@ -161,6 +161,87 @@ def get_data(m_dag, m_component, world_space=True, index=False, uv=False,
     return data
 
 
+def get_mirror_index(mesh_obj, vertex_index=0, world_space=False, object_space=False):
+    """
+    gets the mirrot mesh vertex index.
+    :param mesh_obj:
+    :param vertex_index:
+    :return:
+    """
+    mesh_obj = object_utils.get_m_obj(mesh_obj)
+
+    # if nurbsSurface shape
+    if object_utils.is_shape_nurbs_surface(mesh_obj):
+        s_iter = OpenMaya.MItSurfaceCV(mesh_obj)
+        while not s_iter.isDone():
+            index_num = s_iter.index()
+            if vertex_index == index_num:
+                m_point = s_iter.position(get_space(world_space, object_space))
+                m_vector = OpenMaya.MVector(m_point.x * -1, m_point.y, m_point.z)
+                break
+            s_iter.next()
+
+        # now find the mirror point
+        while not s_iter.isDone():
+            find_point = s_iter.position(get_space(world_space, object_space))
+            index_num = s_iter.index()
+            if OpenMaya.MVector(find_point) == m_vector:
+                return index_num, find_point
+            s_iter.next()
+
+    # if mesh shape
+    if object_utils.is_shape_mesh(mesh_obj):
+        msh_iter = OpenMaya.MItMeshVertex(mesh_obj)
+        while not msh_iter.isDone():
+            index_num = msh_iter.index()
+            if vertex_index == index_num:
+                m_point = msh_iter.position(get_space(world_space, object_space))
+                m_vector = OpenMaya.MVector(m_point.x * -1, m_point.y, m_point.z)
+                break
+            msh_iter.next()
+
+        # now find the mirror point
+        while not msh_iter.isDone():
+            find_point = msh_iter.position(get_space(world_space, object_space))
+            index_num = msh_iter.index()
+            if OpenMaya.MVector(find_point) == m_vector:
+                return index_num, find_point
+            msh_iter.next()
+    return True
+
+
+def set_index_position(mesh_obj, vertex_index=0, position=()):
+    """
+    sets the position of the vertex index.
+    :param mesh_obj:
+    :param vertex_index: <int> set the position for this vertex index.
+    :param position: <tuple> the position vector to set the index at.
+    :return: <bool> True for success.
+    """
+    mesh_obj = object_utils.get_m_obj(mesh_obj)
+
+    # if nurbsSurface shape
+    if object_utils.is_shape_nurbs_surface(mesh_obj):
+        s_iter = OpenMaya.MItSurfaceCV(mesh_obj)
+        while not s_iter.isDone():
+            index_num = s_iter.index()
+            if vertex_index == index_num:
+                s_iter.setPosition(OpenMaya.MPoint(OpenMaya.MVector(*position)))
+                break
+            s_iter.next()
+
+    # if mesh shape
+    if object_utils.is_shape_mesh(mesh_obj):
+        msh_iter = OpenMaya.MItMeshVertex(mesh_obj)
+        while not msh_iter.isDone():
+            index_num = msh_iter.index()
+            if vertex_index == index_num:
+                msh_iter.setPosition(OpenMaya.MPoint(OpenMaya.MVector(*position)))
+                break
+            msh_iter.next()
+    return True
+
+
 def get_component_data(objects_array=(), uv=False, position=True, as_m_vector=False, world_space=True, object_space=False):
     """
     get the component indices data
@@ -260,16 +341,20 @@ def get_component_position(object_name="", as_m_vector=False, world_space=True, 
             return component_data['position'][0]
 
 
-def is_points_on_same_edge(point_a, point_b):
+def copy_mesh_positions(mesh_1, mesh_2, mirror_x=False):
     """
-    check if the points all share the same edge loop.
-    :param point_a: <str> point a.
-    :param point_b: <str> point b check relating to point_b.
-    :return: <bool> True for yes. <bool> False for no.
+    given two similar mesh objects, copy and set the positional data.
+    :return:
     """
-    return NotImplementedError("[WIP]")
-    m_point_1 = object_utils.get_m_obj(point_a)
-    m_point_2 = object_utils.get_m_obj(point_b)
+    mesh_2_data = get_component_data(mesh_2, position=True, world_space=False, object_space=True)
+    mesh_1_data = get_component_data(mesh_1, position=True, world_space=False, object_space=True)
 
-    OpenMaya.MItMeshEdge()
-    return False
+    for idx, data in mesh_1_data.items():
+        position = data['position'][0]
+        if mesh_2_data[idx]['position'] != position:
+            if mirror_x:
+                mir_index, mir_position = get_mirror_index(mesh_2, idx, object_space=True)
+                print(mir_index, mir_position)
+                break
+            # set_index_position(mesh_2, idx, position)
+    return True

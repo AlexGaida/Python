@@ -25,7 +25,7 @@ normal_chain = OpenMayaAnim.MFnBlendShapeDeformer.kNormal
 
 def is_blendshape(object_name):
     """
-    return true if object is of type blendShape
+    return true if the node object is of type blendShape.
     :return: <bool>
     """
     return bool(object_utils.has_fn(object_utils.get_m_obj(object_name), 'blendShape'))
@@ -159,7 +159,23 @@ def add_in_between_target(shape_name, blend_name="", existing_target_name="", we
     index = find_blend_shape_index(existing_target_name, blend_name=blend_name)
     if type(index) == bool:
         raise ValueError("[AddInBetweenTarget] :: No valid index found with name: {}".format(existing_target_name))
-    return add_target(shape_name, blend_name, weight=0.5, index=index)
+    # we need to round the weight step value
+    return add_target(shape_name, blend_name, weight=weight, index=index)
+
+
+def add_in_between_target_array(shapes_array, blend_name=""):
+    """
+    add in between targets to a blendShape node.
+    :param shapes_array: <tuple>, <list> array of mesh shapes to add the in-betweens.
+    :param blend_name: <str> the blendShape name to add targets to.
+    :return: <bool> True for success. <bool> False for failure.
+    """
+    length_of_shapes = float(len(shapes_array) - 1)
+    for idx, shape_name in enumerate(shapes_array):
+        # we need to round the weight step value to no more than 3 significant digits
+        weight_step = idx * int((1.0 / length_of_shapes) * 1000) / 1000.0
+        add_in_between_target(shape_name, blend_name, weight=weight_step)
+    return True
 
 
 def remove_in_between_target(shape_name, blend_name="", existing_target_name="", weight=0.5):

@@ -1360,7 +1360,7 @@ def set_keys_on_face_controller(selected_node='', interface_ctrl="", driven_node
 
 def connect_control_locators_to_follicle(control_array=(), follicle_array=()):
     """
-    connects the locator systems to the follicle nodes.
+    connects the facial locator systems to the follicle nodes.
     :param control_array:
     :param follicle_array:
     :return:

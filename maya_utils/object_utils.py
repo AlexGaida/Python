@@ -1508,7 +1508,7 @@ def get_driver_object(object_name="", plugs=False):
         return connected_plugs
 
 
-def mirror_object(control_name="", mirror_obj_name="", invert_rotate=True):
+def mirror_object(control_name="", mirror_obj_name="", invert_rotate=False, keep_rotation=False):
     """
     mirrors the selected object. If mirror object is not supplied, then mirror the supplied object directly.
     :param control_name: <str> controller object to get transformational values frOpenMaya.
@@ -1523,7 +1523,7 @@ def mirror_object(control_name="", mirror_obj_name="", invert_rotate=True):
 
     # mirror the world matrix
     c_transform = transform_utils.Transform(control_name)
-    w_matrix = c_transform.world_matrix_list()
+    w_matrix = c_transform.get_world_matrix()
     mir_matrix = c_transform.mirror_matrix(w_matrix)
     rotation_values = cmds.xform(control_name, ro=1, q=1)
     if invert_rotate:
@@ -1531,6 +1531,10 @@ def mirror_object(control_name="", mirror_obj_name="", invert_rotate=True):
         rotation_values[1] *= -1
 
         # mirror rotate z
+        rotation_values[2] *= -1
+
+    elif keep_rotation:
+        # mirror rotate x
         rotation_values[2] *= -1
 
     if not mirror_obj_name:

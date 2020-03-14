@@ -448,6 +448,7 @@ def create_follicles_from_objects(driver_objects_array=(), mesh_name="", attach_
     """
     follicles_array = ()
     for obj_name in driver_objects_array:
+        # create a follicle using the object name
         follicles = attach_follicle(mesh_name, follicle_name=obj_name)
         for foll_name in follicles:
             # there is only ever one follicle shape object.
@@ -637,7 +638,7 @@ def attach_control_to_follicle(control_node, follicle_node, default_ratio=0.1):
 
 def attach_controls_to_follicles(controls_array, follicles_array, default_ratio=0.1):
     """
-    attach array of follicles to an array of controller objects.
+    attach array of follicles to an array of controller objects. (constrains the controller objects to the follicles.)
     the array lengths *_must_* match.
     :param follicles_array: <tuple> or <list>, array of follicle objects.
     :param controls_array: <tuple> or <list>, array of control objects.

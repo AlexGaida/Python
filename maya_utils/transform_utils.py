@@ -163,10 +163,10 @@ class Transform(OpenMaya.MFnTransform):
         return [self.get_translation(world=True)[t] for t in range(3)]
 
     def get_world_matrix(self):
-        return self.matrix_values(world=True)
+        return self.matrix_values(world=True, flatten=True)
 
     def get_local_matrix(self):
-        return self.matrix_values(world=False)
+        return self.matrix_values(world=False, flatten=True)
 
     def get_rotation_order_name(self, idx=0):
         return self.ROTATION_ORDER_NAMES[idx]
@@ -216,7 +216,7 @@ class Transform(OpenMaya.MFnTransform):
         :return: <list> matrix.
         """
         if world:
-            return self.matrix_list(self.world_matrix(), flatten=flatten)
+            return self.matrix_list(self.inclusive_matrix(), flatten=flatten)
         else:
             # return row, column tuple items
             return self.matrix_list(self.matrix(), flatten=flatten)
@@ -229,7 +229,7 @@ class Transform(OpenMaya.MFnTransform):
         returns the world matrix
         :return: <list> world matrix values.
         """
-        return self.matrix_list(self.world_matrix_from_plug(), flatten=True)
+        return self.matrix_list(self.inclusive_matrix(), flatten=True)
 
     def inclusive_matrix_list(self):
         return self.matrix_list(self.inclusive_matrix(), flatten=True)
@@ -254,7 +254,7 @@ class Transform(OpenMaya.MFnTransform):
         grabs the world matrix from plug.
         :return: <OpenMaya.MMatrix> world matrix object.
         """
-        self.world_matrix_attr_plug()
+        return self.world_matrix_attr_plug()
 
     def world_matrix_attr_index(self):
         """
@@ -315,10 +315,6 @@ class Transform(OpenMaya.MFnTransform):
     def print_4x4_world_matrix(self):
         for m in [self.world_matrix[i:i + 4] for i in range(0, len(self.world_matrix), 4)]:
             print m
-
-    @property
-    def world_matrix(self):
-        return self.get_world_matrix()
 
     @property
     def local_matrix(self):
