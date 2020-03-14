@@ -160,7 +160,8 @@ class Transform(OpenMaya.MFnTransform):
         return [self.get_translation()[t] for t in range(3)]
 
     def get_world_translation_list(self):
-        return [self.get_translation(world=True)[t] for t in range(3)]
+        world_space = self.get_translation() * self.inclusive_matrix()
+        return [world_space[t] for t in range(3)]
 
     def get_world_matrix(self):
         return self.matrix_values(world=True, flatten=True)
@@ -170,6 +171,29 @@ class Transform(OpenMaya.MFnTransform):
 
     def get_rotation_order_name(self, idx=0):
         return self.ROTATION_ORDER_NAMES[idx]
+
+    def get_bounding_box(self):
+        """
+        gets the transformation BoundingBox values
+        :return:
+        """
+        return self.MAYA_MFN_OBJECT.boundingBox()
+
+    def bbox_center(self):
+        """
+        returns bounding box center.
+        :return:
+        """
+        bbox = self.get_bounding_box()
+        return bbox.center()
+
+    def intersects(self, other_bbox):
+        """
+        check if the bounding box intersects with another.
+        :return:
+        """
+        bbox = self.get_bounding_box()
+        bbox.intersects(bbox)
 
     def rotate_values(self, world=False, as_m_vector=False):
         """

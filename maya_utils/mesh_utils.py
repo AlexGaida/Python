@@ -6,9 +6,12 @@ from pprint import pprint
 
 # import maya modules
 from maya import OpenMaya
+from maya import cmds
 
 # import local modules
 import object_utils
+from maya_utils import transform_utils
+from maya_utils import math_utils
 
 # define local variables
 DATA_DICT = {}
@@ -47,6 +50,15 @@ def init_data_dict(key_name, data_dict={}):
     if key_name not in data_dict:
         data_dict[key_name] = {}
     return data_dict
+
+
+def get_boundingbox_center(object_name):
+    """
+    returns the bounding box center.
+    :param object_name:
+    :return:
+    """
+    return transform_utils.Transform(object_name).bbox_center()
 
 
 def updata_data_dict(key_name, data_key, data_value, data_dict={}):
@@ -161,12 +173,12 @@ def get_data(m_dag, m_component, world_space=True, index=False, uv=False,
     return data
 
 
-def get_mirror_index(mesh_obj, vertex_index=0, world_space=False, object_space=False):
+def get_mirror_index(mesh_obj, vertex_index=0, world_space=False, object_space=False, deviation_delta=0.00):
     """
-    gets the mirrot mesh vertex index.
+    gets the mirror mesh vertex index.
     :param mesh_obj:
     :param vertex_index:
-    :return:
+    :return: <bool>, <bool> False, False for failure. <int>, <tuple> for success.
     """
     mesh_obj = object_utils.get_m_obj(mesh_obj)
 
@@ -185,8 +197,10 @@ def get_mirror_index(mesh_obj, vertex_index=0, world_space=False, object_space=F
         while not s_iter.isDone():
             find_point = s_iter.position(get_space(world_space, object_space))
             index_num = s_iter.index()
-            if OpenMaya.MVector(find_point) == m_vector:
-                return index_num, find_point
+            vector1 = find_point.x, find_point.y, find_point.z
+            vector2 = m_vector.x, m_vector.y, m_vector.z
+            if compare_positions(vector1, vector2, deviation_delta=deviation_delta):
+                return index_num, vector1
             s_iter.next()
 
     # if mesh shape
@@ -204,10 +218,12 @@ def get_mirror_index(mesh_obj, vertex_index=0, world_space=False, object_space=F
         while not msh_iter.isDone():
             find_point = msh_iter.position(get_space(world_space, object_space))
             index_num = msh_iter.index()
-            if OpenMaya.MVector(find_point) == m_vector:
-                return index_num, find_point
+            vector1 = find_point.x, find_point.y, find_point.z
+            vector2 = m_vector.x, m_vector.y, m_vector.z
+            if not compare_positions(vector1, vector2, deviation_delta=deviation_delta):
+                return index_num, vector1
             msh_iter.next()
-    return True
+    return False, False
 
 
 def set_index_position(mesh_obj, vertex_index=0, position=()):
@@ -242,7 +258,9 @@ def set_index_position(mesh_obj, vertex_index=0, position=()):
     return True
 
 
-def get_component_data(objects_array=(), uv=False, position=True, as_m_vector=False, world_space=True, object_space=False):
+def get_component_data(objects_array=(), uv=False, position=True,
+                       as_m_vector=False, world_space=True, object_space=False,
+                       rounded=True):
     """
     get the component indices data
     :param objects_array: <tuple> (optional) array of objects. to iterate over. Else iterates over selected items.
@@ -251,6 +269,7 @@ def get_component_data(objects_array=(), uv=False, position=True, as_m_vector=Fa
     :param as_m_vector: <bool> return as an OpenMaya.MVector object.
     :param world_space: <bool> return the position in world space co-ordinates.
     :param object_space: <bool> return the position in object space co-ordinates.
+    :param rounded: <bool> the positional data will be rounded to 4 significant digits.
     :return: <dict> tuples of indices.
     """
     objects_array = check_and_convert_obj_into_array(objects_array)
@@ -292,7 +311,7 @@ def get_component_data(objects_array=(), uv=False, position=True, as_m_vector=Fa
                     if as_m_vector:
                         vector = OpenMaya.MVector(m_point)
                     elif not as_m_vector:
-                        vector = m_point.x, m_point.y, m_point.z,
+                        vector = round(m_point.x, 4), round(m_point.y, 4), round(m_point.z, 4),
                     items.update(updata_data_dict(key_name, 'position', vector, data_dict=items))
                 s_iter.next()
 
@@ -315,7 +334,7 @@ def get_component_data(objects_array=(), uv=False, position=True, as_m_vector=Fa
                     if as_m_vector:
                         vector = OpenMaya.MVector(m_point)
                     elif not as_m_vector:
-                        vector = m_point.x, m_point.y, m_point.z,
+                        vector = round(m_point.x, 4), round(m_point.y, 4), round(m_point.z, 4),
                     items.update(updata_data_dict(key_name, 'position', vector, data_dict=items))
                 msh_iter.next()
         m_iter.next()
@@ -341,20 +360,95 @@ def get_component_position(object_name="", as_m_vector=False, world_space=True, 
             return component_data['position'][0]
 
 
+def compare_positions(vector_1, vector_2, deviation_delta=0.001):
+    """
+    compare the two array positions.
+    :param vector_1: <tuple>
+    :param vector_2: <tuple>
+    :param deviation_delta: <float> the deviation delta to match the length against.
+    :return: <bool> True if match.
+    """
+    vector = OpenMaya.MVector(*vector_2) - OpenMaya.MVector(*vector_1)
+    return vector.length() > deviation_delta
+
+
+def get_point_mean(mesh_1="", mesh_2="", mesh_1_data={}, mesh_2_data={}):
+    """
+    get the positional data from both mesh and then calculate the average mean from XYZ values.
+    :param mesh_1:
+    :param mesh_2:
+    :return: <tuple> XYZ mean.
+    """
+    if not mesh_1_data:
+        mesh_1_data = get_component_data(mesh_1, position=True, world_space=False, object_space=True)
+    if not mesh_2_data:
+        mesh_2_data = get_component_data(mesh_2, position=True, world_space=False, object_space=True)
+    x_positions = ()
+    y_positions = ()
+    z_positions = ()
+    for idx, data in mesh_1_data.items():
+        mesh_1_position = data['position'][0]
+        mesh_2_position = mesh_2_data[idx]['position'][0]
+        x_positions += mesh_1_position[0] - mesh_2_position[0],
+        y_positions += mesh_1_position[1] - mesh_2_position[1],
+        z_positions += mesh_1_position[2] - mesh_2_position[2],
+    return math_utils.squared_difference(
+        (math_utils.squared_difference(x_positions),
+        math_utils.squared_difference(y_positions),
+        math_utils.squared_difference(z_positions)))
+
+
+def get_changed_vertices(mesh_1, mesh_2, mirror_x=False):
+    """
+
+    :param mesh_1:
+    :param mesh_2:
+    :param mirror_x:
+    :return:
+    """
+    mesh_1_data = get_component_data(mesh_1, position=True, world_space=False, object_space=True)
+    mesh_2_data = get_component_data(mesh_2, position=True, world_space=False, object_space=True)
+    deviation = get_point_mean(mesh_1_data=mesh_1_data, mesh_2_data=mesh_2_data)
+    changed_vertices = {}
+    for idx, data in mesh_1_data.items():
+        mesh_1_position = data['position'][0]
+        mesh_2_position = mesh_2_data[idx]['position'][0]
+
+        if compare_positions(mesh_1_position, mesh_2_position, deviation):
+            if mirror_x:
+                mir_index, mir_position = get_mirror_index(mesh_2, idx, object_space=True, deviation_delta=deviation)
+                if mir_index and mir_position:
+                    mesh_1_position = list(mesh_1_position)
+                    mesh_1_position[0] *= -1
+                    changed_vertices[mir_index] = mesh_1_position
+            else:
+                changed_vertices[idx] = mesh_1_position
+    return changed_vertices
+
+
+def select_changed_vertices(mesh1, mesh2, mirror_x=False):
+    """
+    select the difference vertices.
+    :param mesh1:
+    :param mesh2:
+    :param mirror_x:
+    :return:
+    """
+    cmds.select(d=True)
+    indices = get_changed_vertices(mesh1, mesh2, mirror_x=mirror_x)
+    vertices = ()
+    for idx in indices:
+        vertices += mesh2 + '.vtx[%d]' % idx,
+    cmds.select(vertices)
+
+
 def copy_mesh_positions(mesh_1, mesh_2, mirror_x=False):
     """
     given two similar mesh objects, copy and set the positional data.
+    mesh_1 has the pose, mesh_2 does not have the pose.
     :return:
     """
-    mesh_2_data = get_component_data(mesh_2, position=True, world_space=False, object_space=True)
-    mesh_1_data = get_component_data(mesh_1, position=True, world_space=False, object_space=True)
-
-    for idx, data in mesh_1_data.items():
-        position = data['position'][0]
-        if mesh_2_data[idx]['position'] != position:
-            if mirror_x:
-                mir_index, mir_position = get_mirror_index(mesh_2, idx, object_space=True)
-                print(mir_index, mir_position)
-                break
-            # set_index_position(mesh_2, idx, position)
+    indices = get_changed_vertices(mesh_1, mesh_2, mirror_x=mirror_x)
+    for idx, vertex in indices.items():
+        set_index_position(mesh_2, idx, vertex)
     return True
