@@ -123,6 +123,7 @@ def get_data(m_dag, m_component, world_space=True, index=False, uv=False,
     :param position: <bool> if True, get the position x y z.
     :param as_m_vector: <bool> if True, return position in world space.
     :param object_space: <bool> if True, return position in object space.
+    :param uv_map_name: <str> the UV map name to get coordinates from.
     :return: <tuple> array of requested items.
     """
     data = ()
@@ -176,8 +177,11 @@ def get_data(m_dag, m_component, world_space=True, index=False, uv=False,
 def get_mirror_index(mesh_obj, vertex_index=0, world_space=False, object_space=False, deviation_delta=0.00):
     """
     gets the mirror mesh vertex index.
-    :param mesh_obj:
-    :param vertex_index:
+    :param mesh_obj: <str> the mesh object to get mesh data from.
+    :param vertex_index: <int> get the position data from this vertex point.
+    :param world_space: <bool> if True, get the data from worldSpace position coordinates.
+    :param object_space: <bool> if True, get the data from objectSpace position coordinates.
+    :param deviation_delta: <float> the deviation delta to get vertex position comparison from.
     :return: <bool>, <bool> False, False for failure. <int>, <tuple> for success.
     """
     mesh_obj = object_utils.get_m_obj(mesh_obj)
@@ -198,14 +202,14 @@ def get_mirror_index(mesh_obj, vertex_index=0, world_space=False, object_space=F
             break
         msh_iter.next()
 
-    # now find the mirror vertex point
+    # now find the mirror vertex index by comparing the mirror position
     while not msh_iter.isDone():
         find_point = msh_iter.position(get_space(world_space, object_space))
         index_num = msh_iter.index()
         vector1 = find_point.x, find_point.y, find_point.z
         vector2 = m_point.x * -1, m_point.y, m_point.z
-        # compare the second vector with deviation relative to the first vector
-        if compare_positions(vector1, vector2, deviation_delta=deviation_delta):
+        # compare the second vector with a deviation relative to the first vector
+        if compare_positions(vector1, vector2, deviation_delta=deviation_delta, interval_comparison=True):
             return index_num, vector1
         msh_iter.next()
     return False, False
@@ -281,8 +285,8 @@ def get_component_data(objects_array=(), uv=False, position=True,
             s_iter = OpenMaya.MItSurfaceCV(m_dag, m_component)
             while not s_iter.isDone():
                 key_name = s_iter.index()
+
                 items = init_data_dict(key_name, data_dict=items)
-                # items.update(updata_data_dict(key_name, 'index', s_iter.index()))
 
                 if uv:
                     int_u = object_utils.ScriptUtil(as_int_ptr=True)
@@ -305,8 +309,8 @@ def get_component_data(objects_array=(), uv=False, position=True,
             msh_iter = OpenMaya.MItMeshVertex(m_dag, m_component)
             while not msh_iter.isDone():
                 key_name = msh_iter.index()
+
                 items = init_data_dict(key_name, data_dict=items)
-                # items.update(updata_data_dict(key_name, 'index', msh_iter.index()))
 
                 if uv:
                     float2 = object_utils.ScriptUtil((0.0, 0.0), as_float2_ptr=True)
@@ -345,7 +349,7 @@ def get_component_position(object_name="", as_m_vector=False, world_space=True, 
             return component_data['position'][0]
 
 
-def compare_positions(vector_1, vector_2, deviation_delta=0.001):
+def compare_positions(vector_1, vector_2, deviation_delta=0.001, interval_comparison=False):
     """
     compare the two array positions through interval comparison.
     :param vector_1: <tuple>
@@ -355,19 +359,22 @@ def compare_positions(vector_1, vector_2, deviation_delta=0.001):
     """
     vector_1 = round(vector_1[0], 4), round(vector_1[1], 4), round(vector_1[2], 4)
     vector_2 = round(vector_2[0], 4), round(vector_2[1], 4), round(vector_2[2], 4)
-    # vector = OpenMaya.MVector(*vector_2) - OpenMaya.MVector(*vector_1)
-    # return vector.length() >= deviation_delta
-    vector_bool = ()
-    vector_bool += vector_2[0] - deviation_delta <= vector_1[0] <= vector_2[0] + deviation_delta,
-    vector_bool += vector_2[1] - deviation_delta <= vector_1[1] <= vector_2[1] + deviation_delta,
-    vector_bool += vector_2[2] - deviation_delta <= vector_1[2] <= vector_2[2] + deviation_delta,
-    return all(vector_bool)
+    if interval_comparison:
+        vector_bool = ()
+        vector_bool += vector_2[0] - deviation_delta <= vector_1[0] <= vector_2[0] + deviation_delta,
+        vector_bool += vector_2[1] - deviation_delta <= vector_1[1] <= vector_2[1] + deviation_delta,
+        vector_bool += vector_2[2] - deviation_delta <= vector_1[2] <= vector_2[2] + deviation_delta,
+        return all(vector_bool)
+    else:
+        vector = OpenMaya.MVector(*vector_2) - OpenMaya.MVector(*vector_1)
+        return vector.length() <= 0.0
 
 
 def get_mesh_point_mean(mesh_1="", round_to=4):
     """
     gets the mesh mean float value.
     :param mesh_1:
+    :param round_to: <int> round the squared difference by this many significant digits.
     :return:
     """
     mesh_data = get_component_data(mesh_1, position=True, world_space=False, object_space=True)
@@ -411,9 +418,9 @@ def get_point_mean(mesh_1="", mesh_2="", mesh_1_data={}, mesh_2_data={}, round_t
          math_utils.squared_difference(z_positions))), round_to)
 
 
-def get_changed_vertices(mesh_1, mesh_2, mirror_x=False, deviation=0.0, round_deviation=2):
+def get_changed_vertices(mesh_1, mesh_2, mirror_x=False, deviation=0.0, round_deviation=4):
     """
-
+    returns a dictionary of delta vertices from the base mesh to the posed shape mesh.
     :param mesh_1: <str> mesh delta
     :param mesh_2: <str> target mesh
     :param mirror_x: <bool>
