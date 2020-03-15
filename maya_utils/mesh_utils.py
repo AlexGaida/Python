@@ -184,45 +184,30 @@ def get_mirror_index(mesh_obj, vertex_index=0, world_space=False, object_space=F
 
     # if nurbsSurface shape
     if object_utils.is_shape_nurbs_surface(mesh_obj):
-        s_iter = OpenMaya.MItSurfaceCV(mesh_obj)
-        while not s_iter.isDone():
-            index_num = s_iter.index()
-            if vertex_index == index_num:
-                m_point = s_iter.position(get_space(world_space, object_space))
-                m_vector = OpenMaya.MVector(m_point.x * -1, m_point.y, m_point.z)
-                break
-            s_iter.next()
-
-        # now find the mirror point
-        while not s_iter.isDone():
-            find_point = s_iter.position(get_space(world_space, object_space))
-            index_num = s_iter.index()
-            vector1 = find_point.x, find_point.y, find_point.z
-            vector2 = m_vector.x, m_vector.y, m_vector.z
-            if compare_positions(vector1, vector2, deviation_delta=deviation_delta):
-                return index_num, vector1
-            s_iter.next()
+        msh_iter = OpenMaya.MItSurfaceCV(mesh_obj)
 
     # if mesh shape
     if object_utils.is_shape_mesh(mesh_obj):
         msh_iter = OpenMaya.MItMeshVertex(mesh_obj)
-        while not msh_iter.isDone():
-            index_num = msh_iter.index()
-            if vertex_index == index_num:
-                m_point = msh_iter.position(get_space(world_space, object_space))
-                m_vector = OpenMaya.MVector(m_point.x * -1, m_point.y, m_point.z)
-                break
-            msh_iter.next()
 
-        # now find the mirror point
-        while not msh_iter.isDone():
-            find_point = msh_iter.position(get_space(world_space, object_space))
-            index_num = msh_iter.index()
-            vector1 = find_point.x, find_point.y, find_point.z
-            vector2 = m_vector.x, m_vector.y, m_vector.z
-            if not compare_positions(vector1, vector2, deviation_delta=deviation_delta):
-                return index_num, vector1
-            msh_iter.next()
+    # grab the position the index is at
+    while not msh_iter.isDone():
+        index_num = msh_iter.index()
+        if vertex_index == index_num:
+            m_point = msh_iter.position(get_space(world_space, object_space))
+            break
+        msh_iter.next()
+
+    # now find the mirror vertex point
+    while not msh_iter.isDone():
+        find_point = msh_iter.position(get_space(world_space, object_space))
+        index_num = msh_iter.index()
+        vector1 = find_point.x, find_point.y, find_point.z
+        vector2 = m_point.x * -1, m_point.y, m_point.z
+        # compare the second vector with deviation relative to the first vector
+        if compare_positions(vector1, vector2, deviation_delta=deviation_delta):
+            return index_num, vector1
+        msh_iter.next()
     return False, False
 
 
@@ -362,17 +347,45 @@ def get_component_position(object_name="", as_m_vector=False, world_space=True, 
 
 def compare_positions(vector_1, vector_2, deviation_delta=0.001):
     """
-    compare the two array positions.
+    compare the two array positions through interval comparison.
     :param vector_1: <tuple>
     :param vector_2: <tuple>
     :param deviation_delta: <float> the deviation delta to match the length against.
     :return: <bool> True if match.
     """
-    vector = OpenMaya.MVector(*vector_2) - OpenMaya.MVector(*vector_1)
-    return vector.length() > deviation_delta
+    vector_1 = round(vector_1[0], 4), round(vector_1[1], 4), round(vector_1[2], 4)
+    vector_2 = round(vector_2[0], 4), round(vector_2[1], 4), round(vector_2[2], 4)
+    # vector = OpenMaya.MVector(*vector_2) - OpenMaya.MVector(*vector_1)
+    # return vector.length() >= deviation_delta
+    vector_bool = ()
+    vector_bool += vector_2[0] - deviation_delta <= vector_1[0] <= vector_2[0] + deviation_delta,
+    vector_bool += vector_2[1] - deviation_delta <= vector_1[1] <= vector_2[1] + deviation_delta,
+    vector_bool += vector_2[2] - deviation_delta <= vector_1[2] <= vector_2[2] + deviation_delta,
+    return all(vector_bool)
 
 
-def get_point_mean(mesh_1="", mesh_2="", mesh_1_data={}, mesh_2_data={}):
+def get_mesh_point_mean(mesh_1="", round_to=4):
+    """
+    gets the mesh mean float value.
+    :param mesh_1:
+    :return:
+    """
+    mesh_data = get_component_data(mesh_1, position=True, world_space=False, object_space=True)
+    x_positions = ()
+    y_positions = ()
+    z_positions = ()
+    for idx, data in mesh_data.items():
+        mesh_1_position = data['position'][0]
+        x_positions += mesh_1_position[0],
+        y_positions += mesh_1_position[1],
+        z_positions += mesh_1_position[2],
+    return round(math_utils.squared_difference(
+        (math_utils.squared_difference(x_positions),
+         math_utils.squared_difference(y_positions),
+         math_utils.squared_difference(z_positions))), round_to)
+
+
+def get_point_mean(mesh_1="", mesh_2="", mesh_1_data={}, mesh_2_data={}, round_to=4):
     """
     get the positional data from both mesh and then calculate the average mean from XYZ values.
     :param mesh_1:
@@ -392,41 +405,60 @@ def get_point_mean(mesh_1="", mesh_2="", mesh_1_data={}, mesh_2_data={}):
         x_positions += mesh_1_position[0] - mesh_2_position[0],
         y_positions += mesh_1_position[1] - mesh_2_position[1],
         z_positions += mesh_1_position[2] - mesh_2_position[2],
-    return math_utils.squared_difference(
+    return round(math_utils.squared_difference(
         (math_utils.squared_difference(x_positions),
-        math_utils.squared_difference(y_positions),
-        math_utils.squared_difference(z_positions)))
+         math_utils.squared_difference(y_positions),
+         math_utils.squared_difference(z_positions))), round_to)
 
 
-def get_changed_vertices(mesh_1, mesh_2, mirror_x=False):
+def get_changed_vertices(mesh_1, mesh_2, mirror_x=False, deviation=0.0, round_deviation=2):
     """
 
-    :param mesh_1:
-    :param mesh_2:
-    :param mirror_x:
+    :param mesh_1: <str> mesh delta
+    :param mesh_2: <str> target mesh
+    :param mirror_x: <bool>
+    :param deviation: <float> (optional) use this deviation to get changed indices.
+    :param round_deviation: <int> find the vertex index within this positions' deviation delta.
     :return:
     """
     mesh_1_data = get_component_data(mesh_1, position=True, world_space=False, object_space=True)
     mesh_2_data = get_component_data(mesh_2, position=True, world_space=False, object_space=True)
-    deviation = get_point_mean(mesh_1_data=mesh_1_data, mesh_2_data=mesh_2_data)
+    if not deviation:
+        deviation = get_point_mean(mesh_1_data=mesh_1_data, mesh_2_data=mesh_2_data, round_to=round_deviation)
+    print("deviation delta: {}".format(deviation))
     changed_vertices = {}
     for idx, data in mesh_1_data.items():
         mesh_1_position = data['position'][0]
         mesh_2_position = mesh_2_data[idx]['position'][0]
 
-        if compare_positions(mesh_1_position, mesh_2_position, deviation):
+        # first we compare the vertices that have been changed
+        if not compare_positions(mesh_1_position, mesh_2_position, deviation):
             if mirror_x:
+                # then we start comparing the vertex indices' positions of x * -1
                 mir_index, mir_position = get_mirror_index(mesh_2, idx, object_space=True, deviation_delta=deviation)
                 if mir_index and mir_position:
-                    mesh_1_position = list(mesh_1_position)
-                    mesh_1_position[0] *= -1
-                    changed_vertices[mir_index] = mesh_1_position
+                    changed_vertices[mir_index] = mesh_1_position[0] * -1, mesh_1_position[1], mesh_1_position[2]
             else:
                 changed_vertices[idx] = mesh_1_position
     return changed_vertices
 
 
-def select_changed_vertices(mesh1, mesh2, mirror_x=False):
+def get_selected_vertices_mirror():
+    """
+
+    :return:
+    """
+    mesh_obj = cmds.ls(sl=1)[0].rpartition('.')[0]
+    deviation_mean = get_mesh_point_mean(cmds.ls(sl=1, flatten=1))
+    data = get_component_data(cmds.ls(sl=1))
+    mirror = ()
+    for idx in data:
+        mir_index, mir_position = get_mirror_index(mesh_obj, idx, object_space=True, deviation_delta=deviation_mean)
+        mirror += mir_index,
+    return mirror
+
+
+def select_changed_vertices(mesh1, mesh2, round_deviation=6, mirror_x=False):
     """
     select the difference vertices.
     :param mesh1:
@@ -434,11 +466,21 @@ def select_changed_vertices(mesh1, mesh2, mirror_x=False):
     :param mirror_x:
     :return:
     """
+    indices = get_changed_vertices(mesh1, mesh2, mirror_x=mirror_x, round_deviation=round_deviation)
+    select_indices(mesh2, indices)
+
+
+def select_indices(mesh_obj, index_array):
+    """
+    selects index array on the mesh object.
+    :param mesh_obj:
+    :param index_array:
+    :return:
+    """
     cmds.select(d=True)
-    indices = get_changed_vertices(mesh1, mesh2, mirror_x=mirror_x)
     vertices = ()
-    for idx in indices:
-        vertices += mesh2 + '.vtx[%d]' % idx,
+    for idx in index_array:
+        vertices += mesh_obj + '.vtx[%d]' % idx,
     cmds.select(vertices)
 
 
