@@ -52,6 +52,15 @@ def init_data_dict(key_name, data_dict={}):
     return data_dict
 
 
+def get_selected_components():
+    """
+    get the string version of the selected components.
+    :return:
+    """
+    m_dag, m_component = object_utils.iterate_items()
+    return m_dag.partialPathName(), get_data(m_dag, m_component, index=True)
+
+
 def get_boundingbox_center(object_name):
     """
     returns the bounding box center.
@@ -278,8 +287,6 @@ def get_component_data(objects_array=(), uv=False, position=True,
             m_component = OpenMaya.MObject()
             sel.getDagPath(0, m_dag, m_component)
 
-        # key_name = m_dag.partialPathName()
-
         # if nurbsSurface shape
         if object_utils.is_shape_nurbs_surface(m_dag):
             s_iter = OpenMaya.MItSurfaceCV(m_dag, m_component)
@@ -455,14 +462,24 @@ def get_selected_vertices_mirror():
 
     :return:
     """
-    mesh_obj = cmds.ls(sl=1)[0].rpartition('.')[0]
-    deviation_mean = get_mesh_point_mean(cmds.ls(sl=1, flatten=1))
-    data = get_component_data(cmds.ls(sl=1))
+    mesh_name, index_array = get_selected_components()
+    vertice_names = map(lambda x: '{}.vtx[{}]'.format(mesh_name, x), index_array)
+    deviation_mean = get_mesh_point_mean(mesh_name)
+    data = get_component_data(vertice_names)
     mirror = ()
     for idx in data:
-        mir_index, mir_position = get_mirror_index(mesh_obj, idx, object_space=True, deviation_delta=deviation_mean)
+        mir_index, mir_position = get_mirror_index(mesh_name, idx, object_space=True, deviation_delta=deviation_mean)
         mirror += mir_index,
     return mirror
+
+
+def select_vertices_mirror():
+    """
+
+    :return:
+    """
+    vertices = get_selected_vertices_mirror()
+    select_indices(vertices)
 
 
 def select_changed_vertices(mesh1, mesh2, round_deviation=6, mirror_x=False):
@@ -488,6 +505,7 @@ def select_indices(mesh_obj, index_array):
     vertices = ()
     for idx in index_array:
         vertices += mesh_obj + '.vtx[%d]' % idx,
+    print vertices
     cmds.select(vertices)
 
 
