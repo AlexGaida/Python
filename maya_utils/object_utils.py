@@ -1007,7 +1007,7 @@ def get_m_parent(m_object=None, find_parent='', with_shape='', as_strings=False)
     return return_data
 
 
-def get_m_child(m_object=None, find_child=True, with_shape='', transform=False, as_strings=False):
+def get_m_child(m_object=None, find_child=True, with_type='', with_shape='', transform=False, as_strings=False):
     """
     finds the child from the maya object provided.
     :param m_object: <OpenMaya.MObject> the object to get the parents frOpenMaya.
@@ -1062,6 +1062,48 @@ def get_m_child(m_object=None, find_child=True, with_shape='', transform=False, 
                     return_data += ch_item,
             m_iter.next()
     return return_data
+
+
+def get_children_obj(object_name, type_name=''):
+    """
+    return all children from this object name.
+    :param object_name: the object to get children objects from.
+    :param type_name: filter only the children of this type.
+    :return: <tuple> child objects.
+    """
+    m_obj = get_m_obj(object_name)
+    children = get_m_child(m_obj, transform=True)
+
+    if not type_name:
+        return children
+
+    proper_children = ()
+    for ch in children:
+        if not has_fn(ch, type_name):
+            continue
+        proper_children += ch,
+    return proper_children
+
+
+def get_children_names(object_name, type_name=''):
+    """
+    return all children from this object name.
+    :param object_name: the object to get children objects from.
+    :param type_name: filter only the children of this type.
+    :return: <tuple> child objects.
+    """
+    m_obj = get_m_obj(object_name)
+    children = get_m_child(m_obj, transform=True, as_strings=True)
+
+    if not type_name:
+        return children
+
+    proper_children = ()
+    for ch in children:
+        if not has_fn(get_m_obj(ch), type_name):
+            continue
+        proper_children += ch,
+    return proper_children
 
 
 def get_parent_name(object_name):

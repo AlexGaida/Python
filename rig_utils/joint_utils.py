@@ -174,3 +174,21 @@ def create_bind_joints_at_selection(name):
     """
     objects = object_utils.get_selected_node(single=False)
     return create_joints(objects, name, bind=True)
+
+
+def get_joint_hierarchy(base_joint_name=""):
+    """
+    get the joint hierarchy.
+    :param base_joint_name:
+    :return: <tuple> array of joint hierarchy.
+    """
+    return object_utils.get_children_names(base_joint_name, type_name='joint')
+
+
+def create_dynamic_chain(base_joint_name=""):
+    """
+    creates a dynamic chain from the joint chain provided.
+    :return:
+    """
+    joint_hierarchy = get_joint_hierarchy(base_joint_name)
+    
