@@ -111,9 +111,9 @@ def get_nurb_obj_knot_data(curve_obj=None):
     :return: <tuple> array of curve knot data.
     """
     curve_fn = object_utils.get_fn(curve_obj)
-    knotArray = OpenMaya.MDoubleArray()
-    curve_fn.getKnots(knotArray)
-    return list(knotArray)
+    knot_array = OpenMaya.MDoubleArray()
+    curve_fn.getKnots(knot_array)
+    return list(knot_array)
 
 
 def get_nurb_obj_curve_degree(curve_obj=None):
@@ -313,3 +313,93 @@ def attach_transform_to_curve(object_name="", curve_name=""):
     # connect the decompose matrix into the transform node.
     connect_attr(attr_name(decompose_node, 'outputRotate'), attr_name(object_name, 'rotate'))
     connect_attr(attr_name(decompose_node, 'outputTranslate'), attr_name(object_name, 'translate'))
+    return True
+
+
+def list_scanner(array_list, index=0):
+    """
+    scanner list.
+    :param array_list: <tuple>
+    :param index: <int> the index to search the array list from.
+    :return: <tuple> array of 3 tuples of XYZ values.
+    """
+    if index == 0:
+        return array_list[index], array_list[index], array_list[index + 1],
+    if index + 1 == len(array_list):
+        return array_list[index - 1], array_list[index], array_list[index],
+    return array_list[index - 1], array_list[index], array_list[index + 1]
+
+
+def get_spans(ncvs, degree):
+    return ncvs - degree
+
+
+def get_knots(ncvs, degree):
+    return get_spans(ncvs, degree) + 2 * (degree - 1)
+
+
+def get_knot_sequence(ncvs, degree):
+    """
+    knot sequence
+    :param ncvs:
+    :param degree:
+    :return:
+    """
+    num_knots = get_knots(ncvs, degree)
+    m_double_array = OpenMaya.MDoubleArray()
+    # m_double_array.append(0)
+    for i in xrange(0, num_knots + 1):
+        m_double_array.append(i)
+        # if i == num_knots:
+        #     m_double_array.append(i)
+    return m_double_array
+
+
+def get_point_array(points_array, equal_distance=False):
+    """
+
+    :param points_array:
+    :param equal_distance: <bool> calculate the equal distance of CV's
+    :return:
+    """
+    m_array = OpenMaya.MPointArray()
+    if equal_distance:
+        for idx, point in enumerate(points_array):
+            prev_p, cur_p, next_p = list_scanner(points_array, idx)
+            prev_v = math_utils.Vector(*prev_p)
+            cur_v = math_utils.Vector(*cur_p)
+            next_v = math_utils.Vector(*next_p)
+            if cur_p != next_p:
+                new_v = math_utils.Vector(math_utils.Vector(cur_v - next_v) * 0.5)
+                m_array.append(OpenMaya.MPoint(*new_v.position))
+            else:
+                new_v = math_utils.Vector(math_utils.Vector(prev_v - next_v) * 0.5)
+                m_array.append(OpenMaya.MPoint(*new_v.position))
+    else:
+        for idx, point in enumerate(points_array):
+            m_array.append(OpenMaya.MPoint(*point))
+    return m_array
+
+
+def create_curve_from_points(points_array, degree=2, curve_name=""):
+    """
+    create a nurbs curve from points.
+    :param points_array: <tuple> positional points array.
+    :param degree: <int> curve degree.
+    :param curve_name: <str> the name of the curve to create.
+    :return: <str> maya curve name.
+    """
+    knot_array = get_knot_sequence(len(points_array), degree)
+    m_point_array = get_point_array(points_array, equal_distance=True)
+    curve_fn = OpenMaya.MFnNurbsCurve()
+    curve_fn.create(m_point_array, knot_array, degree, OpenMaya.MFnNurbsCurve.kOpen,
+                    False, False)
+    m_path = OpenMaya.MDagPath()
+    curve_fn.getPath(m_path)
+
+    if curve_name:
+        parent_obj = object_utils.get_parent_obj(m_path.partialPathName())[0]
+        object_utils.rename_node(parent_obj, curve_name)
+        return curve_name
+    return curve_fn.name()
+

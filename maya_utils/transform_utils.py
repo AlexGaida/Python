@@ -136,15 +136,26 @@ class Transform(OpenMaya.MFnTransform):
         else:
             return OpenMaya.MVector([x, y, z])
 
+    @staticmethod
+    def get_translation_from_matrix(matrix):
+        """
+        gets the translation from the matrix.
+        :return:
+        """
+        return matrix[12:15]
+
+    def invert_translation(self):
+        return self.getTranslation(self.OBJECT_SPACE) * self.inclusive_matrix()
+
     def translate_values(self, as_m_vector=False, world=False):
         """
         return the translate attribute values
         :return: <tuple> scale attribute values
         """
-        # if world:
-        #     m_vector = self.getTranslation(self.WORLD_SPACE)
-        # elif not world:
         m_vector = self.getTranslation(self.OBJECT_SPACE)
+        if world:
+            m_vector = OpenMaya.MVector(self.world_translation)
+
         if not as_m_vector:
             x = round(m_vector.x, 4)
             y = round(m_vector.y, 4)
@@ -160,8 +171,8 @@ class Transform(OpenMaya.MFnTransform):
         return [self.get_translation()[t] for t in range(3)]
 
     def get_world_translation_list(self):
-        world_space = self.get_translation() * self.inclusive_matrix()
-        return [world_space[t] for t in range(3)]
+        world_space = self.get_world_matrix()
+        return world_space[12:15]
 
     def get_world_matrix(self):
         return self.matrix_values(world=True, flatten=True)

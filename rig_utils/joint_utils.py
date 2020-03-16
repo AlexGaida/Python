@@ -6,10 +6,12 @@ import re
 
 # import maya modules
 from maya import cmds
+from maya import mel
 
 # import local modules
 from maya_utils import object_utils
 from maya_utils import transform_utils
+from maya_utils import curve_utils
 
 # define local variables
 JNT_SUFFIX = 'jnt'
@@ -129,7 +131,7 @@ def create_joint_at_transform(transform_name="", name=""):
         jnt_name = joint_name(transform_name)
     else:
         jnt_name = name
-    tfm = transform_utils.Transform(transform_name)
+    tfm = transform_utils.Transform(transform_name).world_translation
     cmds.joint(name=jnt_name)
     cmds.xform(jnt_name, m=tfm.inclusive_matrix_list(), ws=True)
     return jnt_name
@@ -185,10 +187,32 @@ def get_joint_hierarchy(base_joint_name=""):
     return object_utils.get_children_names(base_joint_name, type_name='joint')
 
 
-def create_dynamic_chain(base_joint_name=""):
+def get_joint_hierarchy_positions(base_joint_name=""):
+    """
+    get hierarchial positions array.
+    :return: <tuple> positions array.
+    """
+    joint_hierarchy = get_joint_hierarchy(base_joint_name)
+    positions_array = ()
+    for jnt_name in joint_hierarchy:
+        positions_array += transform_utils.Transform(jnt_name).get_world_translation_list(),
+    return positions_array
+
+
+@reload_selection
+def create_dynamic_chain(base_joint_name="", name="", curve_degree=2):
     """
     creates a dynamic chain from the joint chain provided.
     :return:
     """
     joint_hierarchy = get_joint_hierarchy(base_joint_name)
-    
+    points_array = get_joint_hierarchy_positions(base_joint_name)
+    print points_array
+    curve_name = curve_utils.create_curve_from_points(points_array, degree=curve_degree, curve_name=name)
+    # cmds.select(curve_name)
+    # make the curve name dynamic
+    # mel.eval('makeCurvesDynamic 2 { "1", "0", "1", "1", "0"};')
+
+    # now make the spline Ik Handle
+    # return curve_name
+
