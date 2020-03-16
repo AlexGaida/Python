@@ -159,6 +159,24 @@ def get_selection_iter():
     return OpenMaya.MItSelectionList(models)
 
 
+def get_m_selection(objects_array=(), as_strings=False):
+    """
+    return active selection list.
+    :return:
+    """
+    m_list = OpenMaya.MSelectionList()
+    if not objects_array:
+        OpenMaya.MGlobal.getActiveSelectionList(m_list)
+    elif objects_array:
+        map(m_list.add, objects_array)
+    OpenMaya.MItSelectionList(m_list, OpenMaya.MFn.kInvalid)
+    if as_strings:
+        m_string_array = list()
+        m_list.getSelectionStrings(m_string_array)
+        return m_string_array
+    return m_list
+
+
 def get_m_selection_iter(objects_array=()):
     """
     gets an selection list iter.

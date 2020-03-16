@@ -8,6 +8,7 @@ from maya import cmds
 # import local modules
 import object_utils
 import math_utils
+import transform_utils
 
 # define local variables
 __shape_name__ = 'nurbsCurve'
@@ -15,6 +16,8 @@ connect_attr = object_utils.connect_attr
 create_node = object_utils.create_node
 attr_name = object_utils.attr_name
 attr_set = object_utils.attr_set
+
+world_transform = lambda x: transform_utils.Transform(x).get_world_translation_list()
 
 
 def get_all_nurb_objs():
@@ -325,7 +328,7 @@ def list_scanner(array_list, index=0):
     """
     if index == 0:
         return array_list[index], array_list[index], array_list[index + 1],
-    if index + 1 == len(array_list):
+    if index == len(array_list) - 1:
         return array_list[index - 1], array_list[index], array_list[index],
     return array_list[index - 1], array_list[index], array_list[index + 1]
 
@@ -347,11 +350,11 @@ def get_knot_sequence(ncvs, degree):
     """
     num_knots = get_knots(ncvs, degree)
     m_double_array = OpenMaya.MDoubleArray()
-    # m_double_array.append(0)
-    for i in xrange(0, num_knots + 1):
+    m_double_array.append(0)
+    for i in xrange(0, num_knots + degree - 1):
         m_double_array.append(i)
-        # if i == num_knots:
-        #     m_double_array.append(i)
+        if i == num_knots:
+            m_double_array.append(i)
     return m_double_array
 
 
@@ -364,35 +367,68 @@ def get_point_array(points_array, equal_distance=False):
     """
     m_array = OpenMaya.MPointArray()
     if equal_distance:
+        array_length = len(points_array)
         for idx, point in enumerate(points_array):
-            prev_p, cur_p, next_p = list_scanner(points_array, idx)
-            prev_v = math_utils.Vector(*prev_p)
-            cur_v = math_utils.Vector(*cur_p)
-            next_v = math_utils.Vector(*next_p)
-            if cur_p != next_p:
-                new_v = math_utils.Vector(math_utils.Vector(cur_v - next_v) * 0.5)
-                m_array.append(OpenMaya.MPoint(*new_v.position))
-            else:
-                new_v = math_utils.Vector(math_utils.Vector(prev_v - next_v) * 0.5)
-                m_array.append(OpenMaya.MPoint(*new_v.position))
+            if idx == 0:
+                m_array.append(OpenMaya.MPoint(*point))
+                m_array.append(OpenMaya.MPoint(*point))
+            elif idx >= 1 and idx != array_length - 1:
+                prev_p, cur_p, next_p = list_scanner(points_array, idx)
+                cur_v = math_utils.Vector(*cur_p)
+                prev_v = math_utils.Vector(*prev_p)
+                new_vec = math_utils.Vector(cur_v - prev_v)
+                new_vec = math_utils.Vector(new_vec * 0.5)
+                new_vec = math_utils.Vector(prev_v + new_vec)
+                m_array.append(OpenMaya.MPoint(*new_vec.position))
+            elif idx == array_length - 1:
+                prev_p, cur_p, next_p = list_scanner(points_array, idx)
+                prev_v = math_utils.Vector(*prev_p)
+                next_v = math_utils.Vector(*next_p)
+                new_vec = math_utils.Vector(next_v - prev_v)
+                new_vec = math_utils.Vector(new_vec * 0.5)
+                new_vec = math_utils.Vector(prev_v + new_vec)
+                # add two points in the same spot
+                m_array.append(OpenMaya.MPoint(*new_vec.position))
+                m_array.append(OpenMaya.MPoint(*point))
     else:
         for idx, point in enumerate(points_array):
+            if idx == 1:
+                prev_p, cur_p, next_p = list_scanner(points_array, idx)
+                cur_v = math_utils.Vector(*cur_p)
+                prev_v = math_utils.Vector(*prev_p)
+                new_vec = math_utils.Vector(cur_v - prev_v)
+                new_vec = math_utils.Vector(new_vec * 0.5)
+                new_vec = math_utils.Vector(prev_v + new_vec)
+                m_array.append(OpenMaya.MPoint(*new_vec.position))
+            elif idx == len(points_array) - 1:
+                prev_p, cur_p, next_p = list_scanner(points_array, idx)
+                prev_v = math_utils.Vector(*prev_p)
+                next_v = math_utils.Vector(*next_p)
+                new_vec = math_utils.Vector(next_v - prev_v)
+                new_vec = math_utils.Vector(new_vec * 0.5)
+                new_vec = math_utils.Vector(prev_v + new_vec)
+                m_array.append(OpenMaya.MPoint(*new_vec.position))
             m_array.append(OpenMaya.MPoint(*point))
     return m_array
 
 
-def create_curve_from_points(points_array, degree=2, curve_name=""):
+def create_curve_from_points(points_array, degree=2, curve_name="", equal_cv_positions=True):
     """
     create a nurbs curve from points.
     :param points_array: <tuple> positional points array.
     :param degree: <int> curve degree.
     :param curve_name: <str> the name of the curve to create.
+    :param equal_cv_positions: <bool> if True create CV's at equal positions.
     :return: <str> maya curve name.
     """
-    knot_array = get_knot_sequence(len(points_array), degree)
-    m_point_array = get_point_array(points_array, equal_distance=True)
+    knot_length = len(points_array)
+    knot_array = get_knot_sequence(knot_length, degree)
+    m_point_array = get_point_array(points_array, equal_distance=equal_cv_positions)
+
+    # curve_data = OpenMaya.MFnNurbsCurveData().create()
     curve_fn = OpenMaya.MFnNurbsCurve()
-    curve_fn.create(m_point_array, knot_array, degree, OpenMaya.MFnNurbsCurve.kOpen,
+    curve_fn.create(m_point_array, knot_array, degree,
+                    OpenMaya.MFnNurbsCurve.kOpen,
                     False, False)
     m_path = OpenMaya.MDagPath()
     curve_fn.getPath(m_path)
@@ -403,3 +439,31 @@ def create_curve_from_points(points_array, degree=2, curve_name=""):
         return curve_name
     return curve_fn.name()
 
+
+def create_curve_from_transforms(transform_array, degree=2, curve_name=""):
+    """
+    creates a curve object from an array of transforms.
+    :param transform_array:
+    :param degree:
+    :param curve_name:
+    :return:
+    """
+    points_array = ()
+    for tfm_name in transform_array:
+        points_array += world_transform(tfm_name),
+    print points_array
+    return create_curve_from_points(points_array, degree=degree, curve_name=curve_name)
+
+
+def create_curve_from_selection(degree=2, curve_name=""):
+    """
+    creates a curve object from an array of selected transforms.
+    :param degree:
+    :param curve_name:
+    :return:
+    """
+    m_list = object_utils.get_m_selection(as_strings=True)
+    if len(m_list) == 0:
+        raise ValueError('[CurveFromSelectionEmptySelectionError] :: Please select some transform objects.')
+    print(m_list)
+    return create_curve_from_transforms(m_list, degree=degree, curve_name=curve_name)
