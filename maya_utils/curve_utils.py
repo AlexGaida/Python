@@ -360,6 +360,7 @@ def get_knot_sequence(ncvs, degree):
 
 def get_point_array(points_array, equal_distance=False):
     """
+    calculate the positional array object.
 
     :param points_array:
     :param equal_distance: <bool> calculate the equal distance of CV's
@@ -440,30 +441,34 @@ def create_curve_from_points(points_array, degree=2, curve_name="", equal_cv_pos
     return curve_fn.name()
 
 
-def create_curve_from_transforms(transform_array, degree=2, curve_name=""):
+def create_curve_from_transforms(transform_array, degree=2, curve_name="", equal_cv_positions=False):
     """
     creates a curve object from an array of transforms.
     :param transform_array:
-    :param degree:
-    :param curve_name:
-    :return:
+    :param degree: <int> curve degree.
+    :param curve_name: <str> the name of the curve to create.
+    :param equal_cv_positions: <bool> if True create CV's at equal positions.
+    :return: <str> curve name.
     """
     points_array = ()
     for tfm_name in transform_array:
         points_array += world_transform(tfm_name),
     print points_array
-    return create_curve_from_points(points_array, degree=degree, curve_name=curve_name)
+    return create_curve_from_points(points_array, degree=degree,
+                                    curve_name=curve_name, equal_cv_positions=equal_cv_positions)
 
 
-def create_curve_from_selection(degree=2, curve_name=""):
+def create_curve_from_selection(degree=2, curve_name="", equal_cv_positions=False):
     """
     creates a curve object from an array of selected transforms.
-    :param degree:
-    :param curve_name:
-    :return:
+    :param degree: <int> curve degree.
+    :param curve_name: <str> the name of the curve to create.
+    :param equal_cv_positions: <bool> if True create CV's at equal positions.
+    :return: <str> curve name.
     """
     m_list = object_utils.get_m_selection(as_strings=True)
     if len(m_list) == 0:
         raise ValueError('[CurveFromSelectionEmptySelectionError] :: Please select some transform objects.')
     print(m_list)
-    return create_curve_from_transforms(m_list, degree=degree, curve_name=curve_name)
+    return create_curve_from_transforms(m_list, degree=degree,
+                                        curve_name=curve_name, equal_cv_positions=equal_cv_positions)

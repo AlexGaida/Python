@@ -12,10 +12,10 @@
     cmds.getattr( (pnode + '.output[1]') )
     cmds.getattr( (pnode + '.output[2]') )
 """
-
+import pymel.core as pm
 
 import sys
-from maya import OpenMaya as om
+from maya import OpenMaya
 from maya import OpenMayaMPx as ommpx
 
 kPluginNodeTypeName = "pyArray"
@@ -109,7 +109,7 @@ class pynode(ommpx.MPxNode):
                 outputhandle.set(outputbuilder)
 
             else:
-                return OpenMaya.kunknownparameter
+                return OpenMaya.kUnknownParameter
 
         if (plug == pynode.output) and plug.isElement():
             # get the input handle
@@ -143,7 +143,7 @@ def nodeInitializer():
     pynode.addAttribute(pynode.inputs)
 
     nattr = OpenMaya.MFnNumericAttribute()
-    pynode.output = nattr.create("output", "out", OpenMaya.MFnNumericData.kFloat, 0.0 )
+    pynode.output = nattr.create("output", "out", OpenMaya.MFnNumericData.kFloat, 0.0)
     nattr.setArray(1)
     nattr.setStorable(1)
     nattr.setWritable(1)
@@ -152,27 +152,42 @@ def nodeInitializer():
     pynode.attributeAffects(pynode.inputs, pynode.output)
 
 
+def AEtemplateString(nodeName):
+    templStr = ''
+    templStr += 'global proc AE%sTemplate(string $nodeName)\n' % nodeName
+    templStr += '{\n'
+    templStr += 'editorTemplate -beginScrollLayout;\n'
+
+    templStr += '	editorTemplate -beginLayout "General Attributes" -collapse 0;\n'
+    templStr += '		editorTemplate -addControl "subdivisions";\n'
+    # ....
+    templStr += '		editorTemplate -addSeparator;\n'
+    templStr += '		editorTemplate -addControl "flipAngle";\n'
+    templStr += '		editorTemplate -addSeparator;\n'
+    templStr += '		editorTemplate -addControl "twist";\n'
+    templStr += '	editorTemplate -endLayout;\n'
+
+    templStr += 'editorTemplate -addExtraControls; // add any other attributes\n'
+    templStr += 'editorTemplate -endScrollLayout;\n'
+    templStr += '}'
+    return templStr
+
+
 def initializePlugin(m_object):
-
     mplugin = ommpx.MFnPlugin(m_object)
-
     try:
         mplugin.registerNode(kPluginNodeTypeName, kNodeId, nodeCreator, nodeInitializer)
 
     except:
         sys.stderr.write("failed to register node: %s" % kPluginNodeTypeName)
         raise
+    OpenMaya.MGlobal.executeCommand(AEtemplateString(kPluginNodeTypeName))
 
 
 def uninitializePlugin(m_object):
-
     mplugin = ommpx.MFnPlugin(m_object)
-
     try:
         mplugin.deregisterNode(kNodeId)
     except:
         sys.stderr.write("failed to deregister node: %s" % kPluginNodeTypeName)
         raise
-
-# update AE
-# MGlobal::executeCommandOnIdle(MString("setLocalView \"\" \"\" 1;"));
