@@ -1,0 +1,2 @@
+"D:\Installed Programs\Autodesk\Maya2020\bin\maya.exe" -log %~dp0\test.log -command "loadPlugin \"D:\Work\Pipeline\Maya\Python\plugins\reflectionLocator.mll\";" -script %~dp0\reflectionNodeTest.mel
+pause

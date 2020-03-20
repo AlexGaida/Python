@@ -749,3 +749,20 @@ def lerp(norm, min, max):
     :return:
     """
     return (max - min) * norm + min
+
+
+def reflection_vector(object_name, as_array=True):
+    """
+    calculates the reflection vector from the origin.
+    R = 2(N * L) * N - L
+    :return:
+    """
+    array_1 = transform_utils.Transform(object_name).translate_values(world=True)
+    vector_1 = MVector(*array_1)
+    normal = MVector(0.0, 1.0, 0.0)
+    vector = normal * (2 * (normal * vector_1))
+    vector -= vector_1
+    if not as_array:
+        return vector
+    else:
+        return vector.x, vector.y, vector.z

@@ -154,7 +154,7 @@ class Transform(OpenMaya.MFnTransform):
         """
         m_vector = self.getTranslation(self.OBJECT_SPACE)
         if world:
-            m_vector = OpenMaya.MVector(self.world_translation)
+            m_vector = OpenMaya.MVector(*self.get_world_translation_list())
 
         if not as_m_vector:
             x = round(m_vector.x, 4)

@@ -1,9 +1,11 @@
 """
-Finally! A Working example found for Maya's viewport 2.0!!!!
-Example locator template copied from Dilen Shah.
+Finally! A Working example found for MPxLocator using Maya's viewport 2.0!!!!
+Whooooo!
 """
+# import standard modules
 import sys
 
+# import maya 2.0 modules
 from maya.api import OpenMaya
 from maya.api import OpenMayaUI
 from maya.api import OpenMayaRender
@@ -17,7 +19,7 @@ def maya_useNewAPI():
     pass
 
 
-# plugin information
+# define plugin information
 kPluginNodeName = "reflectionLocator"
 kPluginNodeClassification = "drawdb/geometry/reflectionLocator"
 kDrawRegistrantId = "reflectionNodePlugin"
@@ -26,16 +28,20 @@ kPluginNodeId = OpenMaya.MTypeId(0x819890)
 
 # define local variables
 defaultLineWidth = 1.0
-defaultPlaneColor = (0.1, 0.5, 0.1, 1.0)
+defaultPlaneColor = (0.2, 0.5, 0.5, 1.0)
 defaultOutputPoint = (-1.0, 1.0, 0.0)
 defaultInputPoint = (1.0, 1.0, 0.0)
+defaultScaleValue = 1.0
 
 
 # Node implementation with standard viewport draw
 class ReflectionLocatorNode(OpenMayaUI.MPxLocatorNode):
-    # initialize parameters
-    ui_type = 0
-    line_width = 1.0
+    plane_matrix = OpenMaya.MObject()
+    plane_position = OpenMaya.MObject()
+    reflected_parent_inverse = OpenMaya.MObject()
+    input_matrix = OpenMaya.MObject()
+    input_point = OpenMaya.MObject()
+    scale = OpenMaya.MObject()
 
     @staticmethod
     def creator():
@@ -44,6 +50,14 @@ class ReflectionLocatorNode(OpenMayaUI.MPxLocatorNode):
         :return:
         """
         return ReflectionLocatorNode()
+
+    def postConstructor(self):
+        """
+        run the process after the node has been created.
+        :return:
+        """
+        node_fn = OpenMaya.MFnDependencyNode(self.thisMObject())
+        node_fn.setName("reflectionLocatorShape#")
 
     @staticmethod
     def initialize():
@@ -63,38 +77,39 @@ class ReflectionLocatorNode(OpenMayaUI.MPxLocatorNode):
         eAttr.addField("rect", 1)
         eAttr.addField("locator", 2)
         eAttr.addField("circle", 3)
+        eAttr.default = 2
         ReflectionLocatorNode.addAttribute(
             ReflectionLocatorNode.ui_type)
 
         # creates a vector attribute
-        ReflectionLocatorNode.output_point = nAttr.createPoint('output', 'out')
+        global defaultOutputPoint
+        ReflectionLocatorNode.output_point = nAttr.create('output', 'out', OpenMaya.MFnNumericData.k3Double)
         nAttr.storable = False
         nAttr.hidden = False
-        nAttr.default = (defaultPlaneColor[0], defaultPlaneColor[1], defaultPlaneColor[2])
+        nAttr.default = (defaultOutputPoint[0], defaultOutputPoint[1], defaultOutputPoint[2])
         ReflectionLocatorNode.addAttribute(
             ReflectionLocatorNode.output_point)
 
-        # create a matrix attribute
-        ReflectionLocatorNode.plane_matrix = mAttr.create("planeMatrix", "planeMatrix")
-        ReflectionLocatorNode.addAttribute(
-            ReflectionLocatorNode.plane_matrix)
-        ReflectionLocatorNode.attributeAffects(
-            ReflectionLocatorNode.plane_matrix, ReflectionLocatorNode.output_point)
-
-        # create a reflected parentInverse attribute
-        ReflectionLocatorNode.parent_inverse = mAttr.create("reflectedParentInverse", "rpi")
-        mAttr.setDefault(OpenMaya.MMatrix.identity)
-        ReflectionLocatorNode.addAttribute(ReflectionLocatorNode.parent_inverse)
-        ReflectionLocatorNode.attributeAffects(ReflectionLocatorNode.parent_inverse, ReflectionLocatorNode.output_point)
-
         # creates a vector attribute
-        ReflectionLocatorNode.input_point = nAttr.createPoint('input', 'in')
+        global defaultInputPoint
+        ReflectionLocatorNode.input_point = nAttr.create('input', 'in', OpenMaya.MFnNumericData.k3Double)
         nAttr.storable = True
         nAttr.hidden = False
         nAttr.keyable = True
+        nAttr.default = (defaultInputPoint[0], defaultInputPoint[1], defaultInputPoint[2])
         ReflectionLocatorNode.addAttribute(ReflectionLocatorNode.input_point)
         ReflectionLocatorNode.attributeAffects(
             ReflectionLocatorNode.input_point, ReflectionLocatorNode.output_point)
+
+        # create a matrix attribute
+        ReflectionLocatorNode.plane_matrix = mAttr.create("planeMatrix", "planeMatrix")
+        ReflectionLocatorNode.addAttribute(ReflectionLocatorNode.plane_matrix)
+        ReflectionLocatorNode.attributeAffects(ReflectionLocatorNode.plane_matrix, ReflectionLocatorNode.output_point)
+
+        # create a reflected parentInverse attribute
+        ReflectionLocatorNode.parent_inverse = mAttr.create("reflectedParentInverse", "rpi")
+        ReflectionLocatorNode.addAttribute(ReflectionLocatorNode.parent_inverse)
+        ReflectionLocatorNode.attributeAffects(ReflectionLocatorNode.parent_inverse, ReflectionLocatorNode.output_point)
 
         # create a line width attribute to change the width of a line drawing
         global defaultLineWidth
@@ -107,13 +122,14 @@ class ReflectionLocatorNode(OpenMayaUI.MPxLocatorNode):
 
         # create a color attribute
         global defaultPlaneColor
-        ReflectionLocatorNode.plane_color = ReflectionLocatorNode.createColor('planeColor', 'pc')
+        ReflectionLocatorNode.plane_color = nAttr.createColor('planeColor', 'pc')
         nAttr.storable = True
         nAttr.default = (defaultPlaneColor[0], defaultPlaneColor[1], defaultPlaneColor[2])
         ReflectionLocatorNode.addAttribute(ReflectionLocatorNode.plane_color)
 
         # create a scale attribute
-        ReflectionLocatorNode.scale = nAttr.create("scale", "scale", OpenMaya.MFnNumericData.kDouble, 1.0)
+        global defaultScaleValue
+        ReflectionLocatorNode.scale = nAttr.create("scale", "scale", OpenMaya.MFnNumericData.kDouble, defaultScaleValue)
         nAttr.keyable = True
         ReflectionLocatorNode.addAttribute(ReflectionLocatorNode.scale)
         ReflectionLocatorNode.attributeAffects(ReflectionLocatorNode.scale, ReflectionLocatorNode.output_point)
@@ -122,9 +138,35 @@ class ReflectionLocatorNode(OpenMayaUI.MPxLocatorNode):
         OpenMayaUI.MPxLocatorNode.__init__(self)
 
     def compute(self, plug, data):
+        """
+        computes the reflection point output_point plug.
+        :param plug:
+        :param data:
+        :return: <NoneType>
+        """
+        if plug == ReflectionLocatorNode.output_point or plug == ReflectionLocatorNode.input_point:
+            plane_matrix    = data.inputValue(ReflectionLocatorNode.plane_matrix).asMatrix()
+            plane_position  = OpenMaya.MTransformationMatrix(plane_matrix).translation(OpenMaya.MSpace.kPostTransform)
+            input_point     = data.inputValue(ReflectionLocatorNode.input_point).asVector()
+            scale           = data.inputValue(ReflectionLocatorNode.scale).asFloat()
+
+            reflection_point = calculate_reflection_point(plane_matrix, plane_position, input_point, scale, as_vector=True)
+
+            h_output = data.outputValue(ReflectionLocatorNode.output_point)
+            h_output.setMVector(reflection_point)
+            h_output.setClean()
+            data.setClean(plug)
         return None
 
     def draw(self, view, path, style, status):
+        """
+        old draw style, we'll leave this empty in case it comes in useful in the future (which is never.)
+        :param view:
+        :param path:
+        :param style:
+        :param status:
+        :return: <NoneType>
+        """
         return None
 
 
@@ -165,31 +207,31 @@ class ReflectionLocatorNodeDrawOverride(OpenMayaRender.MPxDrawOverride):
 
         # access plane matrix
         plane_matrix = OpenMaya.MPlug(objPath.node(), ReflectionLocatorNode.plane_matrix)
-        data.plane_matrix = plane_matrix.asMatrix()
+        data.plane_matrix = OpenMaya.MFnMatrixData(plane_matrix.asMObject()).matrix()
 
         # access input point
         input_point = OpenMaya.MPlug(objPath.node(), ReflectionLocatorNode.input_point)
-        data.line_width = input_point.asPoint()
+        data.input_point = get_vector_value(input_point)
 
         # access output point
         output_point = OpenMaya.MPlug(objPath.node(), ReflectionLocatorNode.output_point)
-        data.line_width = output_point.asPoint()
+        data.output_point = get_vector_value(output_point)
 
         # access line width
         line_width = OpenMaya.MPlug(objPath.node(), ReflectionLocatorNode.line_width)
         data.line_width = line_width.asFloat()
 
         # access the parent inverse
-        parent_inverse = OpenMaya.MPlug(objPath.node(), ReflectionLocatorNode.parent_inverse)
-        data.parent_inverse = parent_inverse.asMatrix()
+        # parent_inverse = OpenMaya.MPlug(objPath.node(), ReflectionLocatorNode.parent_inverse)
+        # data.parent_inverse = OpenMaya.MFnMatrixData(parent_inverse.asMObject()).matrix()
 
         # access plane color
         plane_color = OpenMaya.MPlug(objPath.node(), ReflectionLocatorNode.plane_color)
-        data.plane_color = plane_color.asColor()
+        data.plane_color = get_vector_value(plane_color)
 
         # access the objects' position
         data.plane_position = OpenMaya.MTransformationMatrix(
-            plane_matrix).getTranslation(OpenMaya.MSpace.kPostTransform)
+            data.plane_matrix).translation(OpenMaya.MSpace.kPostTransform)
 
         # access the scale
         scale = OpenMaya.MPlug(objPath.node(), ReflectionLocatorNode.scale)
@@ -210,85 +252,130 @@ class ReflectionLocatorNodeDrawOverride(OpenMayaRender.MPxDrawOverride):
         """
         if not isinstance(data, ReflectionLocatorNodeData):
             return
+        # float variable
+        line_width = data.line_width
+        # tuple variable
+        plane_color = data.plane_color
 
         # rectangle
         if data.ui_type == 1:
-            line_width = data.line_width
             rect_scale_x = 1.0
             rect_scale_y = 1.0
-            is_filled = True
+            is_filled = False
+            position = OpenMaya.MPoint(0, 0, 0)
+            normal = OpenMaya.MVector(0, 0, 1)
+            up = OpenMaya.MVector(0, 1, 0)
             drawManager.beginDrawable()
             drawManager.setLineWidth(line_width)
             drawManager.setLineStyle(drawManager.kSolid)
-            drawManager.setColor(OpenMaya.MColor((0.1, 0.5, 0.1, 1.0)))
-            drawManager.rect2d(OpenMaya.MPoint(0, 0, 0), OpenMaya.MPoint(0, 1, 0),
-                               rect_scale_x, rect_scale_y, is_filled)
+            drawManager.setColor(OpenMaya.MColor(plane_color))
+            # For 3d rectangle, the up vector should not be parallel with the normal vector.
+            drawManager.rect(position, normal, up, rect_scale_x, rect_scale_y, is_filled)
             drawManager.endDrawable()
 
         # locator
         if data.ui_type == 2:
-            line_width = data.line_width
             drawManager.beginDrawable()
             drawManager.setLineWidth(line_width)
             drawManager.setLineStyle(drawManager.kSolid)
-            drawManager.setColor(OpenMaya.MColor((0.5, 0.3, 0.4, 1.0)))
+            drawManager.setColor(OpenMaya.MColor(plane_color))
             drawManager.line(OpenMaya.MPoint(0, -1, 0), OpenMaya.MPoint(0, 1, 0))
             drawManager.endDrawable()
 
             drawManager.beginDrawable()
             drawManager.setLineWidth(line_width)
             drawManager.setLineStyle(drawManager.kSolid)
-            drawManager.setColor(OpenMaya.MColor((0.8, 0.3, 0.2, 1.0)))
+            drawManager.setColor(OpenMaya.MColor(plane_color))
             drawManager.line(OpenMaya.MPoint(-1, 0, 0), OpenMaya.MPoint(1, 0, 0))
             drawManager.endDrawable()
 
             drawManager.beginDrawable()
             drawManager.setLineWidth(line_width)
             drawManager.setLineStyle(drawManager.kSolid)
-            drawManager.setColor(OpenMaya.MColor((0.1, 0.5, 0.1, 1.0)))
+            drawManager.setColor(OpenMaya.MColor(plane_color))
             drawManager.line(OpenMaya.MPoint(0, 0, -1), OpenMaya.MPoint(0, 0, 1))
             drawManager.endDrawable()
 
         # circle
         if data.ui_type == 3:
-            line_width = data.line_width
             radius = 2.0
             is_filled = True
+            position = OpenMaya.MPoint(0, 0, 0)
+            normal = OpenMaya.MVector(0, 1, 0)
             drawManager.beginDrawable()
+            drawManager.beginDrawInXray()
             drawManager.setLineWidth(line_width)
             drawManager.setLineStyle(drawManager.kSolid)
-            drawManager.setColor(OpenMaya.MColor((0.1, 0.5, 0.1, 1.0)))
-            drawManager.circle(OpenMaya.MPoint(0, 0, 0), OpenMaya.MPoint(0, 1, 0), radius, is_filled)
+            drawManager.setColor(OpenMaya.MColor(plane_color))
+            drawManager.circle(position, normal, radius, is_filled)
+            drawManager.endDrawInXray()
             drawManager.endDrawable()
 
         # draw the lines from the starting point to the plane point
+        # draw from the input point to the plane point
+        drawManager.beginDrawable()
+        drawManager.setLineWidth(line_width)
+        drawManager.setLineStyle(drawManager.kSolid)
+        drawManager.setColor(OpenMaya.MColor(plane_color))
+        drawManager.line(OpenMaya.MPoint(data.input_point), OpenMaya.MPoint(data.plane_position))
+        drawManager.endDrawable()
+
+        # draw from the plane point to the output point
+        drawManager.beginDrawable()
+        drawManager.setLineWidth(line_width)
+        drawManager.setLineStyle(drawManager.kSolid)
+        drawManager.setColor(OpenMaya.MColor(plane_color))
+        drawManager.line(OpenMaya.MPoint(data.plane_position), OpenMaya.MPoint(data.output_point))
+        drawManager.endDrawable()
 
 
-def calculate_reflection_point(plane_matrix, reflected_parent_inverse, plane_pos, input_point, scale):
+def get_vector_value(in_plug):
+    """
+    grab the vector values and store them as a tuple
+    :param in_plug: <OpenMaya.MPlug>
+    :return: <tuple> XYZ vector values.
+    """
+    vector_result = ()
+    if in_plug.isCompound:
+        # get the compound numeric attribute vector
+        for c in xrange(in_plug.numChildren()):
+            ch_item = in_plug.child(c)
+            api_type = OpenMaya.MFnNumericAttribute(ch_item.attribute()).numericType()
+            if api_type in (OpenMaya.MFnNumericData.kFloat, OpenMaya.MFnNumericData.kDouble):
+                vector_result += ch_item.asDouble(),
+        return vector_result
+
+
+def calculate_reflection_point(plane_matrix, plane_pos, input_point, scale, as_vector=False):
     """
     calculates the reflection point
+        R = 2(N * L) * N - L
     :param plane_matrix: <OpenMaya.MMatrix>
-    :param reflected_parent_inverse: <OpenMaya.MMatrix>
     :param plane_pos: <OpenMaya.MVector>
     :param input_point: <OpenMaya.MVector>
     :param scale: <float>
-    :return:
+    :param as_vector: <bool> return as an MVector output value.
+    :return: <OpenMaya.MVector>
     """
     normal = OpenMaya.MVector(0.0, 1.0, 0.0)
     normal *= plane_matrix
     normal.normalize()
 
+    # calculate the original vector
     orig_vector = OpenMaya.MVector(input_point - plane_pos)
-    reflected_vector = OpenMaya.MVector(2 * ((normal * orig_vector) * normal) - orig_vector)
-    reflected_vector.normalize()
-    reflected_vector *= scale
+
+    # get opposing vector through double cross product
+    opposing_vector = normal * (2 * (normal * orig_vector))
+    opposing_vector -= orig_vector
+
+    # now multiply it by the scalar value
+    opposing_vector *= scale
 
     # calculate the reflected point position
-    destination_point = plane_pos + reflected_vector
-
-    # put the point into local space
-    destination_point *= reflected_parent_inverse
-    return destination_point
+    vector = plane_pos + opposing_vector
+    if as_vector:
+        return vector
+    return vector.x, vector.y, vector.z
 
 
 def initializePlugin(obj):

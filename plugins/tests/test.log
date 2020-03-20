@@ -1,0 +1,24 @@
+Initialized VP2.0 renderer {
+  Version : 2016.11.53.12. Feature Level 5.
+  Adapter : GeForce GTX 1060 6GB/PCIe/SSE2
+  Vendor ID: 4318. Device ID : 7171
+  Driver : .
+  API : OpenGL V.4.6.
+  Max texture size : 16384 * 16384.
+  Max tex coords : 32
+  Shader versions supported (Vertex: 5, Geometry: 5, Pixel 5).
+  Shader compiler profile : (Best card profile)
+  Active stereo support available : 0
+  GPU Memory Limit : 6144 MB.
+  CPU Memory Limit: 30996.8 MB.
+  MultiDraw consolidation: enabled
+}
+OpenCL evaluator is attempting to initialize OpenCL.
+Detected 2 OpenCL Platforms: 
+ 0: NVIDIA Corporation. NVIDIA CUDA. OpenCL 1.2 CUDA 10.1.120.
+ Supported extensions: cl_khr_global_int32_base_atomics cl_khr_global_int32_extended_atomics cl_khr_local_int32_base_atomics cl_khr_local_int32_extended_atomics cl_khr_fp64 cl_khr_byte_addressable_store cl_khr_icd cl_khr_gl_sharing cl_nv_compiler_options cl_nv_device_attribute_query cl_nv_pragma_unroll cl_nv_d3d10_sharing cl_khr_d3d10_sharing cl_nv_d3d11_sharing cl_nv_copy_opts cl_nv_create_buffer 
+ 1: Intel(R) Corporation. Intel(R) OpenCL. OpenCL 1.2 .
+ Supported extensions: cl_intel_dx9_media_sharing cl_khr_3d_image_writes cl_khr_byte_addressable_store cl_khr_d3d11_sharing cl_khr_depth_images cl_khr_dx9_media_sharing cl_khr_gl_sharing cl_khr_global_int32_base_atomics cl_khr_global_int32_extended_atomics cl_khr_icd cl_khr_local_int32_base_atomics cl_khr_local_int32_extended_atomics cl_khr_spir 
+OpenCL evaluator choosing OpenCL platform NVIDIA Corporation.
+Choosing OpenCL Device GeForce GTX 1060 6GB.  Device Type: GPU  Device is available.
+
