@@ -1,16 +1,25 @@
 """
 This is a sample module for adding a singleton joint.
 """
+# import maya modules
+from maya import cmds
+
 # import standard modules
 import json
 
+# import local modules
+from maya_utils import object_utils
 
-class TemplateModule:
+
+class TemplateModule(object):
+    PUBLISH_ATTRIBUTES = {"constrainTo": "",
+                          "parentTo": "",}
+
     def __init__(self, name="", prefix_name=""):
         self.name = name
         self.prefix_name = prefix_name
 
-    def create(self, name, prefix_name, suffix_name):
+    def create(self):
         """
         the utility method for creating a thing.
         :return:
@@ -54,3 +63,15 @@ class TemplateModule:
         :return:
         """
         pass
+
+    def finish(self):
+        """
+        finish the module setup.
+        :return:
+        """
+        pass
+
+    def do_it(self):
+        self.create()
+        self.finish()
+        return True
