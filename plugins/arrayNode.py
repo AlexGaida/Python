@@ -21,6 +21,12 @@ from maya import OpenMayaMPx as ommpx
 kPluginNodeTypeName = "pyArray"
 kNodeId = OpenMaya.MTypeId(0x87000)
 
+from maya.app.general.mayaMixin import MayaQWidgetDockableMixin
+from PySide2 import QtGui
+from PySide2 import QtWidgets
+QPushButton = QtWidgets.QPushButton
+QSizePolicy = QtWidgets.QSizePolicy
+
 
 class pynode(ommpx.MPxNode):
 

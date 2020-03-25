@@ -1,5 +1,4 @@
 
-loadPlugin reflectionLocator.py;
 createNode reflectionLocator;
 createNode locator;
 createNode locator;

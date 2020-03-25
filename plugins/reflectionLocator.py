@@ -144,11 +144,13 @@ class ReflectionLocatorNode(OpenMayaUI.MPxLocatorNode):
         :param data:
         :return: <NoneType>
         """
-        if plug == ReflectionLocatorNode.output_point or plug == ReflectionLocatorNode.input_point:
+        if plug == ReflectionLocatorNode.output_point or \
+                        plug == ReflectionLocatorNode.input_point or \
+                        plug == ReflectionLocatorNode.scale:
             plane_matrix    = data.inputValue(ReflectionLocatorNode.plane_matrix).asMatrix()
             plane_position  = OpenMaya.MTransformationMatrix(plane_matrix).translation(OpenMaya.MSpace.kPostTransform)
             input_point     = data.inputValue(ReflectionLocatorNode.input_point).asVector()
-            scale           = data.inputValue(ReflectionLocatorNode.scale).asFloat()
+            scale           = data.inputValue(ReflectionLocatorNode.scale).asDouble()
 
             reflection_point = calculate_reflection_point(plane_matrix, plane_position, input_point, scale, as_vector=True)
 

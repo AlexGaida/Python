@@ -22,6 +22,7 @@ __control_folder_dir__ = file_utils.controller_data_dir()
 # define local variables
 CTRL_SUFFIX = 'ctrl'
 LOCATOR_SUFFIX = 'loc'
+CONSTRAINT_GRP = 'cnst'
 re_brackets = re.compile(r'\[|]')
 transform_attrs = attribute_utils.Attributes.DEFAULT_ATTR_VALUES
 side_cls = read_sides.Sides()
@@ -352,7 +353,7 @@ def parent_curve_shapes(curve_names):
     return curve_name
 
 
-def create_control(shape_name, name='', groups=('grp',)):
+def create_control(shape_name, name='', groups=('grp', CONSTRAINT_GRP)):
     """
     create a controller object with specified groups.
     :param shape_name: <str> create this shape.
@@ -397,6 +398,9 @@ def create_controls(objects_array, name, shape_name="cube", apply_constraints=No
     :param maintain_offset: <bool> create constraints with maintain offset.
     :return: <tuple> controller data.
     """
+    if isinstance(objects_array, str):
+        objects_array = objects_array,
+
     names = ()
     for idx in range(len(objects_array)):
         names += '{}_{}_{}'.format(name, idx, CTRL_SUFFIX),

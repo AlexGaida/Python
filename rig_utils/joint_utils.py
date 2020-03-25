@@ -6,7 +6,7 @@ import re
 
 # import maya modules
 from maya import cmds
-from maya import mel
+from maya import OpenMaya
 
 # import local modules
 from maya_utils import object_utils
@@ -216,3 +216,36 @@ def create_dynamic_chain(base_joint_name="", name="", curve_degree=2):
     # now make the spline Ik Handle
     # return curve_name
 
+
+def create_joint(name="", num_joints=1, prefix_name="", suffix_name="", as_strings=False):
+    """
+    creates a joint and renames it.
+    :param name: <str> the name of the joint to create.
+    :param num_joints: the number of joints created.
+    :param prefix_name: <str> the prefix name to use.
+    :param suffix_name: <str> the suffix name to use.
+    :return: <tuple> array of created joint objects.
+    """
+    if not name:
+        name = 'joint'
+    dag_mod = OpenMaya.MDagModifier()
+
+    # Create the joint MObjects we will be manipulating.
+    jnt_objects = ()
+    for i in xrange(0, num_joints):
+        if i == 0:
+            # The first joint has no parent.
+            jnt_obj = dag_mod.createNode('joint')
+        else:
+            # Assign the new joint as a child to the previous joint.
+            jnt_obj = dag_mod.createNode('joint', jnt_objects[i - 1])
+        if name:
+            name = '{prefix}{name}_{idx}{suffix}'.format(prefix=prefix_name, name=name, idx=i, suffix=suffix_name)
+            dag_mod.renameNode(jnt_obj, name)
+            dag_mod.doIt()
+        # Keep track of all the joints created.
+        if not as_strings:
+            jnt_objects += jnt_obj,
+        else:
+            jnt_objects += name,
+    return jnt_objects

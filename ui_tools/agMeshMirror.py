@@ -3,7 +3,9 @@ mesh mirror tool for dealing with mesh data and patterns.
 """
 # import standard modules
 import sys
-from PySide2 import QtCore, QtGui, QtWidgets
+
+# import Qt modules
+from PySide2 import QtWidgets
 
 # import local modules
 from maya_utils import mesh_utils
