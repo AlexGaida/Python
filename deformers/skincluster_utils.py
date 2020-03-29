@@ -8,6 +8,7 @@ from maya import OpenMayaAnim
 
 # import local modules
 from maya_utils import object_utils
+from maya_utils import file_utils
 
 # define private variables
 __version__ = "1.0.0"
@@ -19,8 +20,7 @@ def get_mesh_shape(mesh_name=""):
     :param mesh_name: <str> mesh transform object name.
     :return: <str> mesh shape name.
     """
-    return object_utils.get_transform_relatives(
-        mesh_name, find_child=True, with_shape='mesh', as_strings=True)[1]
+    return object_utils.get_shape_name(mesh_name, 'mesh')[0]
 
 
 def get_connected_skin_cluster(shape_name=""):
@@ -215,7 +215,7 @@ def get_skin_cluster(source_obj=None):
         if cur_item.hasFn(OpenMaya.MFn.kSkinClusterFilter):
             return OpenMayaAnim.MFnSkinCluster(cur_item), m_depend_node.name()
         m_it_graph.next()
-    return False
+    return False, False
 
 
 def get_m_plug(in_obj=None, in_plug_name=None):
@@ -325,7 +325,32 @@ def normalize_weights(skin_name="", mesh_name="", influences=()):
         cmds.setAttr('%s.normalizeWeights' % skin_name, skinNorm)
 
 
-def set_weights(mesh_obj=None, weights={}):
+def save_to_file(mesh_obj):
+    """
+    writes the skinCluster data into a JSON file type.
+    :param mesh_obj: <str> the mesh object to query the skinCluster data from.
+    :return: <str> the written skinCluster JSON file.
+    """
+    data = get_skin_data(mesh_obj)
+    skin_file = file_utils.get_path(file_utils.get_maya_workspace_dir(), mesh_obj)
+    ft = file_utils.JSONSerializer(skin_file, data)
+    ft.write()
+    return skin_file
+
+
+def read_from_file(mesh_obj):
+    """
+    reads the skinCluster data into a JSON file type.
+    :param mesh_obj: <str> the mesh object to find the file from the workspace directory.
+    :return: <dict> the skinCluster information data.
+    """
+    data = get_skin_data(mesh_obj)
+    skin_file = file_utils.get_path(file_utils.get_maya_workspace_dir(), mesh_obj)
+    ft = file_utils.JSONSerializer(skin_file, data)
+    return ft.read()
+
+
+def set_skin_data(mesh_obj=None, weights={}):
     """
     Using the  dictionary provided, set the skinCluster weights.
     :param mesh_obj: set weights to this object.
@@ -333,6 +358,8 @@ def set_weights(mesh_obj=None, weights={}):
     :return: <bool> True for success.  <bool> False for failure.
     """
     skin_fn, skin_name = get_skin_cluster(mesh_obj)
+    if not skin_fn:
+        skin_name = create_skin_cluster(mesh_obj, weights['influences'])[0]
     normalize_weights(skin_name, mesh_obj, weights['influences'])
 
     for vert_id, weightData in weights['weights'].items():

@@ -16,6 +16,23 @@ from maya import cmds
 re_slash = re.compile('(\\\\|/)')
 
 
+def get_path(*args):
+    """
+    construct a path from arguments provided.
+    :param args: <tuple> array of arguments to concatenate.
+    :return: <str> path
+    """
+    return posixpath.join(*args)
+
+
+def get_maya_workspace_dir():
+    """
+    get the current working directory path for the maya project
+    :return: <str> path
+    """
+    return cmds.workspace(dir=True, q=1)
+
+
 def has_ext(file_name, ext_name=""):
     """
     check if the file name string has the extension name.
