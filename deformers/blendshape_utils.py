@@ -146,21 +146,23 @@ def find_blend_shape_index(target_name="", blend_name=""):
     return False
 
 
-def add_in_between_target(shape_name, blend_name="", existing_target_name="", weight=0.5):
+def add_in_between_target(shape_name, blend_name="", target_index=0, existing_target_name="", weight=0.5):
     """
     adds an in-between target.
     :param shape_name: <str> the in between shape to add.
     :param blend_name: <str> the blendShape to add.
     :param existing_target_name: <str> the existing target shape to find.
+    :param target_index: <int> the target index to use when adding shapes.
     :param weight: <float> the weight value of the in between shape.
     :return:
     """
     # find the existing target index on the blend shape
-    index = find_blend_shape_index(existing_target_name, blend_name=blend_name)
-    if type(index) == bool:
+    if not target_index:
+        target_index = find_blend_shape_index(existing_target_name, blend_name=blend_name)
+    if type(target_index) == bool:
         raise ValueError("[AddInBetweenTarget] :: No valid index found with name: {}".format(existing_target_name))
     # we need to round the weight step value
-    return add_target(shape_name, blend_name, weight=weight, index=index)
+    return add_target(shape_name, blend_name, weight=weight, index=target_index)
 
 
 def add_in_between_target_array(shapes_array, blend_name=""):
@@ -178,16 +180,22 @@ def add_in_between_target_array(shapes_array, blend_name=""):
     return True
 
 
-def remove_in_between_target(shape_name, blend_name="", existing_target_name="", weight=0.5):
+def remove_in_between_target(shape_name, blend_name="", target_index=0, existing_target_name="", weight=0.5):
     """
-    removes in-between target shape.
+    removes an in-between target.
+    :param shape_name: <str> the in between shape to add.
+    :param blend_name: <str> the blendShape to add.
+    :param existing_target_name: <str> the existing target shape to find.
+    :param target_index: <int> the target index to use when adding shapes.
+    :param weight: <float> the weight value of the in between shape.
     :return:
     """
     # find the existing target index on the blend shape
-    index = find_blend_shape_index(existing_target_name, blend_name=blend_name)
-    if type(index) == bool:
+    if not target_index:
+        target_index = find_blend_shape_index(existing_target_name, blend_name=blend_name)
+    if type(target_index) == bool:
         raise ValueError("[AddInBetweenTarget] :: No valid index found with name: {}".format(existing_target_name))
-    return remove_target(shape_name, blend_name, weight=weight, index=index)
+    return remove_target(shape_name, blend_name, weight=weight, index=target_index)
 
 
 def add_target(targets_array, blend_name="", weight=1.0, index=0):

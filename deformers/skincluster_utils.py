@@ -158,6 +158,9 @@ def copy_skincluster(source_mesh="", target_mesh=""):
     source_skin = get_attached_skincluster(source_mesh)
     source_influences = get_existing_influences(source_skin)
 
+    if not source_skin:
+        return False
+
     target_skin = get_attached_skincluster(target_mesh)
     if target_skin:
         add_influences(target_skin, source_influences)
@@ -165,7 +168,7 @@ def copy_skincluster(source_mesh="", target_mesh=""):
         target_skin = create_skin_cluster(target_mesh, source_influences)
     # copy the skins
     copy_skin_weights(source_skin[0], target_skin[0])
-    return False
+    return True
 
 
 def get_skin_fn(skin_name=""):

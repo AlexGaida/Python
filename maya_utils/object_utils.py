@@ -526,6 +526,9 @@ class ScriptUtil(OpenMaya.MScriptUtil):
 
     def matrix_from_list(self, matrix_list=()):
         self.createMatrixFromList(matrix_list, self.MATRIX)
+
+    @property
+    def matrix(self):
         return self.MATRIX
 
 

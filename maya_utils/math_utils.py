@@ -26,6 +26,18 @@ attr_name = object_utils.attr_name
 attr_set = object_utils.attr_set
 
 
+def barycentric(vector1, vector2, vector3, u, v, w):
+    """
+    barycentric coordinates are normalized.
+    barycentric coordinates are known as areal coordinates.
+    very useful in ray tracing and figuring out the center of three point constraints.
+    w = 1-u-v;
+    u + v + w = 1.0;
+    :return: <tuple> barycentric vector coordinates.
+    """
+    return u * vector1 + v * vector2 + w * vector3
+
+
 def squared_difference(num_array=()):
     """
     calculate the squared difference (the mean) from the array of number values given.
@@ -470,23 +482,50 @@ class OldVector:
         return Vector(data)
 
 
-def look_at(source, target, up_vector=(0, -1, 0)):
+def rotate_object_2d(x, y, delta=0.5):
+    """
+    rotates the object in 2d in x, z plane
+    :return: <tuple> (x, y) rotation at origin.
+    """
+    cos = math.cos(delta)
+    sin = math.sin(delta)
+    point_x = x * cos - y * sin
+    point_y = y * cos + x * sin
+    return point_x, point_y
+
+
+def rotate_object_3d(x, y, z, delta=0.5):
+    """
+    rotate the object in 3d
+    :param x:
+    :param y:
+    :param z:
+    :param delta:
+    :return:
+    """
+    return True
+
+
+def look_at(source, target, up_vector=(0, -1, 0), as_vector=True):
     """
     allows the transform object to look at another target vector object.
     :return: <tuple> rotational vector.
     """
     source_world = transform_utils.Transform(source).world_matrix_list()
     target_world = transform_utils.Transform(target).world_matrix_list()
-    source_parent_name = object_utils.get_parent_name(source_world)
-    parent_world = transform_utils.Transform(source_parent_name).world_matrix_list()
+    source_parent_name = object_utils.get_parent_name(source)[0]
+    if source_parent_name == 'world':
+        source_parent_name = None
+    else:
+        parent_world = transform_utils.Transform(source_parent_name).world_matrix_list()
 
-    # build normalized vector
+    # build normalized vector from the translations from matrix data
     z = MVector(target_world[12] - source_world[12],
                 target_world[13] - source_world[13],
                 target_world[14] - source_world[14])
     z.normalize()
 
-    # get normalized cross the z with the up vector at origin
+    # get normalized cross product of the z against the up vector at origin
     x = z ^ MVector(-up_vector[0], -up_vector[1], -up_vector[2])
     x.normalize()
 
@@ -501,17 +540,20 @@ def look_at(source, target, up_vector=(0, -1, 0)):
         z.x, z.y, z.z, 0,
         0, 0, 0, 1)
 
-    matrix = object_utils.ScriptUtil(local_matrix_list, matrix_from_list=True)
+    matrix = object_utils.ScriptUtil(local_matrix_list, matrix_from_list=True).matrix
 
     if source_parent_name:
         # transform the matrix in the local space of the parent object
         parent_matrix = object_utils.ScriptUtil(parent_world, matrix_from_list=True)
-        matrix *= parent_matrix.inverse()
+        matrix *= parent_matrix.matrix.inverse()
 
     # retrieve the desired rotation for "source" to aim at "target", in degrees
-    rotation = MTransformationMatrix(matrix).eulerRotation() * RADIANS_2_DEGREES
-    vector = rotation.asVector()
-    return vector.x, vector.y, vector.z,
+    if as_vector:
+        rotation = MTransformationMatrix(matrix).eulerRotation() * RADIANS_2_DEGREES
+        vector = rotation.asVector()
+        return vector.x, vector.y, vector.z,
+    else:
+        return local_matrix_list
 
 
 def get_vector_position_2_points(position_1, position_2, divisions=2.0):
