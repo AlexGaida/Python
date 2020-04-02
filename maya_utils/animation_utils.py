@@ -12,7 +12,6 @@ from maya import OpenMayaAnim as OpenMayaAnim
 
 # import custom modules
 import object_utils
-from object_utils import ScriptUtil
 from maya_utils import math_utils
 
 

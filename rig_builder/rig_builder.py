@@ -31,7 +31,7 @@ class MainWindow(QtWidgets.QMainWindow):
             width = 400
 
             # add the widgets to the layouts.
-            self.main_layout = QtWidgets.QHBoxLayout()
+            self.main_layout = QtWidgets.QHBoxLayout(self)
             self.module_form = ModuleForm()
             self.information_form = InformationForm()
             self.main_layout.addWidget(self.module_form)
@@ -68,12 +68,21 @@ class ModuleDialog(QtWidgets.QDialog):
         super(ModuleDialog, self).__init__(parent)
 
         # class variables
-        self.modules = self.get_available_modules()
+        # self.modules = self.get_available_modules()
+        self.vertical_layout = QtWidgets.QVBoxLayout(self)
+        self.vertical_layout.addStretch(1)
 
 
 class ModuleForm(QtWidgets.QMainWindow):
     def __init__(self, parent=None):
         super(ModuleForm, self).__init__(parent)
+        self.resize(200, 400)
+
+        self.vertical_layout = QtWidgets.QVBoxLayout(self)
+        self.vertical_layout.addStretch(1)
+        button = self.add_button()
+        self.vertical_layout.addWidget(button)
+        
 
     def add_button(self):
         return QtWidgets.QPushButton("Build All")
@@ -82,6 +91,7 @@ class ModuleForm(QtWidgets.QMainWindow):
 class InformationForm(QtWidgets.QMainWindow):
     def __init__(self, parent=None):
         super(InformationForm, self).__init__(parent)
+        self.resize(200, 400)
 
 
 class ModuleWidget(QtWidgets.QHBoxLayout):

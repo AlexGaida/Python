@@ -1,5 +1,5 @@
 """
-mesh mirror tool for dealing with mesh data and patterns.
+Creates a dynamic Fk rig from the attributes provided.
 """
 # import standard modules
 import sys

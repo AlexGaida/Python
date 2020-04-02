@@ -62,10 +62,10 @@ def get_connected_mesh_shape(blend_node=""):
     return object_utils.get_connected_nodes(blend_node, find_node_type='mesh', down_stream=True, up_stream=False)
 
 
-def get_scene_blendshapes():
+def get_scene_blendshapes(as_strings=False):
     """
-    returns a array of blendshapes in the scene.
-    :return:
+    returns a array of valid blendshapes in the scene.
+    :return: <dict> {OpenMaya.MObject: <str> blendShape node.}
     """
     blendshapes = {}
     mesh_array = object_utils.get_scene_objects(node_type='mesh')
@@ -73,7 +73,10 @@ def get_scene_blendshapes():
         obj_name = object_utils.get_m_object_name(mesh_obj)
         blend_node = get_connected_blendshape(mesh_obj)
         if blend_node:
-            blendshapes[obj_name] = blend_node[0],
+            if as_strings:
+                blendshapes[obj_name] = object_utils.get_m_object_name(blend_node[0])
+            else:
+                blendshapes[obj_name] = blend_node[0],
     return blendshapes
 
 
@@ -263,7 +266,11 @@ def get_shapes(blend_name=""):
     shapes = ()
     indices = get_weight_indices(blend_name=blend_name)
     for i in xrange(indices.length()):
-        shapes += get_targets_at_index(blend_name, indices[i])
+        try:
+            shapes += get_targets_at_index(blend_name, indices[i])
+        except RuntimeError:
+            # RuntimeError: No element at given index
+            continue
         # shapes += get_target_item_index(blend_name, i)
     return shapes
 

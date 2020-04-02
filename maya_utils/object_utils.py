@@ -36,6 +36,7 @@ from maya import OpenMayaAnim as OpenMayaAnim
 # import local modules
 import attribute_utils
 import transform_utils
+import animation_utils
 
 # define local variables
 node_types = {
@@ -94,6 +95,13 @@ def flatten(array):
                 yield sub
         else:
             yield el
+
+
+def select_object(object_name):
+    """
+    selects an item.
+    """
+    return cmds.select(object_name)
 
 
 def selection_order(func):
@@ -617,6 +625,28 @@ def get_connections_destination(object_name=""):
     return tuple(cmds.listConnections(object_name, source=False, destination=True, plugs=True))
 
 
+def connect_anim(source_object_name, source_attribute_name, dest_object_name, dest_attribute_name):
+    """
+    connects an attribute using set driven keys.
+    benefit: set driven keyframes can be blended into a single driven attribute.
+        driver_node='',
+        driver_attr='',
+        driven_node='',
+        driven_attr='',
+        driven_value=None,
+        driver_value=None,
+    """
+    animation_utils.set_driven_key(source_object_name, source_attribute_name, 
+                                   dest_object_name, dest_attribute_name,
+                                   driven_value=0.0,
+                                   driver_value=0.0)
+    animation_utils.set_driven_key(source_object_name, source_attribute_name, 
+                                   dest_object_name, dest_attribute_name,
+                                   driven_value=1.0,
+                                   driver_value=1.0)
+    return True
+
+
 def get_m_obj_array(objects=()):
     """
     returns the objects as MObjectArray
@@ -677,7 +707,7 @@ def get_m_object_name(m_object=OpenMaya.MObject):
     :param m_object: <OpenMaya.MObject> get the string of this object node.
     :return: <str> object name.
     """
-    return OpenMaya.MFnDependencyNode(m_object).name()
+    return OpenMaya.MFnMFnDependencyNode(m_object).name()
 
 
 def get_plug(object_name, attr_str):
