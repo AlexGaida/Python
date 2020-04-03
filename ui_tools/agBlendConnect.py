@@ -12,13 +12,13 @@ A tool that connects with the available blendshapes.
 """
 
 # import standard modules
-import sys
 from PySide2 import QtCore, QtGui, QtWidgets
 
 # import local modules
 from deformers import blendshape_utils
 from maya_utils import ui_utils
 from maya_utils import object_utils
+from maya_utils import animation_utils
 
 # reloads
 reload(ui_utils)
@@ -162,7 +162,7 @@ class Form(QtWidgets.QDialog):
         blend_node_text = data['blendShapeNode']
         blend_shape_attribute = data['blendShapeNodeAttributes']
         print(controller_text, driver_attrib_text, ' >>> ', blend_node_text, blend_shape_attribute)
-        object_utils.connect_anim(controller_text, driver_attrib_text, blend_node_text, blend_shape_attribute)
+        animation_utils.connect_anim(controller_text, driver_attrib_text, blend_node_text, blend_shape_attribute)
         return True
 
     def populate_blendshapes(self):

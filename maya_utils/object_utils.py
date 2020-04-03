@@ -36,7 +36,6 @@ from maya import OpenMayaAnim as OpenMayaAnim
 # import local modules
 import attribute_utils
 import transform_utils
-import animation_utils
 
 # define local variables
 node_types = {
@@ -623,28 +622,6 @@ def get_connections_destination(object_name=""):
     :return:
     """
     return tuple(cmds.listConnections(object_name, source=False, destination=True, plugs=True))
-
-
-def connect_anim(source_object_name, source_attribute_name, dest_object_name, dest_attribute_name):
-    """
-    connects an attribute using set driven keys.
-    benefit: set driven keyframes can be blended into a single driven attribute.
-        driver_node='',
-        driver_attr='',
-        driven_node='',
-        driven_attr='',
-        driven_value=None,
-        driver_value=None,
-    """
-    animation_utils.set_driven_key(source_object_name, source_attribute_name, 
-                                   dest_object_name, dest_attribute_name,
-                                   driven_value=0.0,
-                                   driver_value=0.0)
-    animation_utils.set_driven_key(source_object_name, source_attribute_name, 
-                                   dest_object_name, dest_attribute_name,
-                                   driven_value=1.0,
-                                   driver_value=1.0)
-    return True
 
 
 def get_m_obj_array(objects=()):

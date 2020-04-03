@@ -21,7 +21,7 @@ EXP = 2.718281
 RADIANS_2_DEGREES = 57.2958
 DEGREES_2_RADIANS = 0.0174533
 
-connect_attr = object_utils.connect_attr
+connect_attr = object_utils.attr_connect
 attr_name = object_utils.attr_name
 attr_set = object_utils.attr_set
 

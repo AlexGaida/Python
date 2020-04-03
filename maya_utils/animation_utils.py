@@ -21,6 +21,28 @@ __verbosity__ = 0
 __m_util = OpenMaya.MScriptUtil()
 
 
+def connect_anim(source_object_name, source_attribute_name, dest_object_name, dest_attribute_name):
+    """
+    connects an attribute using set driven keys.
+    benefit: set driven keyframes can be blended into a single driven attribute.
+        driver_node='',
+        driver_attr='',
+        driven_node='',
+        driven_attr='',
+        driven_value=None,
+        driver_value=None,
+    """
+    set_driven_key(source_object_name, source_attribute_name,
+                                   dest_object_name, dest_attribute_name,
+                                   driven_value=0.0,
+                                   driver_value=0.0)
+    set_driven_key(source_object_name, source_attribute_name,
+                                   dest_object_name, dest_attribute_name,
+                                   driven_value=1.0,
+                                   driver_value=1.0)
+    return True
+
+
 def get_mfn_anim_node(object_node):
     """
     returns an OpenMaya.MFnAnimCurve object from the object specified.
