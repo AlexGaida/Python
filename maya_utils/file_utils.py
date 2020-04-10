@@ -129,11 +129,13 @@ def _parent_level(level):
     return -1 * xrange(level+1)[-1]
 
 
-def get_this_directory_parent(level=0):
+def get_this_directory_parent(level=1):
     """
     get the directory parent path from level.
     :return: <str> get the file path string.
     """
+    if level == 0:
+        raise IOError("[GetThisDirectoryParent] :: This cannot equal to zero.")
     return '/'.join(get_file_splits(__file__)[:_parent_level(level)])
 
 

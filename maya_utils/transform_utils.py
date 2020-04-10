@@ -663,3 +663,42 @@ class Transform(OpenMaya.MFnTransform):
         :return: <OpenMaya.MStatus>
         """
         return self.rotateByQuaternion(quat.x, quat.y, quat.z, quat.w, OpenMaya.MSpace.kPreTransform)
+
+
+def mirror_object(control_name="", mirror_obj_name="", invert_rotate=False, keep_rotation=False):
+    """
+    mirrors the selected object. If mirror object is not supplied, then mirror the supplied object directly.
+    :param control_name: <str> controller object to get transformational values frOpenMaya.
+    :param mirror_obj_name: <str> the object to receive mirror information.
+    :param invert_rotate: <bool> invert the rotation values.
+    :param keep_rotation: <bool> does not change the orientation of the transform object being mirrored.
+    :return: <bool> True for success. <bool> False for failure.
+    """
+    if not control_name:
+        control_name = object_utils.get_selected_node(single=True)
+    if not control_name:
+        return False
+
+    # mirror the world matrix
+    c_transform = Transform(control_name)
+    w_matrix = c_transform.get_world_matrix()
+    mir_matrix = c_transform.mirror_matrix(w_matrix)
+    rotation_values = cmds.xform(control_name, ro=1, q=1)
+    if invert_rotate:
+        # mirror rotate y
+        rotation_values[1] *= -1
+
+        # mirror rotate z
+        rotation_values[2] *= -1
+
+    elif keep_rotation:
+        # mirror rotate x
+        rotation_values[2] *= -1
+
+    if not mirror_obj_name:
+        cmds.xform(control_name, m=mir_matrix, ws=1)
+        cmds.xform(control_name, ro=rotation_values)
+    else:
+        cmds.xform(mirror_obj_name, m=mir_matrix, ws=1)
+        cmds.xform(mirror_obj_name, ro=rotation_values)
+    return True

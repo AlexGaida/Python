@@ -503,3 +503,12 @@ def apply_orient_constraint(source_obj, target_obj, maintain_offset=True):
     :return:
     """
     return cmds.orientConstraint(source_obj, target_obj, mo=maintain_offset)[0]
+
+
+def resize_shape(scale_size=1.0):
+    """
+    resizes the shape of the point.
+    :return: <bool> True for success.
+    """
+
+    return True

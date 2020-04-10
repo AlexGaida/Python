@@ -13,9 +13,9 @@ from maya_utils import file_utils
 
 # define local variables
 this_dir = file_utils.get_this_directory()
-parent_dir = file_utils.get_this_directory_parent()
+parent_dir = file_utils.get_this_directory_parent(2)
 rig_modules_dir = posixpath.join(parent_dir, 'rig_modules')
-rig_icons_dir = posixpath.join(this_dir, 'icons')
+rig_icons_dir = posixpath.join(parent_dir, 'rig_builder', 'icons')
 
 red_icon = posixpath.join(rig_icons_dir, 'red.PNG')
 yellow_icon = posixpath.join(rig_icons_dir, 'yellow.PNG')
@@ -64,7 +64,9 @@ def get_available_modules():
     grabs the currently available modules for us to use.
     :return: <list> available modules.
     """
-    return [x for x in os.listdir(rig_modules_dir) if "template" not in x]
+    return [x for x in os.listdir(rig_modules_dir)
+            if "template" not in x
+            if "__init__" not in x]
 
 
 def find_files(module_name, by_name=True):

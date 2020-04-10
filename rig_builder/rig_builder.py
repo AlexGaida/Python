@@ -10,6 +10,8 @@ Contains two most important widgets:
 import sys
 import os
 
+from functools import partial
+
 # import local modules
 import build_utils
 from maya_utils import ui_utils
@@ -21,46 +23,14 @@ from PySide2 import QtWidgets, QtGui, QtCore
 # define local variables
 parent_win = ui_utils.get_maya_parent_window()
 builder_win = None
+title = "Rig Builder"
+modules = build_utils.get_available_modules()
 
-
-class MainWindow(QtWidgets.QMainWindow):
-    if __name__ == '__main__':
-        def __init__(self, parent=None):
-            super(MainWindow, self).__init__(parent)
-            height = 400
-            width = 400
-
-            # add the widgets to the layouts.
-            self.main_layout = QtWidgets.QHBoxLayout(self)
-            self.module_form = ModuleForm()
-            self.information_form = InformationForm()
-            self.main_layout.addWidget(self.module_form)
-            self.main_layout.addWidget(self.information_form)
-
-            # add a menu bar
-            self.menu_bar_data = self.setup_menu_bar()
-
-            # resize the main window
-            self.resize(height, width)
-
-            # connect triggers
-            self.menu_bar_data["addModule"].triggered(self.add_module)
-
-        def setup_menu_bar(self):
-            """
-            creates a menu bar for this main window
-            :return: <bool> True for success.
-            """
-            menu_data = {}
-            menu_bar = QtWidgets.QMenuBar()
-            menu_data["addModule"] = menu_bar.addMenu("Add Module")
-            menu_data["toggleVis"] = menu_bar.addMenu("Toggle Verbosity")
-            menu_data["menuBar"] = menu_bar
-            self.setMenuBar(menu_bar)
-            return menu_data
-
-        def add_module(self):
-            return ModuleDialog(parent=self)
+# icons
+empty_icon = build_utils.empty_icon
+red_icon = build_utils.red_icon
+green_icon = build_utils.green_icon
+yellow_icon = build_utils.yellow_icon
 
 
 class ModuleDialog(QtWidgets.QDialog):
@@ -68,33 +38,114 @@ class ModuleDialog(QtWidgets.QDialog):
         super(ModuleDialog, self).__init__(parent)
 
         # class variables
-        # self.modules = self.get_available_modules()
         self.vertical_layout = QtWidgets.QVBoxLayout(self)
         self.vertical_layout.addStretch(1)
 
 
-class ModuleForm(QtWidgets.QMainWindow):
+class MainWindow(QtWidgets.QMainWindow):
+    HEIGHT = 400
+    WIDTH = 400
+
+    def __init__(self, parent=None):
+        super(MainWindow, self).__init__(parent)
+
+        # add the widgets to the layouts.
+        self.main_widget = QtWidgets.QWidget(self)
+        self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        self.main_layout = QtWidgets.QHBoxLayout(self)
+
+        # add the two widgets to the main layout
+        self.module_form = ModuleForm()
+        self.information_form = InformationForm()
+        self.main_layout.addWidget(self.module_form)
+        self.main_layout.addWidget(self.information_form)
+
+        # set up the right click menu box
+        self.module_form.setContextMenuPolicy(QtCore.Qt.ActionsContextMenu)
+        self.add_menu_actions(self.module_form)
+
+        # add a menu bar
+        self.menu_bar_data = self.setup_menu_bar()
+
+        # resize the main window
+        self.setMinimumSize(self.HEIGHT, self.WIDTH)
+
+        # connect triggers
+        self.menu_bar_data["addModule"].triggered.connect(self.add_module)
+
+        # add main layout
+        self.main_widget.setLayout(self.main_layout)
+        self.setCentralWidget(self.main_widget)
+        self.setWindowTitle(title)
+
+    def add_menu_actions(self, widget):
+        """
+        adds menu actions.
+        """
+        actions = {}
+        for mod in modules:
+            actions[mod] = QtWidgets.QAction(self)
+            actions[mod].setText(mod)
+            actions[mod].triggered.connect(partial(self.add_module, mod))
+            widget.addAction(actions[mod])
+        return actions
+
+    def setup_menu_bar(self):
+        """
+        creates a menu bar for this main window
+        :return: <bool> True for success.
+        """
+        menu_data = {}
+        menu_bar = QtWidgets.QMenuBar()
+        menu_data["options"] = menu_bar.addMenu("&Options")
+        menu_data["addModule"] = QtWidgets.QAction("Add Module")
+        menu_data["toggleVis"] = QtWidgets.QAction("Toggle Verbosity")
+        menu_data["menuBar"] = menu_data["options"].addAction(menu_data["addModule"])
+        menu_data["menuBar"] = menu_data["options"].addAction(menu_data["toggleVis"])
+        self.setMenuBar(menu_bar)
+        return menu_data
+
+    def add_module(self, *args):
+        print("[Module] :: Added, {}".format(args))
+        module_name = args[0]
+        widget = ModuleWidget(module_name=module_name)
+        item = QtWidgets.QListWidgetItem()
+        item.setSizeHint(widget.sizeHint())
+
+        # add a widget to the list
+        self.module_form.list.addItem(item)
+        self.module_form.list.setItemWidget(item, widget)
+
+
+class ModuleForm(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super(ModuleForm, self).__init__(parent)
         self.resize(200, 400)
 
         self.vertical_layout = QtWidgets.QVBoxLayout(self)
-        self.vertical_layout.addStretch(1)
+
+        self.list = QtWidgets.QListWidget(self)
+
         button = self.add_button()
+        self.vertical_layout.addWidget(self.list)
         self.vertical_layout.addWidget(button)
-        
+        self.setLayout(self.vertical_layout)
 
     def add_button(self):
         return QtWidgets.QPushButton("Build All")
 
 
-class InformationForm(QtWidgets.QMainWindow):
+class InformationForm(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super(InformationForm, self).__init__(parent)
-        self.resize(200, 400)
+
+        self.main_layout = QtWidgets.QVBoxLayout(self)
+        self.main_layout.addStretch(1)
+        self.main_layout.addWidget(QtWidgets.QLabel("I am here."))
+        self.setLayout(self.main_layout)
 
 
-class ModuleWidget(QtWidgets.QHBoxLayout):
+class ModuleWidget(QtWidgets.QWidget):
     """
     the module widget form layout.
     can be anything from a single script to a transform object.
@@ -104,18 +155,23 @@ class ModuleWidget(QtWidgets.QHBoxLayout):
         # pyside widgets
         self.icon = None
         self.q_text = None
-        self.button = None
+        self.build_button = None
+        self.delete_button = None
         self.version = 0000
         self.version_combo = None
+        self.module_name = module_name
 
-        # class variables
-        self.module_data = self.find_module_data(module_name)
-
+        self.main_layout = QtWidgets.QHBoxLayout()
+        # # class variables
+        # self.module_data = self.find_module_data(module_name)
+        #
         # initialize the widgets
         self.create()
-        self.initialize_icon()
-        self.populate_versions()
-        self.populate_label()
+
+        self.main_layout.setSizeConstraint(QtWidgets.QLayout.SetFixedSize)
+        self.setLayout(self.main_layout)
+        # self.populate_versions()
+        # self.populate_label()
 
     def add_version(self):
         """
@@ -129,31 +185,43 @@ class ModuleWidget(QtWidgets.QHBoxLayout):
         adds a QLabel text widget.
         :return: <QtGui.QPushButton>
         """
-        return QtWidgets.QLabel()
+        return QtWidgets.QLabel(self.module_name)
 
-    def add_button(self):
+    def add_build_button(self):
         """
         adds a push button.
         :return: <QtGui.QPushButton>
         """
         return QtWidgets.QPushButton("Build")
 
+    def add_delete_button(self):
+        """
+        adds a push button.
+        :return: <QtGui.QPushButton>
+        """
+        return QtWidgets.QPushButton("Delete")
+
     def add_icon(self):
         """
         adds an empty 64x6x icon.
         :return: <QtGui.QIcon>
         """
-        return QtGui.QIcon(build_utils.empty_icon)
+        label = QtWidgets.QLabel()
+        pix = QtGui.QPixmap(empty_icon)
+        label.setPixmap(pix)
+        return label
 
     def create(self):
         self.icon = self.add_icon()
         self.q_text = self.add_text()
         self.version_combo = self.add_version()
-        self.button = self.add_button()
-        self.addWidget(self.icon)
-        self.addWidget(self.text)
-        self.addWidget(self.version)
-        self.addWidget(self.button)
+        self.build_button = self.add_build_button()
+        self.delete_button = self.add_delete_button()
+        self.main_layout.addWidget(self.icon)
+        self.main_layout.addWidget(self.q_text)
+        self.main_layout.addWidget(self.version_combo)
+        self.main_layout.addWidget(self.build_button)
+        self.main_layout.addWidget(self.delete_button)
         return True
 
     def find_module_data(self, module_name):
@@ -168,9 +236,6 @@ class ModuleWidget(QtWidgets.QHBoxLayout):
         label_name = self.module_data.keys()[0]
         self.q_text.setText(label_name)
         return True
-
-    def initialize_icon(self):
-        self.icon.pixmap()
 
     def connect_button(self):
         self.button.clicked.connect()
@@ -189,6 +254,8 @@ class ModuleWidget(QtWidgets.QHBoxLayout):
 
 def open_ui():
     global builder_win
+    if builder_win:
+        builder_win.close()
     builder_win = MainWindow(parent=parent_win)
     builder_win.show()
     return builder_win
