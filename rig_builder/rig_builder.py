@@ -1,5 +1,5 @@
 """
-rigbuilding module for modular building of rigs.
+rig-building module for modular building of rigs.
 This is the main UI module for the rig builder.
 Contains two most important widgets:
 0. Menu bar to add items to the entire main window.
@@ -19,6 +19,8 @@ from maya_utils import ui_utils
 # import qt modules
 from PySide2 import QtWidgets, QtGui, QtCore
 
+# reloads
+reload(build_utils)
 
 # define local variables
 parent_win = ui_utils.get_maya_parent_window()
@@ -84,6 +86,8 @@ class MainWindow(QtWidgets.QMainWindow):
         """
         actions = {}
         for mod in modules:
+            if "_v" in mod:
+                mod = mod.split('_v')[0]
             actions[mod] = QtWidgets.QAction(self)
             actions[mod].setText(mod)
             actions[mod].triggered.connect(partial(self.add_module, mod))
@@ -108,13 +112,19 @@ class MainWindow(QtWidgets.QMainWindow):
     def add_module(self, *args):
         print("[Module] :: Added, {}".format(args))
         module_name = args[0]
-        widget = ModuleWidget(module_name=module_name)
         item = QtWidgets.QListWidgetItem()
+        widget = ModuleWidget(module_name=module_name, list_widget=self.module_form.list, item=item)
         item.setSizeHint(widget.sizeHint())
 
         # add a widget to the list
         self.module_form.list.addItem(item)
         self.module_form.list.setItemWidget(item, widget)
+
+        # connect the widget
+        self.module_form.list.itemClicked.connect(partial(self.clicked_item, widget, self.information_form))
+
+    def clicked_item(self, *args):
+        print(args)
 
 
 class ModuleForm(QtWidgets.QWidget):
@@ -140,9 +150,25 @@ class InformationForm(QtWidgets.QWidget):
         super(InformationForm, self).__init__(parent)
 
         self.main_layout = QtWidgets.QVBoxLayout(self)
-        self.main_layout.addStretch(1)
         self.main_layout.addWidget(QtWidgets.QLabel("I am here."))
+        self.resize(40, 100)
         self.setLayout(self.main_layout)
+
+    def build(self):
+        """
+        builds the widget with stuff.
+        :return: <bool> True for success.
+        """
+
+    def delete_all_widgets(self):
+        """
+        wipes the widgets away to rebuild them all anew.
+        :return: <bool> True for success.
+        """
+        items_i = self.main_layout.count()
+        for i in reversed(range(items_i.count())):
+            items_i.itemAt(i).widget().deleteLater()
+        return True
 
 
 class ModuleWidget(QtWidgets.QWidget):
@@ -150,28 +176,32 @@ class ModuleWidget(QtWidgets.QWidget):
     the module widget form layout.
     can be anything from a single script to a transform object.
     """
-    def __init__(self, parent=None, module_name=""):
+    def __init__(self, parent=None, module_name="", list_widget=None, item=None):
         super(ModuleWidget, self).__init__(parent)
-        # pyside widgets
+
+        # initialize variables
         self.icon = None
         self.q_text = None
+        self.q_pix = None
         self.build_button = None
         self.delete_button = None
         self.version = 0000
         self.version_combo = None
         self.module_name = module_name
+        self.list_widget = list_widget
+        self.item = item
 
         self.main_layout = QtWidgets.QHBoxLayout()
-        # # class variables
-        # self.module_data = self.find_module_data(module_name)
+        self.module_data = self.find_module_data(module_name)
         #
         # initialize the widgets
-        self.create()
+        self.build()
 
         self.main_layout.setSizeConstraint(QtWidgets.QLayout.SetFixedSize)
         self.setLayout(self.main_layout)
+
+        self.connect_buttons()
         # self.populate_versions()
-        # self.populate_label()
 
     def add_version(self):
         """
@@ -199,7 +229,7 @@ class ModuleWidget(QtWidgets.QWidget):
         adds a push button.
         :return: <QtGui.QPushButton>
         """
-        return QtWidgets.QPushButton("Delete")
+        return QtWidgets.QPushButton("Remove")
 
     def add_icon(self):
         """
@@ -209,10 +239,10 @@ class ModuleWidget(QtWidgets.QWidget):
         label = QtWidgets.QLabel()
         pix = QtGui.QPixmap(empty_icon)
         label.setPixmap(pix)
-        return label
+        return label, pix
 
-    def create(self):
-        self.icon = self.add_icon()
+    def build(self):
+        self.icon, self.q_pix = self.add_icon()
         self.q_text = self.add_text()
         self.version_combo = self.add_version()
         self.build_button = self.add_build_button()
@@ -237,8 +267,22 @@ class ModuleWidget(QtWidgets.QWidget):
         self.q_text.setText(label_name)
         return True
 
-    def connect_button(self):
-        self.button.clicked.connect()
+    def connect_buttons(self):
+        self.build_button.clicked.connect(self.change_status_call)
+        self.delete_button.clicked.connect(self.remove_item_call)
+
+    def remove_item_call(self):
+        """
+        removes the item in question.
+        """
+        self.list_widget.takeItem(self.list_widget.row(self.item))
+
+    def change_status_call(self):
+        """
+        Change the status of the widget to "built"
+        """
+        self.q_pix = QtGui.QPixmap(green_icon)
+        self.icon.setPixmap(self.q_pix)
 
     def get_module_name(self):
         return self.q_text.text()

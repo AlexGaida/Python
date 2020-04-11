@@ -6,7 +6,14 @@ Added build utility module for managing the rig_builder ui functionality.
 import sys
 import posixpath
 import os
-import imp
+
+py_version = None
+if sys.version_info.major == 2:
+    py_version = 2
+    import imp
+elif sys.version_info.major == 3:
+    py_version = 3
+    import importlib
 
 # import local modules
 from maya_utils import file_utils
@@ -45,18 +52,20 @@ def get_rig_module(module_name, module_version):
     module_file = module_file_name(module_name, module_version)
     print("[Loading Module] :: {}".format(module_file))
 
-    try:
+    # try:
+    if py_version == 2:
         fp, pathname, description = imp.find_module(module_file, [rig_modules_dir])
         rig_module_name = imp.load_module(module_file, fp, pathname, description)
-    except ImportError:
-        print("[Module Not Loaded] :: {}".format(module_file))
-        return False
-
-    # get the class name
-    module_class_name = get_module_class_name(rig_module_name)
+    elif py_version == 3:
+        module_data = importlib.util.find_spec(module_file)
+        rig_module_name = module_data.loader.load_module()
+    # except ImportError:
+    #     print("[Module Not Loaded] :: {}".format(module_file))
+    #     return False
 
     # instantiate the chosen serializer file class
-    return eval("{}.{}".format(rig_module_name, module_class_name))
+    module_class_name = get_module_class_name(rig_module_name)
+    return getattr(rig_module_name, module_class_name)
 
 
 def get_available_modules():
@@ -79,6 +88,8 @@ def find_files(module_name, by_name=True):
     modules = os.listdir(rig_modules_dir)
     found = ()
     for mod in modules:
+        if not mod.endswith('.pyc'):
+            continue
         if by_name:
             if mod.startswith(module_name):
                 found += mod,
@@ -91,7 +102,29 @@ def extract_version(module_name):
     :param module_name: <str> the module to find version in.
     :return: <int> version number.
     """
-    return module_name.split('_v')[-1]
+    # module_name_v0000.py --> module_name, _v0000.py --> _v0000
+    return posixpath.splitext(module_name.split('_v')[-1])[0]
+
+
+def extract_name(module_name):
+    """
+    extracts the module name.
+    :param module_name:
+    :return: <str> the module name without the version.
+    """
+    return module_name.split('_v')[0]
+
+
+def add_extension(file_name, ext='py'):
+    """
+    adds an extension name to the file_name.
+    :param file_name: <str> the file name to check for extension.
+    :param ext: <str> add this extension to the file name.
+    :return: <str> file name with valid extension.
+    """
+    if not file_name.endswith(ext):
+        return file_name + '.{}'.format(ext)
+    return file_name
 
 
 def __update_module_data(key_name, value_name, data_dict={}):
@@ -125,6 +158,7 @@ def find_module_data(module_name):
     modules = find_files(module_name, by_name=True)
     for mod in modules:
         version = extract_version(mod)
-        module_instance = get_rig_module(mod, version)
+        mod_name = extract_name(mod)
+        module_instance = get_rig_module(mod_name, version)
         module_data = __update_module_data(module_name, {version: module_instance}, data_dict=module_data)
-    return None
+    return module_data

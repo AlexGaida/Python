@@ -7,15 +7,12 @@ from maya import cmds
 # import local modules
 from rig_utils import control_utils
 from rig_utils import joint_utils
-
-import template
-reload(template)
+from rig_modules import template
 
 class_name = "Singleton"
 
 
 class Singleton(template.TemplateModule):
-
     def __init__(self, name="", control_shape="cube", prefix_name=""):
         super(Singleton, self).__init__(name=name, prefix_name=prefix_name)
         self.name = name
