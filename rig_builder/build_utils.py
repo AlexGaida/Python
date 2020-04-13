@@ -50,7 +50,6 @@ def get_rig_module(module_name, module_version):
     :return:
     """
     module_file = module_file_name(module_name, module_version)
-    print("[Loading Module] :: {}".format(module_file))
 
     # try:
     if py_version == 2:
@@ -75,7 +74,8 @@ def get_available_modules():
     """
     return [x for x in os.listdir(rig_modules_dir)
             if "template" not in x
-            if "__init__" not in x]
+            if "__init__" not in x
+            if ".pyc" not in x]
 
 
 def find_files(module_name, by_name=True):

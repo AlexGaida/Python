@@ -8,16 +8,15 @@ from maya import cmds
 from rig_utils import control_utils
 from rig_utils import joint_utils
 
-import template
+from rig_modules import template
 reload(template)
 
 class_name = "Singleton"
 
 
 class Singleton(template.TemplateModule):
-
     def __init__(self, name=""):
-        super(Singleton, self).__init__(name=name, prefix_name=prefix_name)
+        super(Singleton, self).__init__(name=name)
         self.name = name
 
     def create(self):
@@ -25,7 +24,7 @@ class Singleton(template.TemplateModule):
         creates a joint controlled by one joint.
         :return:
         """
-        cmds.file(o=1, f=1)
+        cmds.file(new=True, f=1)
         return True
 
     def finish(self):
@@ -35,5 +34,3 @@ class Singleton(template.TemplateModule):
         """
         print('New file opened.')
 
-    def do_it(self):
-        pass

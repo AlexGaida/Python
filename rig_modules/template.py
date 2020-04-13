@@ -12,19 +12,23 @@ from maya_utils import object_utils
 
 
 class TemplateModule(object):
+    """
+    publish_attributes:
+        attributes to be saved to a build dictionary.
+    attribute_q_types:
+        create line edit fields.
+    """
     PUBLISH_ATTRIBUTES = {"constrainTo": "",
-                          "parentTo": "",}
+                          "parentTo": "",
+                          "name": ""
+    }
+
+    ATTRIBUTE_EDIT_TYPES = {'line-edit': ["name", "parentTo", "constrainTo"]
+    }
 
     def __init__(self, name="", prefix_name=""):
         self.name = name
         self.prefix_name = prefix_name
-
-    def create(self):
-        """
-        the utility method for creating a thing.
-        :return:
-        """
-        pass
 
     def parent_to(self, destination):
         """
@@ -64,9 +68,30 @@ class TemplateModule(object):
         """
         pass
 
+    def create(self):
+        """
+        the utility method for creating a thing.
+        :return:
+        """
+        pass
+
     def finish(self):
         """
-        finish the module setup.
+        finalize the module setup.
+        :return:
+        """
+        pass
+
+    def remove(self):
+        """
+        removes the module setup.
+        :return:
+        """
+        pass
+
+    def update(self):
+        """
+        updates the module
         :return:
         """
         pass
@@ -74,4 +99,5 @@ class TemplateModule(object):
     def do_it(self):
         self.create()
         self.finish()
+        print("I did it")
         return True

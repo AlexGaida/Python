@@ -403,6 +403,8 @@ def create_controls(objects_array, name, shape_name="cube", apply_constraints=No
 
     names = ()
     for idx in range(len(objects_array)):
+        if not name:
+            name = objects_array[idx]
         names += '{}_{}_{}'.format(name, idx, CTRL_SUFFIX),
 
     apply_constraints = object_utils.convert_str_to_list(apply_constraints)
@@ -435,7 +437,6 @@ def create_controllers_with_standard_constraints(name, objects_array=(), shape_n
     """
     if not objects_array:
         objects_array = object_utils.get_selected_node(single=False)
-        print(objects_array)
     return create_controls(
         objects_array, name,
         shape_name=shape_name,
