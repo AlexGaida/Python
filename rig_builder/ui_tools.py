@@ -16,11 +16,12 @@ class ModuleDialog(QtWidgets.QDialog):
 
 
 class LineEdit(QtWidgets.QWidget):
-    def __init__(self, parent=None, label=""):
+    def __init__(self, parent=None, label="", placeholder_text=""):
         super(LineEdit, self).__init__(parent)
 
         # class variables
         self.label = label
+        self.placeholder_text = placeholder_text
         self.widgets = {}
         self.build()
 
@@ -32,9 +33,9 @@ class LineEdit(QtWidgets.QWidget):
         main_layout = QtWidgets.QHBoxLayout(self)
         self.widgets["labelWidget"] = QtWidgets.QLabel(self.label)
         self.widgets["lineEdit"] = QtWidgets.QLineEdit()
+        self.widgets["lineEdit"].setPlaceholderText(self.placeholder_text)
         main_layout.addWidget(self.widgets["labelWidget"])
         main_layout.addWidget(self.widgets["lineEdit"])
-
         self.setLayout(main_layout)
         return self.widgets
 
@@ -47,11 +48,11 @@ class LineEdit(QtWidgets.QWidget):
 
 
 class RenameWidget(QtWidgets.QDialog):
-    def __init__(self, parent=None, label="Renamer"):
+    def __init__(self, parent=None, label="Renamer", text=""):
         super(RenameWidget, self).__init__(parent)
         self.result = ""
+        self.line = LineEdit(label="Rename", placeholder_text=text)
 
-        self.line = LineEdit(label="Rename")
         layout = QtWidgets.QVBoxLayout()
         layout.addWidget(self.line)
 
@@ -65,7 +66,6 @@ class RenameWidget(QtWidgets.QDialog):
         button_layout.addWidget(cancel)
 
         self.setWindowTitle(label)
-
         self.setLayout(layout)
 
     def close_ui(self):

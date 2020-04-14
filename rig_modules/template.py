@@ -96,8 +96,9 @@ class TemplateModule(object):
         """
         pass
 
-    def do_it(self):
-        self.create()
-        self.finish()
-        print("I did it")
-        return True
+    def rename(self, name=""):
+        """
+        renames the guide joints
+        :return:
+        """
+        pass

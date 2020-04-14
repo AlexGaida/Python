@@ -3,34 +3,30 @@ singleton method to creating a single joint in the scene.
 """
 # import maya modules
 from maya import cmds
-
-# import local modules
-from rig_utils import control_utils
-from rig_utils import joint_utils
-
 from rig_modules import template
-reload(template)
 
-class_name = "Singleton"
+class_name = "PreBuild"
 
 
-class Singleton(template.TemplateModule):
+class PreBuild(template.TemplateModule):
+    PUBLISH_ATTRIBUTES = {}
+    ATTRIBUTE_EDIT_TYPES = {}
+
     def __init__(self, name=""):
-        super(Singleton, self).__init__(name=name)
+        super(PreBuild, self).__init__(name=name)
         self.name = name
 
     def create(self):
         """
-        creates a joint controlled by one joint.
+        do nothing
         :return:
         """
-        cmds.file(new=True, f=1)
         return True
 
     def finish(self):
         """
-        finish the construction of this module.
+        perform an action of creating a new file.
         :return:
         """
-        print('New file opened.')
+        cmds.file(new=True, f=1)
 

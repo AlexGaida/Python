@@ -13,6 +13,8 @@ class_name = "Singleton"
 
 
 class Singleton(template.TemplateModule):
+    suffix_name = '_guide_jnt'
+
     def __init__(self, name="", control_shape="cube", prefix_name=""):
         super(Singleton, self).__init__(name=name, prefix_name=prefix_name)
         self.name = name
@@ -28,7 +30,7 @@ class Singleton(template.TemplateModule):
         """
         self.guide_joints.append(joint_utils.create_joint(name=self.name,
                                  prefix_name=self.prefix_name,
-                                 suffix_name='_guide_jnt',
+                                 suffix_name=self.suffix_name,
                                  as_strings=True)[0])
 
     def create_controller(self, constraint_object):
@@ -48,11 +50,14 @@ class Singleton(template.TemplateModule):
         self.create_joint()
         return True
 
-    def update(self):
+    def rename(self, name):
         """
         updates the guide joint with the information
         :return:
         """
+        for idx, guide_jnt in enumerate(self.guide_joints):
+            new_name = joint_utils.get_joint_name("", name, idx, self.suffix_name)
+            cmds.rename(guide_jnt, new_name)
 
     def remove(self):
         """

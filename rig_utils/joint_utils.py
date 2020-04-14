@@ -217,6 +217,10 @@ def create_dynamic_chain(base_joint_name="", name="", curve_degree=2):
     # return curve_name
 
 
+def get_joint_name(prefix_name, name, i, suffix_name):
+    return '{prefix}{name}_{idx}{suffix}'.format(prefix=prefix_name, name=name, idx=i, suffix=suffix_name)
+
+
 def create_joint(name="", num_joints=1, prefix_name="", suffix_name="", as_strings=False):
     """
     creates a joint and renames it.
@@ -240,7 +244,7 @@ def create_joint(name="", num_joints=1, prefix_name="", suffix_name="", as_strin
             # Assign the new joint as a child to the previous joint.
             jnt_obj = dag_mod.createNode('joint', jnt_objects[i - 1])
         if name:
-            name = '{prefix}{name}_{idx}{suffix}'.format(prefix=prefix_name, name=name, idx=i, suffix=suffix_name)
+            name = get_joint_name(prefix_name, name, i, suffix_name)
             dag_mod.renameNode(jnt_obj, name)
             dag_mod.doIt()
         # Keep track of all the joints created.

@@ -6,10 +6,6 @@ Contains two most important widgets:
 1. The information widget.
 2. The Module collection widget.
 """
-# import standard modules
-import sys
-import os
-
 from functools import partial
 
 # import local modules
@@ -22,13 +18,16 @@ from PySide2 import QtWidgets, QtGui, QtCore
 
 # reloads
 reload(build_utils)
+reload(ui_tools)
 
 # define local variables
 parent_win = ui_utils.get_maya_parent_window()
 builder_win = None
 title = "Rig Builder"
 modules = build_utils.get_available_modules()
+blueprint_path = build_utils.default_blueprint_path
 MODULES_LIST = []
+BUILD_BLUEPRINT = {}
 
 # icons
 buttons = {"empty": build_utils.empty_icon,
@@ -38,12 +37,17 @@ buttons = {"empty": build_utils.empty_icon,
            }
 
 
+def add_module_decorator(func):
+    def wrapper(*args, **kwargs):
+        widget = func(*args, **kwargs)
+        MODULES_LIST.append(widget)
+    return wrapper
+
+
 def remove_module_decorator(func):
     def wrapper(*args, **kwargs):
-        # run function
         index = func(*args, **kwargs)
         MODULES_LIST.pop(index)
-        print MODULES_LIST
     return wrapper
 
 
@@ -53,7 +57,6 @@ class MainWindow(QtWidgets.QMainWindow):
     # the main build blue-print to construct
     # every time the module is added to module form, this updates the blueprint dictionary
     # the blueprint should be saved automatically.
-    BUILD_BLUEPRINT = {}
 
     def __init__(self, parent=None):
         super(MainWindow, self).__init__(parent)
@@ -64,8 +67,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.main_layout = QtWidgets.QHBoxLayout(self)
 
         # add the two widgets to the main layout
-        self.module_form = ModuleForm()
-        self.information_form = InformationForm()
+        self.module_form = ModuleForm(parent=self)
+        self.information_form = InformationForm(parent=self)
         self.main_layout.addWidget(self.module_form)
         self.main_layout.addWidget(self.information_form)
 
@@ -82,11 +85,24 @@ class MainWindow(QtWidgets.QMainWindow):
         # connect triggers
         self.menu_bar_data["addModule"].triggered.connect(self.add_module)
         self.menu_bar_data["clearModules"].triggered.connect(self.remove_modules)
+        self.menu_bar_data["setBlueprintPath"].triggered.connect(self.set_blueprint_path_call)
 
         # add main layout
         self.main_widget.setLayout(self.main_layout)
         self.setCentralWidget(self.main_widget)
         self.setWindowTitle(title)
+
+    def get_selected_list_item(self):
+        row_int = self.module_form.list.currentRow()
+        return MODULES_LIST[row_int]
+
+    def get_selected_module_name(self):
+        item = self.get_selected_list_item()
+        return item.get_name()
+
+    def set_selected_module_name(self, new_name):
+        item = self.get_selected_list_item()
+        return item.set_name(new_name)
 
     def add_menu_actions(self, widget):
         """
@@ -109,18 +125,28 @@ class MainWindow(QtWidgets.QMainWindow):
         """
         menu_data = {}
         menu_bar = QtWidgets.QMenuBar()
-        menu_data["options"] = menu_bar.addMenu("&Options")
+        menu_data["options"] = menu_bar.addMenu("&Module Options")
+        menu_data["blueprintOptions"] = menu_bar.addMenu("&Blueprint Options")
+
+        # create regular option actions
         menu_data["addModule"] = QtWidgets.QAction("Add Module")
         menu_data["clearModules"] = QtWidgets.QAction("Clear Modules")
 
-        menu_data["toggleVis"] = QtWidgets.QAction("Toggle Verbosity")
-        menu_data["loadBlueprint"] = QtWidgets.QAction("Load Blueprint")
+        # create blueprint option actions
+        menu_data["setBlueprintPath"] = QtWidgets.QAction("Set Blueprint Path")
+        menu_data["saveBlueprint"] = QtWidgets.QAction("&Save Blueprint")
+        menu_data["removeBlueprint"] = QtWidgets.QAction("&Remove Blueprint")
+        menu_data["blueprintOptions"].addAction(menu_data["setBlueprintPath"])
+        menu_data["blueprintOptions"].addAction(menu_data["saveBlueprint"])
+        menu_data["blueprintOptions"].addAction(menu_data["removeBlueprint"])
+
+        # set actions
         menu_data["options"].addAction(menu_data["addModule"])
-        menu_data["options"].addAction(menu_data["toggleVis"])
         menu_data["options"].addAction(menu_data["clearModules"])
         self.setMenuBar(menu_bar)
         return menu_data
 
+    @add_module_decorator
     def add_module(self, *args):
         """
         adds the module
@@ -132,22 +158,22 @@ class MainWindow(QtWidgets.QMainWindow):
         widget = ModuleWidget(module_name=module_name, list_widget=self.module_form.list, item=item)
         item.setSizeHint(widget.sizeHint())
 
-        # update the class variable
-        MODULES_LIST.append(widget)
-
         # add a widget to the list
         self.module_form.list.addItem(item)
         self.module_form.list.setItemWidget(item, widget)
 
         # connect the widget
         self.module_form.list.itemClicked.connect(partial(self.clicked_item, widget, self.information_form))
+        return widget
 
     def remove_modules(self):
         """
         removes the modules from the list widget.
         :return:
         """
-        return self.module_form.list.clear()
+        self.module_form.list.clear()
+        self.information_form.clear_instructions()
+        self.setMinimumSize(self.WIDTH, self.HEIGHT)
 
     def construct_information_items(self, attributes_data):
         """
@@ -169,8 +195,6 @@ class MainWindow(QtWidgets.QMainWindow):
         :return:
         """
         module_widget, info_form, list_item = args
-
-        # module_data: {'singleton': {'0000': <class 'singleton_v0000.Singleton'>}}
         data = module_widget.module_data[module_widget.module_name]
 
         module_version = module_widget.get_current_version()
@@ -179,7 +203,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.information_form.construct_items(attributes_data)
 
         # adjust the window size
-        self.setMinimumSize(self.HEIGHT + 100, self.WIDTH)
+        self.setMinimumSize(self.WIDTH + 100, self.HEIGHT)
+
+    def set_blueprint_path_call(self):
+        """
+        blueprint path call.
+        :return:
+        """
 
 
 class ModuleForm(QtWidgets.QWidget):
@@ -188,9 +218,14 @@ class ModuleForm(QtWidgets.QWidget):
         self.resize(200, 400)
 
         self.vertical_layout = QtWidgets.QVBoxLayout(self)
+        self.combo_layout = QtWidgets.QHBoxLayout()
+        self.creature_combo = QtWidgets.QComboBox(self)
+        self.creature_label = QtWidgets.QLabel("Select Blueprint: ")
+        self.combo_layout.addWidget(self.creature_label)
+        self.combo_layout.addWidget(self.creature_combo)
+        self.vertical_layout.addLayout(self.combo_layout)
 
         self.list = QtWidgets.QListWidget(self)
-
         self.button = self.add_button()
 
         # connect buttons
@@ -213,11 +248,14 @@ class ModuleForm(QtWidgets.QWidget):
 
 
 class InformationForm(QtWidgets.QWidget):
-    label = None
+    information = {}
+    info_widgets = {}
 
     def __init__(self, parent=None):
         super(InformationForm, self).__init__(parent)
 
+        # define variables
+        self.parent = parent
         self.main_layout = QtWidgets.QVBoxLayout(self)
         self.widgets = {}
 
@@ -225,13 +263,14 @@ class InformationForm(QtWidgets.QWidget):
 
         self.resize(40, 100)
         self.setLayout(self.main_layout)
+        self.connect_buttons()
 
     def build(self):
         """
         builds the widget with stuff.
         :return: <bool> True for success.
         """
-        self.widgets['label'] = QtWidgets.QLabel("I am here")
+        self.widgets['label'] = QtWidgets.QLabel("Intentionally Empty")
         self.widgets['instructions'] = QtWidgets.QVBoxLayout()
         self.widgets['updateButton'] = QtWidgets.QPushButton("Update")
         self.main_layout.addLayout(self.widgets['instructions'])
@@ -239,6 +278,13 @@ class InformationForm(QtWidgets.QWidget):
         self.widgets['instructions'].addWidget(self.widgets['label'])
         self.main_layout.addWidget(self.widgets['updateButton'])
         return True
+
+    def connect_buttons(self):
+        """
+        connects the buttons for use.
+        :return:
+        """
+        self.widgets['updateButton'].clicked.connect(self.update_call)
 
     def clear_instructions(self):
         """
@@ -272,6 +318,27 @@ class InformationForm(QtWidgets.QWidget):
                 for item in items:
                     line_edit = ui_tools.LineEdit(label=item)
                     self.widgets['instructions'].addWidget(line_edit)
+                    self.info_widgets[item] = line_edit
+
+    def get_information(self):
+        """
+        extracts the information.
+        :return:
+        """
+        for item, widget in self.info_widgets.items():
+            self.information[item] = widget.get_info()
+        return False
+
+    def update_call(self):
+        self.get_information()
+        self.parent.set_selected_module_name(self.information["name"])
+
+    def update_instructions(self, data):
+        """
+        updates the instructions with new information
+        :param data:
+        :return:
+        """
 
     def construct_items(self, data):
         """
@@ -305,7 +372,7 @@ class ModuleWidget(QtWidgets.QWidget):
         self.module_name = module_name
         self.list_widget = list_widget
         self.item = item
-        self.name = "Singleton"
+        self.name = module_name
 
         self.main_layout = QtWidgets.QHBoxLayout()
         self.module_data = self.find_module_data(module_name)
@@ -418,9 +485,14 @@ class ModuleWidget(QtWidgets.QWidget):
         rename this widget
         :return:
         """
-        self.dialog = ui_tools.RenameWidget(label=self.name_label.text())
+        self.dialog = ui_tools.RenameWidget(label=self.name_label.text(), text=self.name)
         self.dialog.exec_()
-        self.name_label.setText(self.dialog.result)
+        self.set_name(self.dialog.result)
+
+    def set_name(self, name):
+        self.name_label.setText(name)
+        self.rename_guide_items(name)
+        return True
 
     def find_module_data(self, module_name):
         return build_utils.find_module_data(module_name)
@@ -471,6 +543,9 @@ class ModuleWidget(QtWidgets.QWidget):
     def get_module_name(self):
         return self.q_text.text()
 
+    def get_name(self):
+        return self.name_label.text()
+
     def get_module_version(self):
         return self.version_combo.itemText(0)
 
@@ -483,6 +558,14 @@ class ModuleWidget(QtWidgets.QWidget):
             return module_class(name=self.name)
         else:
             return module_class
+
+    def rename_guide_items(self, name):
+        """
+        renames the guide items if available
+        :return:
+        """
+        self.module = self.get_module(activate=True)
+        self.module.rename(name)
 
     def create_module(self):
         self.module = self.get_module(activate=True)
