@@ -221,13 +221,15 @@ def get_joint_name(prefix_name, name, i, suffix_name):
     return '{prefix}{name}_{idx}{suffix}'.format(prefix=prefix_name, name=name, idx=i, suffix=suffix_name)
 
 
-def create_joint(name="", num_joints=1, prefix_name="", suffix_name="", as_strings=False):
+def create_joint(name="", num_joints=1, prefix_name="", suffix_name="", add_index=True, as_strings=False):
     """
     creates a joint and renames it.
     :param name: <str> the name of the joint to create.
     :param num_joints: the number of joints created.
     :param prefix_name: <str> the prefix name to use.
     :param suffix_name: <str> the suffix name to use.
+    :param as_strings: <bool> returns <str> objects instead of <OpenMaya.MObject> objects.
+    :param add_index: <bool> adds an index number to the name.
     :return: <tuple> array of created joint objects.
     """
     if not name:
@@ -244,7 +246,10 @@ def create_joint(name="", num_joints=1, prefix_name="", suffix_name="", as_strin
             # Assign the new joint as a child to the previous joint.
             jnt_obj = dag_mod.createNode('joint', jnt_objects[i - 1])
         if name:
-            name = get_joint_name(prefix_name, name, i, suffix_name)
+            if add_index:
+                name = get_joint_name(prefix_name, name, i, suffix_name)
+            else:
+                name = get_joint_name(prefix_name, name, "", suffix_name)
             dag_mod.renameNode(jnt_obj, name)
             dag_mod.doIt()
         # Keep track of all the joints created.

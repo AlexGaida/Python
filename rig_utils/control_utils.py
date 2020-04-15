@@ -388,6 +388,27 @@ def create_control_at_transform(object_name, name='', shape_name="cube"):
     return ctrl_data
 
 
+def get_control_name(name, idx):
+    return '{}_{}_{}'.format(name, idx, CTRL_SUFFIX),
+
+
+def rename_controls(ctrl_grp, new_name=""):
+    """
+    renames the controller from the group name.
+    :param ctrl_grp: <str> controller group.
+    :param new_name: <str> new name used.
+    :return: <tuple> the names of the children created.
+    """
+    children = object_utils.get_transform_relatives(ctrl_grp, find_child=True, as_strings=True)
+    new_children = ()
+    for ch in children:
+        part_name = ch.partition('_')
+        part_name[0] = new_name
+        cmds.rename(ch, ''.join(part_name))
+        new_children += ch,
+    return new_children
+
+
 def create_controls(objects_array, name, shape_name="cube", apply_constraints=None, maintain_offset=False):
     """
     creates controllers at this transform object name.
@@ -504,12 +525,3 @@ def apply_orient_constraint(source_obj, target_obj, maintain_offset=True):
     :return:
     """
     return cmds.orientConstraint(source_obj, target_obj, mo=maintain_offset)[0]
-
-
-def resize_shape(scale_size=1.0):
-    """
-    resizes the shape of the point.
-    :return: <bool> True for success.
-    """
-
-    return True

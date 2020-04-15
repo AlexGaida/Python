@@ -22,6 +22,7 @@ class Singleton(template.TemplateModule):
         self.control_shape = control_shape
         self.controller_data = {}
         self.guide_joints = []
+        self.built_controllers = []
 
     def create_joint(self):
         """
@@ -31,7 +32,8 @@ class Singleton(template.TemplateModule):
         self.guide_joints.append(joint_utils.create_joint(name=self.name,
                                  prefix_name=self.prefix_name,
                                  suffix_name=self.suffix_name,
-                                 as_strings=True)[0])
+                                 as_strings=True,
+                                 add_index=False)[0])
 
     def create_controller(self, constraint_object):
         """
@@ -55,31 +57,47 @@ class Singleton(template.TemplateModule):
         updates the guide joint with the information
         :return:
         """
+        self.name = name
         for idx, guide_jnt in enumerate(self.guide_joints):
-            new_name = joint_utils.get_joint_name("", name, idx, self.suffix_name)
+            new_name = joint_utils.get_joint_name("", name, "", self.suffix_name)
             cmds.rename(guide_jnt, new_name)
+            self.guide_joints[idx] = new_name
+
+        if self.built_controllers:
+            for grp_name in self.built_controllers:
+                control_utils.rename_controls(grp_name, new_name=name)
+        return True
+
+    def update(self, *args):
+        """
+        update the module.
+        :param args: <list> updates the guide joints
+        :return:
+        """
+        name = args[0]
+        return self.rename(name)
 
     def remove(self):
         """
         removes the guide joints from the scene.
         :return: <bool> True for success.
         """
-        print("Removing: ", self.guide_joints)
         cmds.delete(self.guide_joints)
+        cmds.delete(self.built_controllers[0])
 
     def finish(self):
         """
         finish the construction of this module.
         :return: <bool> True for success.
         """
-        self.controller_data = self.create_controller(self.guide_joint)
+        self.controller_data = self.create_controller(self.guide_joints)[0]
         parent_to = self.PUBLISH_ATTRIBUTES['parentTo']
         constrain_to = self.PUBLISH_ATTRIBUTES['constrainTo']
         if constrain_to:
             cmds.parentConstraint(self.controller_data['controller'], constrain_to, mo=True)
         if parent_to:
             cmds.parent(self.controller_data['group_names'][-1], parent_to)
-        return True
 
-    # def do_it()
-        # peform this module call
+        # store this
+        self.built_controllers.append(self.controller_data['group_names'])
+        return True

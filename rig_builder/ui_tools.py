@@ -4,6 +4,7 @@ ui_tools module for adding ui elements to a widget.
 
 # import qt module
 from PySide2 import QtWidgets
+from PySide2 import QtCore
 
 
 class ModuleDialog(QtWidgets.QDialog):
@@ -46,6 +47,9 @@ class LineEdit(QtWidgets.QWidget):
         """
         return str(self.widgets["lineEdit"].text())
 
+    def set_text(self, value):
+        return str(self.widgets["lineEdit"].setText(value))
+
 
 class RenameWidget(QtWidgets.QDialog):
     def __init__(self, parent=None, label="Renamer", text=""):
@@ -81,3 +85,20 @@ class RenameWidget(QtWidgets.QDialog):
 
     def open_ui(self):
         self.show()
+
+
+class Label(QtWidgets.QLabel):
+    """
+    a custom QLabel that emits a named signal
+    """
+
+    named = QtCore.Signal()
+
+    def __init__(self, parent=None, label=""):
+        super(Label, self).__init__(parent)
+        self.label = label
+        self.setText(label)
+
+    def change_text(self, name):
+        self.setText(name)
+        self.named.emit()

@@ -89,16 +89,9 @@ class TemplateModule(object):
         """
         pass
 
-    def update(self):
+    def update(self, *args):
         """
         updates the module
-        :return:
-        """
-        pass
-
-    def rename(self, name=""):
-        """
-        renames the guide joints
         :return:
         """
         pass
