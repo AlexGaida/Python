@@ -9,8 +9,15 @@ class_name = "PreBuild"
 
 
 class PreBuild(template.TemplateModule):
-    PUBLISH_ATTRIBUTES = {}
-    ATTRIBUTE_EDIT_TYPES = {}
+    class_name = class_name
+    PUBLISH_ATTRIBUTES = {
+        "name": "",
+        "moduleType": ""
+    }
+    ATTRIBUTE_EDIT_TYPES = {
+        'line-edit': ["name"],
+        'label': ["moduleType"]
+    }
 
     def __init__(self, name=""):
         super(PreBuild, self).__init__(name=name)
@@ -29,4 +36,3 @@ class PreBuild(template.TemplateModule):
         :return:
         """
         cmds.file(new=True, f=1)
-

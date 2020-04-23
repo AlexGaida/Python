@@ -16,6 +16,17 @@ from maya import cmds
 re_slash = re.compile('(\\\\|/)')
 
 
+def build_dir(dir_name):
+    """
+    creates the directory path.
+    :param dir_name: <str> directory name to create.
+    :return:
+    """
+    if not is_dir(dir_name):
+        os.mkdir(dir_name)
+    return dir_name
+
+
 def get_path(*args):
     """
     construct a path from arguments provided.

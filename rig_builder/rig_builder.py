@@ -1,18 +1,23 @@
 """
 rig-building module for modular construction of rigs uses to load and save blueprints for data management.
+The data is created and stored by the creation of guide joints themselves. The guide joints have the module information.
 This is the main UI module for the rig builder.
 Contains two most important widgets:
 0. Menu bar to add items to the entire main window.
 1. The information widget.
 2. The Module collection widget.
+
+Information:
+    This is still in its infancy. Please do not use.
 """
 from functools import partial
 
 # import local modules
 import build_utils
 import ui_tools
+import blueprint_utils
 from maya_utils import ui_utils
-from maya_utils import file_utils
+
 
 # import qt modules
 from PySide2 import QtWidgets, QtGui, QtCore
@@ -26,10 +31,13 @@ parent_win = ui_utils.get_maya_parent_window()
 builder_win = None
 title = "Rig Builder"
 modules = build_utils.get_available_modules()
-blueprint_path = build_utils.default_blueprint_path
+blueprint_path = blueprint_utils.default_blueprint_path
 MODULES_LIST = []
 MODULE_NAMES_LIST = []
 BUILD_BLUEPRINT = {}
+
+# define private variables
+__version__ = "0.0.1"
 
 # icons
 buttons = {"empty": build_utils.empty_icon,
@@ -48,7 +56,28 @@ def get_module_count(module_name):
     return MODULE_NAMES_LIST.count(module_name)
 
 
+def get_module_data():
+    """
+    extracts the currently created module data.
+    :return: <dict> module data information.
+    """
+    global MODULES_LIST
+    global MODULE_NAMES_LIST
+
+    MODULE_DATA = {}
+    for idx, name in enumerate(MODULE_NAMES_LIST):
+        module_info = MODULES_LIST[idx].get_information()
+        module_name = MODULES_LIST[idx].name
+
+        if module_name not in MODULE_DATA:
+            MODULE_DATA[module_name] = module_info
+    return MODULE_DATA
+
+
 def add_module_decorator(func):
+    global MODULES_LIST
+    global MODULE_NAMES_LIST
+
     def wrapper(*args, **kwargs):
         widget = func(*args, **kwargs)
         MODULES_LIST.append(widget)
@@ -57,6 +86,9 @@ def add_module_decorator(func):
 
 
 def remove_module_decorator(func):
+    global MODULES_LIST
+    global MODULE_NAMES_LIST
+
     def wrapper(*args, **kwargs):
         index = func(*args, **kwargs)
         MODULES_LIST.pop(index)
@@ -71,9 +103,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
     module_form = None
     information_form = None
-    # the main build blue-print to construct
-    # every time the module is added to module form, this updates the blueprint dictionary
-    # the blueprint should be saved automatically.
 
     def __init__(self, parent=None):
         super(MainWindow, self).__init__(parent)
@@ -84,10 +113,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.main_layout = QtWidgets.QHBoxLayout(self)
 
         # add the two widgets to the main layout
+        horizontal_split = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
+        self.main_layout.addWidget(horizontal_split)
+
         self.module_form = ModuleForm(parent=self)
         self.information_form = InformationForm(parent=self)
-        self.main_layout.addWidget(self.module_form)
-        self.main_layout.addWidget(self.information_form)
+        horizontal_split.addWidget(self.module_form)
+        horizontal_split.addWidget(self.information_form)
 
         # set up the right click menu box
         self.module_form.setContextMenuPolicy(QtCore.Qt.ActionsContextMenu)
@@ -100,34 +132,130 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setMinimumSize(self.HEIGHT, self.WIDTH)
 
         # connect triggers
-        self.menu_bar_data["addModule"].triggered.connect(self.add_module)
-        self.menu_bar_data["clearModules"].triggered.connect(self.remove_modules)
-        self.menu_bar_data["setBlueprintPath"].triggered.connect(self.set_blueprint_path_call)
+        self.connect_menu_options()
+        self.connect_blueprint_options()
 
         # add main layout
         self.main_widget.setLayout(self.main_layout)
         self.setCentralWidget(self.main_widget)
         self.setWindowTitle(title)
 
-    def get_instructions(self):
-        information = self.information_form.get_information()
+    # -----------------------------------------------
+    #  Main Window utility items
+    # -----------------------------------------------
+    @add_module_decorator
+    def add_module(self, *args):
+        """
+        adds the module to the list widget.
+        :param args: <list> incoming arguments
+        :return:
+        """
+        module_name = args[0]
+        item = QtWidgets.QListWidgetItem()
+        widget = ModuleWidget(module_name=module_name, list_widget=self.module_form.list, item=item, parent=self)
+        # makes sure the modules are shown correctly in the list widget
+        item.setSizeHint(widget.sizeHint())
+
+        # add a widget to the list
+        self.module_form.list.addItem(item)
+        self.module_form.list.setItemWidget(item, widget)
+        return widget
+
+    def construct_information_items(self, attributes_data):
+        """
+        construct items to the information_form based on the data given.
+        :param attributes_data:
+        :return:
+        """
+        line_edit_name = 'line-edit'
+        if line_edit_name in attributes_data:
+            for line_name in attributes_data[line_edit_name]:
+                line_edit = ui_tools.LineEdit(label=line_name)
+                self.information_form.information["instructions"].addWidget(line_edit)
+        return True
+
+    def remove_modules(self):
+        """
+        removes the modules from the list widget.
+        :return: <bool> True for success.
+        """
+        self.module_form.list.clear()
+        self.information_form.clear_instructions()
+        return True
+
+    # -----------------------------------------------
+    #  Performs connections
+    # -----------------------------------------------
+    def connect_menu_options(self):
+        self.menu_bar_data["addModule"].triggered.connect(self.add_module)
+        self.menu_bar_data["clearModules"].triggered.connect(self.remove_modules)
+
+    def connect_blueprint_options(self):
+        self.menu_bar_data["setBlueprintPath"].triggered.connect(self.set_blueprint_path_call)
+        self.menu_bar_data["saveBlueprint"].triggered.connect(self.save_blueprint_call)
+        self.menu_bar_data["loadBlueprint"].triggered.connect(self.load_blueprint_call)
+        self.menu_bar_data["removeBlueprint"].triggered.connect(self.remove_blueprint_call)
 
     def clear_information(self):
         self.information_form.clear_instructions()
-        self.resize(self.WIDTH, self.HEIGHT)
+
+    # -----------------------------------------------
+    #  Selected module widget utility
+    # -----------------------------------------------
+    def select_item(self, *args):
+        """
+        click on the item call
+        :param args: <list> widget items.
+        :return: <bool> True for success.
+        """
+        global MODULES_LIST
+        global MODULE_NAMES_LIST
+
+        # get the selected widget
+        selected_item = args[0]
+        row_int = selected_item.listWidget().currentRow()
+        module_widget = MODULES_LIST[row_int]
+
+        # get the information about the module
+        data = module_widget.module_data[module_widget.module_name]
+        module_version = module_widget.get_current_version()
+
+        # get build instructions about the module
+        attributes_data = data[module_version].ATTRIBUTE_EDIT_TYPES
+
+        # construct the information item data inputs
+        self.information_form.construct_items(attributes_data)
+
+        # updates the information
+        self.information_form.update_information('name', module_widget.name)
+
+        print(module_widget.module_attributes)
+        return True
+
+    def get_selected_row(self):
+        return self.module_form.list.currentRow()
 
     def get_selected_list_item(self):
-        row_int = self.module_form.list.currentRow()
-        return MODULES_LIST[row_int]
+        return MODULES_LIST[self.get_selected_row()]
 
     def get_selected_module_name(self):
-        item = self.get_selected_list_item()
-        return item.get_name()
+        return self.get_selected_list_item().get_name()
 
     def set_selected_module_name(self, new_name):
-        item = self.get_selected_list_item()
-        return item.set_name(new_name)
+        return self.get_selected_list_item().set_name(new_name)
 
+    def get_selected_item_attributes(self):
+        return self.get_selected_list_item().attributes
+
+    def update_selected_item_attribute(self, key_name, value):
+        return self.get_selected_list_item().update_attribute(key_name, value)
+
+    def update_selected_item_attributes(self, dictionary_value):
+        return self.get_selected_list_item().update_attributes(dictionary_value)
+
+    # -----------------------------------------------
+    #  Setup menu items
+    # -----------------------------------------------
     def add_menu_actions(self, widget):
         """
         adds menu actions.
@@ -157,11 +285,15 @@ class MainWindow(QtWidgets.QMainWindow):
         menu_data["clearModules"] = QtWidgets.QAction("Clear Modules")
 
         # create blueprint option actions
-        menu_data["setBlueprintPath"] = QtWidgets.QAction("Set Blueprint Path")
+        menu_data["setBlueprintPath"] = QtWidgets.QAction("S&et Blueprint Path")
         menu_data["saveBlueprint"] = QtWidgets.QAction("&Save Blueprint")
+        menu_data["loadBlueprint"] = QtWidgets.QAction("&Load Blueprint")
         menu_data["removeBlueprint"] = QtWidgets.QAction("&Remove Blueprint")
+
+        # blueprint options
         menu_data["blueprintOptions"].addAction(menu_data["setBlueprintPath"])
         menu_data["blueprintOptions"].addAction(menu_data["saveBlueprint"])
+        menu_data["blueprintOptions"].addAction(menu_data["loadBlueprint"])
         menu_data["blueprintOptions"].addAction(menu_data["removeBlueprint"])
 
         # set actions
@@ -170,76 +302,36 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setMenuBar(menu_bar)
         return menu_data
 
-    @add_module_decorator
-    def add_module(self, *args):
-        """
-        adds the module
-        :param args:
-        :return:
-        """
-        module_name = args[0]
-        item = QtWidgets.QListWidgetItem()
-        widget = ModuleWidget(module_name=module_name, list_widget=self.module_form.list, item=item, parent=self)
-        item.setSizeHint(widget.sizeHint())
-
-        # add a widget to the list
-        self.module_form.list.addItem(item)
-        self.module_form.list.setItemWidget(item, widget)
-        return widget
-
-    def remove_modules(self):
-        """
-        removes the modules from the list widget.
-        :return:
-        """
-        self.module_form.list.clear()
-        self.information_form.clear_instructions()
-        self.resize(self.WIDTH, self.HEIGHT)
-
-    def construct_information_items(self, attributes_data):
-        """
-        construct items to the information_form based on the data given.
-        :param attributes_data:
-        :return:
-        """
-        line_edit_name = 'line-edit'
-        if line_edit_name in attributes_data:
-            for line_name in attributes_data[line_edit_name]:
-                line_edit = ui_tools.LineEdit(label=line_name)
-                self.information_form.information["instructions"].addWidget(line_edit)
-        return True
-
-    def clicked_item(self, *args):
-        """
-        click on the item call
-        :param args: <list> widget items.
-        :return: <bool> True for success.
-        """
-        # get the selected widget
-        selected_item = args[0]
-        row_int = selected_item.listWidget().currentRow()
-        module_widget = MODULES_LIST[row_int]
-
-        # get the data
-        data = module_widget.module_data[module_widget.module_name]
-        module_version = module_widget.get_current_version()
-        attributes_data = data[module_version].ATTRIBUTE_EDIT_TYPES
-
-        # construct the information item data inputs
-        self.information_form.construct_items(attributes_data)
-
-        # updates the information
-        self.information_form.update_information('name', module_widget.module_name)
-
-        # adjust the window size
-        self.resize(self.WIDTH + 100, self.HEIGHT)
-        return True
-
+    # -----------------------------------------------
+    #  Blueprint file utility functions
+    # -----------------------------------------------
     def set_blueprint_path_call(self):
         """
         blueprint path call.
         :return:
         """
+        print("setting blueprint path.")
+
+    def load_blueprint_call(self):
+        """
+        loads the available blueprints.
+        :return:
+        """
+        print("blueprint loaded.")
+
+    def save_blueprint_call(self):
+        """
+        saves the blueprint.
+        :return:
+        """
+        print("blueprint saved.")
+
+    def remove_blueprint_call(self):
+        """
+        removes the blueprint.
+        :return:
+        """
+        print("blueprint removed.")
 
 
 class ModuleForm(QtWidgets.QWidget):
@@ -259,25 +351,28 @@ class ModuleForm(QtWidgets.QWidget):
         self.button = self.add_button()
 
         # connect buttons
-        self.button.clicked.connect(self.build_all_call)
+        self.button.clicked.connect(self.finish_all_call)
 
         self.vertical_layout.addWidget(self.list)
         self.vertical_layout.addWidget(self.button)
         self.setLayout(self.vertical_layout)
 
         # connect the widget
-        self.list.itemClicked.connect(parent.clicked_item)
+        self.list.itemClicked.connect(parent.select_item)
 
+    # -----------------------------------------------
+    #  Module Form utilities
+    # -----------------------------------------------
     def add_button(self):
         return QtWidgets.QPushButton("Build All")
 
-    def build_all_call(self):
+    def finish_all_call(self):
         """
         builds all the items in the list.
         :return:
         """
         for mod in MODULES_LIST:
-            mod.perform_module_build_call()
+            mod.perform_module_finish_call()
 
 
 class InformationForm(QtWidgets.QWidget):
@@ -298,6 +393,9 @@ class InformationForm(QtWidgets.QWidget):
         self.setLayout(self.main_layout)
         self.connect_buttons()
 
+    # -----------------------------------------------
+    #  Build the module information
+    # -----------------------------------------------
     def build(self):
         """
         builds the widget with stuff.
@@ -312,6 +410,16 @@ class InformationForm(QtWidgets.QWidget):
         self.main_layout.addWidget(self.widgets['updateButton'])
         return True
 
+    def construct_items(self, data):
+        """
+        constructs the items based on the selection of the modules from the main window.
+        :return:
+        """
+        self.clear_instructions()
+        self.build_instructions(data)
+        self.update_field_information()
+        return True
+
     def connect_buttons(self):
         """
         connects the buttons for use.
@@ -319,17 +427,86 @@ class InformationForm(QtWidgets.QWidget):
         """
         self.widgets['updateButton'].clicked.connect(self.update_call)
 
+    def build_instructions(self, data):
+        """
+        build instructions.
+        :return: <bool> True for success.
+        """
+        # labels first
+        if 'label' in data:
+            labels = data['label']
+            for item in labels:
+                label = ui_tools.AttributeLabel(label=item)
+                self.widgets['instructions'].addWidget(label)
+                self.info_widgets[item] = label
+
+        # build divider
+        divider = QtWidgets.QLabel("Information: ")
+        # spacer = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+        self.widgets['instructions'].addWidget(divider)
+        self.widgets['instructions'].insertStretch(len(self.info_widgets) + 1)
+
+        # then comes the editable content
+        if 'line-edit' in data:
+            line_edits = data['line-edit']
+            for item in line_edits:
+                line_edit = ui_tools.LineEdit(label=item)
+                self.widgets['instructions'].addWidget(line_edit)
+                self.info_widgets[item] = line_edit
+        return True
+
+    # -----------------------------------------------
+    #  Information module utilities
+    # -----------------------------------------------
     def clear_instructions(self):
         """
         updates the information based from the module clicked.
         :return: <bool> True for success.
         """
-        print('clear instructions')
         widget_count = self.widgets['instructions'].count()
         for idx in reversed(range(1, widget_count)):
             item = self.widgets['instructions'].takeAt(idx)
             if item is not None:
-                item.widget().deleteLater()
+                widget_item = item.widget()
+                if widget_item:
+                    item.widget().deleteLater()
+        return True
+
+    # -----------------------------------------------
+    #  Information module update dictionary
+    # -----------------------------------------------
+    def update_call(self):
+        """
+        information update when the update button is clicked.
+        :return: <bool> True for success.
+        """
+        self.get_information()
+        self.parent.set_selected_module_name(self.information["name"])
+
+        # update the widgets' published attributes
+        print self.information
+        self.parent.update_selected_item_attributes(self.information)
+
+        # data = {self.information["name"]: self.information}
+        # self.parent.INFORMATION.update(data)
+        return True
+
+    def update_information(self, key_name, value):
+        """
+        updates the specific fields with information.
+        :return: <bool> True for success.
+        """
+        self.info_widgets[key_name].set_text(value)
+        return True
+
+    def update_field_information(self):
+        """
+        updates the fields with information from the selected item.
+        :return: <bool> True for success.
+        """
+        attributes = self.parent.get_selected_item_attributes()
+        for attr_name, attr_val in attributes.items():
+            self.update_information(attr_name, attr_val)
         return True
 
     def delete_all_widgets(self):
@@ -342,55 +519,13 @@ class InformationForm(QtWidgets.QWidget):
             items_i.itemAt(i).widget().deleteLater()
         return True
 
-    def build_instructions(self, data):
-        """
-        build instructions
-        :return:
-        """
-        for widget, items in data.items():
-            if "line-edit" in widget:
-                for item in items:
-                    line_edit = ui_tools.LineEdit(label=item)
-                    self.widgets['instructions'].addWidget(line_edit)
-                    self.info_widgets[item] = line_edit
-
     def get_information(self):
         """
-        extracts the information.
-        :return:
+        extracts the information from the widgets.
+        :return: <bool> True for success.
         """
         for item, widget in self.info_widgets.items():
             self.information[item] = widget.get_info()
-        return False
-
-    def update_call(self):
-        self.get_information()
-        self.parent.set_selected_module_name(self.information["name"])
-        data = {self.information["name"]: self.information}
-        self.parent.INFORMATION.update(data)
-        return False
-
-    def update_information(self, key_name, value):
-        """
-        updates the fields.
-        :return:
-        """
-        self.info_widgets[key_name].set_text(value)
-
-    def update_instructions(self, data):
-        """
-        updates the instructions with new information
-        :param data:
-        :return:
-        """
-
-    def construct_items(self, data):
-        """
-        constructs the items based on the selection of the modules from the main window.
-        :return:
-        """
-        self.clear_instructions()
-        self.build_instructions(data)
         return True
 
 
@@ -399,42 +534,127 @@ class ModuleWidget(QtWidgets.QWidget):
     the module widget form layout.
     can be anything from a single script to a transform object.
     """
+    # store the information inside this attributes variable
+    module_attributes = {}
+
     def __init__(self, parent=None, module_name="", list_widget=None, item=None):
         super(ModuleWidget, self).__init__(parent)
+        # initialize the module main layout
+        self.main_layout = QtWidgets.QHBoxLayout()
+        self.main_layout.setSizeConstraint(QtWidgets.QLayout.SetFixedSize)
+        self.setLayout(self.main_layout)
 
-        # initialize variables
-        self.parent = parent
+        # initialize widget variables
         self.icon = None
         self.q_text = None
         self.q_pix = None
         self.build_button = None
         self.delete_button = None
-        self.version = 0000
         self.version_combo = None
         self.name_label = None
         self.dialog = None
         self.module = None
-        self.module_name = module_name
+
+        # initialize important variables
         self.list_widget = list_widget
         self.item = item
-
-        num = get_module_count(module_name)
-        self.name = '{}_{}'.format(module_name, num)
-
-        self.main_layout = QtWidgets.QHBoxLayout()
+        self.parent = parent
+        self.version = 0000
+        self.module_name = module_name
+        self.module_index = get_module_count(module_name)
+        self.name = '{}_{}'.format(module_name, self.module_index)
         self.module_data = self.find_module_data(module_name)
 
-        # initialize the widgets
+        # build the module widgets
         self.build()
         self.initialize_versions()
 
-        self.main_layout.setSizeConstraint(QtWidgets.QLayout.SetFixedSize)
-        self.setLayout(self.main_layout)
-
+        # create the connections
         self.connect_buttons()
 
-        # finalize
+        # activate this module
         self.create_module()
+
+        # initialize the attributes
+        # Python never implicitly copies the objects, when set, it is referred to the exact same module.
+        self.module_attributes = dict(self.module.PUBLISH_ATTRIBUTES)
+
+        # update the class published attribute with the name given
+        self.update_attribute('name', self.name)
+
+    # -----------------------------------------------
+    #  Create widget connections
+    # -----------------------------------------------
+    def update_information(self, key_name, value):
+        """
+        when the QLabel name gets updated, it also updates the information form.
+        :param key_name: <str> new module name.
+        :param value: <str>
+        :return: <bool> True for success.
+        """
+        self.parent.information_form.update_information(key_name=key_name, value=value)
+        return True
+
+    def connect_buttons(self):
+        """
+        button clicked connections.
+        :return: <bool> True for success.
+        """
+        self.build_button.clicked.connect(self.finish_module)
+        self.delete_button.clicked.connect(self.remove_item_call)
+        return True
+
+    @remove_module_decorator
+    def remove_item_call(self):
+        """
+        removes the item in question.
+        """
+        # removes the module from the list widget
+        index = self.list_widget.row(self.item)
+        self.list_widget.takeItem(index)
+
+        # removes the module items
+        self.remove_module()
+        self.clear_information()
+        return index
+
+    def rename_guide_items_call(self):
+        """
+        renames the guide items if available
+        :return:
+        """
+        name = self.get_name_label_text()
+        # updates the scene with the new information.
+        self.module.update(name)
+
+        # updates the information widget
+        self.update_information('name', name)
+
+        # update the class attributes
+        self.update_attribute('name', name)
+
+    def rename_call(self):
+        """
+        Opens up a new dialog window to help with renaming a module widget.
+        :return: <str> chosen module name.
+        """
+        self.dialog = ui_tools.RenameWidget(label=self.name_label.text(), text=self.name)
+        self.dialog.exec_()
+        self.set_name(self.dialog.result)
+        return self.dialog.result
+
+    # -----------------------------------------------
+    #  Module widget utilities
+    # -----------------------------------------------
+    def get_name_label_text(self):
+        """
+        get the name label text.
+        :return:
+        """
+        name = self.name_label.text()
+        if len(name) > 1:
+            name = ''.join(name)
+        return name
 
     def get_module_version(self):
         """
@@ -451,6 +671,148 @@ class ModuleWidget(QtWidgets.QWidget):
         """
         return self.version_combo.currentText()
 
+    def install_module_text_changed_call(self):
+        """
+        installs module connections
+        :return:
+        """
+        self.name_label.named.connect(self.rename_guide_items_call)
+
+    def set_name(self, name):
+        """
+        sets the name of the rig module.
+        :param name: <str> set the name in question.
+        :return: <bool> True for success.
+        """
+        self.name_label.change_text(name)
+        self.module.name = name
+        self.name = name
+        return True
+
+    def clear_information(self):
+        self.parent.clear_information()
+
+    def change_status(self, color="green"):
+        """
+        Change the status of the widget to "built"
+        """
+        self.q_pix = QtGui.QPixmap(buttons[color])
+        self.icon.setPixmap(self.q_pix)
+
+    def get_module_name(self):
+        return self.q_text.text()
+
+    def get_name(self):
+        return self.name_label.text()
+
+    def get_module_version(self):
+        return self.version_combo.itemText(0)
+
+    # -----------------------------------------------
+    #  Class module utilities
+    # -----------------------------------------------
+    def get_module(self, activate=False):
+        """
+        instantiates the selected module class
+        :param activate: <bool> create the instance of the specified class.
+        :return: <Class> module class.
+        """
+        module_name = self.q_text.text()
+        module_version = self.get_module_version()
+        # get the right rig module type with the associated version
+        module_class = build_utils.get_rig_module(module_name, module_version)
+
+        if activate:
+            return module_class(name=self.name)
+        else:
+            return module_class
+
+    def create_module(self):
+        """
+        creates a new module.
+        :return:
+        """
+        self.module = self.get_module(activate=True)
+        self.module.create()
+        self.change_status(color="yellow")
+
+    def finish_module(self):
+        """
+        finalize the module setup.
+        :return:
+        """
+        self.module.finish()
+        self.change_status(color="green")
+        return True
+
+    def remove_module(self):
+        """
+        removes a module.
+        :return:
+        """
+        return self.module.remove()
+
+    def build_module(self):
+        """
+        removes a module.
+        :return:
+        """
+        return self.module.build()
+
+    def update_attribute(self, key_name, value):
+        """
+        updates the attributes with the latest
+        :return: <bool> True for success.
+        """
+        # updates the class information
+        self.module_attributes[key_name] = value
+        return True
+
+    def update_attributes(self, dictionary):
+        """
+        updates the publish dictionary with new parameters.
+        :param dictionary:
+        :return: <bool> True for success.
+        """
+        self.module_attributes.update(dictionary)
+        return True
+
+    def perform_module_create_call(self):
+        """
+        module build call perform
+        :return:
+        """
+        self.create_module()
+        # change the pixmap icon
+
+    def perform_module_finish_call(self):
+        """
+        module build call perform
+        :return:
+        """
+        self.module.finish()
+        # change the pixmap icon
+
+    # -----------------------------------------------
+    #  Builds the module widget
+    # -----------------------------------------------
+    def find_module_data(self, module_name):
+        """
+        grabs the module class data.
+        :param module_name: <str> module name.
+        :return: <dict> module data.
+        """
+        return build_utils.find_module_data(module_name)
+
+    def populate_label(self):
+        """
+        populates the correct module name.
+        :return:
+        """
+        label_name = self.module_data.keys()[0]
+        self.q_text.setText(label_name)
+        return True
+
     def initialize_versions(self):
         """
         updates the QComboBox with versions.
@@ -459,26 +821,12 @@ class ModuleWidget(QtWidgets.QWidget):
         versions = self.module_data[self.module_name].keys()
         self.version_combo.addItems(sorted(versions))
 
-    def add_version(self):
-        """
-        adds a QComboBox.
-        :return: <QtGui.QComboBox>
-        """
-        return QtWidgets.QComboBox()
-
     def add_custom_text(self, name):
         """
         adds a custom text
         :return: <ui_tools.QLabel>
         """
         return ui_tools.Label(label=name)
-
-    def install_module_text_changed_call(self):
-        """
-        installs module connections
-        :return:
-        """
-        self.name_label.named.connect(self.rename_guide_items)
 
     def add_text(self, name):
         """
@@ -503,7 +851,7 @@ class ModuleWidget(QtWidgets.QWidget):
 
     def add_icon(self):
         """
-        adds an empty 64x6x icon.
+        adds an empty 6`x6x icon.
         :return: <QtGui.QIcon>
         """
         label = QtWidgets.QLabel()
@@ -512,16 +860,23 @@ class ModuleWidget(QtWidgets.QWidget):
         return label, pix
 
     def build(self):
+        """
+        build the items for this module.
+        :return: <bool> True for success.
+        """
+        # build the module widget items
         self.icon, self.q_pix = self.add_icon()
         self.q_text = self.add_text(self.module_name)
         self.name_label = self.add_custom_text(self.name)
-
-        self.install_module_text_changed_call()
-        self.add_actions(self.name_label)
-
         self.version_combo = self.add_version()
         self.build_button = self.add_build_button()
         self.delete_button = self.add_delete_button()
+
+        # creates a rename action for this module
+        self.install_module_text_changed_call()
+        self.add_actions(self.name_label)
+
+        # appends a widget to the widget's main layout
         self.main_layout.addWidget(self.icon)
         self.main_layout.addWidget(self.q_text)
         self.main_layout.addWidget(self.name_label)
@@ -547,131 +902,38 @@ class ModuleWidget(QtWidgets.QWidget):
         remove.triggered.connect(self.remove_item_call)
         label.addAction(rename)
 
-    def rename_call(self):
+    def add_version(self):
         """
-        rename this widget
-        :return:
+        adds a QComboBox.
+        :return: <QtGui.QComboBox>
         """
-        self.dialog = ui_tools.RenameWidget(label=self.name_label.text(), text=self.name)
-        self.dialog.exec_()
-        self.set_name(self.dialog.result)
+        return QtWidgets.QComboBox()
 
-    def set_name(self, name):
-        self.name_label.change_text(name)
-        return True
-
-    def find_module_data(self, module_name):
-        return build_utils.find_module_data(module_name)
-
-    def populate_versions(self):
-        for mod, data in self.module_data:
-            self.version_combo.addItems(data.keys())
-        return True
-
-    def populate_label(self):
-        label_name = self.module_data.keys()[0]
-        self.q_text.setText(label_name)
-        return True
-
-    def connect_buttons(self):
-        self.build_button.clicked.connect(self.finish_module)
-        self.delete_button.clicked.connect(self.remove_item_call)
-
-    def perform_module_create_call(self):
+    @property
+    def attributes(self):
         """
-        module build call perform
-        :return:
+        returns the module published attributes.
+        :return: <dict> module attributes
         """
-        self.create_module()
-        # change the pixmap icon
+        return self.module_attributes
 
-    @remove_module_decorator
-    def remove_item_call(self):
-        """
-        removes the item in question.
-        """
-        # removes the module from the list widget
-        index = self.list_widget.row(self.item)
-        self.list_widget.takeItem(index)
-
-        # removes the module items
-        self.remove_module()
-        self.clear_information()
-        return index
-
-    def clear_information(self):
-        self.parent.clear_information()
-
-    def change_status(self, color="green"):
-        """
-        Change the status of the widget to "built"
-        """
-        self.q_pix = QtGui.QPixmap(buttons[color])
-        self.icon.setPixmap(self.q_pix)
-
-    def get_module_name(self):
-        return self.q_text.text()
-
-    def get_name(self):
-        return self.name_label.text()
-
-    def get_module_version(self):
-        return self.version_combo.itemText(0)
-
-    def get_module(self, activate=False):
-        module_name = self.q_text.text()
-        module_version = self.get_module_version()
-        module_class = build_utils.get_rig_module(module_name, module_version)
-
-        if activate:
-            return module_class(name=self.name)
-        else:
-            return module_class
-
-    def rename_guide_items(self):
-        """
-        renames the guide items if available
-        :return:
-        """
-        name = self.get_name_label_text()
-        self.module.update(name)
-        self.update_information('name', name)
-
-    def get_name_label_text(self):
-        """
-        get the name label text.
-        :return:
-        """
-        name = self.name_label.text()
-        if len(name) > 1:
-            name = ''.join(name)
-        return name
-
-    def create_module(self):
-        self.module = self.get_module(activate=True)
-        self.module.create()
-        self.change_status(color="yellow")
-
-    def finish_module(self):
-        """
-        finalize the module setup.
-        :return:
-        """
-        self.module.finish()
-        self.change_status(color="green")
-        return True
-
-    def remove_module(self):
-        return self.module.remove()
-
-    def update_information(self, key_name, value):
-        self.parent.information_form.update_information(key_name=key_name, value=value)
+    @property
+    def current_version(self):
+        return self.get_current_version()
 
 
 def open_ui():
     global builder_win
+    global MODULES_LIST
+    global MODULE_NAMES_LIST
+
     if builder_win:
         builder_win.close()
+        builder_win.deleteLater()
+        MODULES_LIST = None
+        MODULE_NAMES_LIST = None
+        builder_win = None
+
     builder_win = MainWindow(parent=parent_win)
     builder_win.show()
     return builder_win

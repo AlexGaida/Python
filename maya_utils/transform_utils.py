@@ -355,6 +355,10 @@ class Transform(OpenMaya.MFnTransform):
     def local_matrix(self):
         return self.get_local_matrix()
 
+    @property
+    def world_translation(self):
+        return self.get_world_translation_list()
+
     @staticmethod
     def m_attr_index(m_plug, idx):
         return m_plug.elementByLogicalIndex(idx)

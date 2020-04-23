@@ -10,8 +10,12 @@ import json
 # import local modules
 from maya_utils import object_utils
 
+# define module variables
+class_name = "Template"
+
 
 class TemplateModule(object):
+    class_name = class_name
     """
     publish_attributes:
         attributes to be saved to a build dictionary.
@@ -20,15 +24,20 @@ class TemplateModule(object):
     """
     PUBLISH_ATTRIBUTES = {"constrainTo": "",
                           "parentTo": "",
-                          "name": ""
+                          "name": "",
+                          "moduleType": "",
     }
 
-    ATTRIBUTE_EDIT_TYPES = {'line-edit': ["name", "parentTo", "constrainTo"]
+    ATTRIBUTE_EDIT_TYPES = {'line-edit': ["name", "parentTo", "constrainTo"],
+                            'label': ["moduleType"],
     }
 
     def __init__(self, name="", prefix_name=""):
         self.name = name
         self.prefix_name = prefix_name
+
+        # publish attributes
+        self.PUBLISH_ATTRIBUTES["moduleType"] = self.class_name
 
     def parent_to(self, destination):
         """

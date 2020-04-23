@@ -131,9 +131,9 @@ def create_joint_at_transform(transform_name="", name=""):
         jnt_name = joint_name(transform_name)
     else:
         jnt_name = name
-    tfm = transform_utils.Transform(transform_name).world_translation
+    tfm = transform_utils.Transform(transform_name)
     cmds.joint(name=jnt_name)
-    cmds.xform(jnt_name, m=tfm.inclusive_matrix_list(), ws=True)
+    cmds.xform(jnt_name, m=tfm.world_matrix(), ws=True)
     return jnt_name
 
 

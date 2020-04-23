@@ -28,7 +28,6 @@ red_icon = posixpath.join(rig_icons_dir, 'red.PNG')
 yellow_icon = posixpath.join(rig_icons_dir, 'yellow.PNG')
 green_icon = posixpath.join(rig_icons_dir, 'green.PNG')
 empty_icon = posixpath.join(rig_icons_dir, 'empty.PNG')
-default_blueprint_path = "D:/Work/Maya/blueprints"
 
 
 def get_rig_modules_list():
@@ -151,7 +150,7 @@ def __update_module_data(key_name, value_name, data_dict={}):
 
 def find_module_data(module_name):
     """
-    finds this module in the rig_modules directory and returns the name and version associated.,
+    finds this module in the rig_modules directory and returns the name and version associated with the file.
     :param module_name: <str> the name of the module to find.
     :return: <dict> module data.
     """
@@ -171,3 +170,10 @@ def set_creatures_path(path):
     :return:
     """
     os.environ('BLUEPRINTS_PATH', path)
+
+
+def get_scene_data():
+    """
+    grabs the data from the scene.
+    :return:
+    """

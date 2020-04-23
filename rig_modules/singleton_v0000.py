@@ -1,5 +1,5 @@
 """
-singleton method to creating a single joint in the scene.
+Singleton method to creating a single joint in the scene.
 """
 # import maya modules
 from maya import cmds
@@ -9,11 +9,13 @@ from rig_utils import control_utils
 from rig_utils import joint_utils
 from rig_modules import template
 
+# define module variables
 class_name = "Singleton"
 
 
 class Singleton(template.TemplateModule):
     suffix_name = '_guide_jnt'
+    class_name = class_name
 
     def __init__(self, name="", control_shape="cube", prefix_name=""):
         super(Singleton, self).__init__(name=name, prefix_name=prefix_name)
@@ -83,7 +85,8 @@ class Singleton(template.TemplateModule):
         :return: <bool> True for success.
         """
         cmds.delete(self.guide_joints)
-        cmds.delete(self.built_controllers[0])
+        if self.built_controllers:
+            cmds.delete(self.built_controllers[0])
 
     def finish(self):
         """
