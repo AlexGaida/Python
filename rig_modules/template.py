@@ -26,6 +26,7 @@ class TemplateModule(object):
                           "parentTo": "",
                           "name": "",
                           "moduleType": "",
+                          "positions": ()
     }
 
     ATTRIBUTE_EDIT_TYPES = {'line-edit': ["name", "parentTo", "constrainTo"],
@@ -101,6 +102,13 @@ class TemplateModule(object):
     def update(self, *args):
         """
         updates the module
+        :return:
+        """
+        pass
+
+    def get_positions(self):
+        """
+        retrieves the position of guide joints.
         :return:
         """
         pass

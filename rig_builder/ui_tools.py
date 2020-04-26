@@ -62,9 +62,9 @@ class AttributeLabel(LineEdit):
         self.widgets["lineEdit"].setReadOnly(True)
 
 
-class RenameWidget(QtWidgets.QDialog):
+class GetNameWidget(QtWidgets.QDialog):
     def __init__(self, parent=None, label="Renamer", text=""):
-        super(RenameWidget, self).__init__(parent)
+        super(GetNameWidget, self).__init__(parent)
         self.result = ""
         self.line = LineEdit(label="Rename", placeholder_text=text)
 

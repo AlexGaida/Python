@@ -17,12 +17,14 @@ elif sys.version_info.major == 3:
 
 # import local modules
 from maya_utils import file_utils
+import blueprint_utils
 
 # define local variables
 this_dir = file_utils.get_this_directory()
 parent_dir = file_utils.get_this_directory_parent(2)
 rig_modules_dir = posixpath.join(parent_dir, 'rig_modules')
 rig_icons_dir = posixpath.join(parent_dir, 'rig_builder', 'icons')
+blueprint_path = blueprint_utils.default_blueprint_path
 
 red_icon = posixpath.join(rig_icons_dir, 'red.PNG')
 yellow_icon = posixpath.join(rig_icons_dir, 'yellow.PNG')
@@ -172,8 +174,27 @@ def set_creatures_path(path):
     os.environ('BLUEPRINTS_PATH', path)
 
 
-def get_scene_data():
+def get_file_creature_data():
     """
-    grabs the data from the scene.
+    gets the blueprint saves into this Maya File.
     :return:
     """
+    file_data = file_utils.get_internal_var_file_variable("creatureData")
+    if file_data:
+        return file_data[0]
+
+
+def save_blueprint(creature_name, data):
+    """
+    saves blueprint files
+    :return:
+    """
+    return blueprint_utils.write_blueprint(creature_name, data)
+
+
+def get_blueprints():
+    """
+    returns a list of avaliable blueprint JSON files.
+    :return:
+    """
+    return blueprint_utils.get_blueprints()

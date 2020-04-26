@@ -10,13 +10,15 @@ Contains two most important widgets:
 Information:
     This is still in its infancy. Please do not use.
 """
+# import standard modules
 from functools import partial
 
 # import local modules
 import build_utils
-import ui_tools
 import blueprint_utils
+import ui_tools
 from maya_utils import ui_utils
+from maya_utils import file_utils
 
 
 # import qt modules
@@ -25,16 +27,16 @@ from PySide2 import QtWidgets, QtGui, QtCore
 # reloads
 reload(build_utils)
 reload(ui_tools)
+reload(file_utils)
 
 # define local variables
 parent_win = ui_utils.get_maya_parent_window()
 builder_win = None
 title = "Rig Builder"
 modules = build_utils.get_available_modules()
-blueprint_path = blueprint_utils.default_blueprint_path
 MODULES_LIST = []
 MODULE_NAMES_LIST = []
-BUILD_BLUEPRINT = {}
+BUILD_BLUEPRINT = ()
 
 # define private variables
 __version__ = "0.0.1"
@@ -45,6 +47,27 @@ buttons = {"empty": build_utils.empty_icon,
            "green": build_utils.green_icon,
            "yellow": build_utils.yellow_icon
            }
+
+
+def get_file_blueprint():
+    """
+    gets the blueprint saves into this Maya File.
+    :return:
+    """
+    return blueprint_utils.get_file_creature_data()
+
+
+def save_blueprint(creature_name, data):
+    """
+    saves the blueprint file into the creature name specified.
+    :param creature_name:
+    :param data:
+    :return:
+    """
+    blueprint_utils.write_blueprint(creature_name, data)
+    # save the blueprint information
+    file_utils.update_internal_file_variables("creatureData", data)
+    return True
 
 
 def get_module_count(module_name):
@@ -59,19 +82,24 @@ def get_module_count(module_name):
 def get_module_data():
     """
     extracts the currently created module data.
-    :return: <dict> module data information.
+    :return: <tuple> blueprint module data.
     """
     global MODULES_LIST
     global MODULE_NAMES_LIST
+    global BUILD_BLUEPRINT
 
-    MODULE_DATA = {}
+    if not MODULES_LIST or not MODULE_NAMES_LIST:
+        raise ValueError("Modules list is empty, could not load data.")
+
     for idx, name in enumerate(MODULE_NAMES_LIST):
-        module_info = MODULES_LIST[idx].get_information()
+        module_info = MODULES_LIST[idx].module_attributes
         module_name = MODULES_LIST[idx].name
 
+        MODULE_DATA = {}
         if module_name not in MODULE_DATA:
             MODULE_DATA[module_name] = module_info
-    return MODULE_DATA
+        BUILD_BLUEPRINT += MODULE_DATA,
+    return BUILD_BLUEPRINT
 
 
 def add_module_decorator(func):
@@ -192,7 +220,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def connect_blueprint_options(self):
         self.menu_bar_data["setBlueprintPath"].triggered.connect(self.set_blueprint_path_call)
-        self.menu_bar_data["saveBlueprint"].triggered.connect(self.save_blueprint_call)
+        self.menu_bar_data["saveNewBlueprint"].triggered.connect(self.save_new_blueprint_call)
         self.menu_bar_data["loadBlueprint"].triggered.connect(self.load_blueprint_call)
         self.menu_bar_data["removeBlueprint"].triggered.connect(self.remove_blueprint_call)
 
@@ -228,8 +256,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # updates the information
         self.information_form.update_information('name', module_widget.name)
-
-        print(module_widget.module_attributes)
         return True
 
     def get_selected_row(self):
@@ -252,6 +278,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def update_selected_item_attributes(self, dictionary_value):
         return self.get_selected_list_item().update_attributes(dictionary_value)
+
+    def get_selected_module_guide_positions(self):
+        return self.get_selected_list_item().get_module_positions()
 
     # -----------------------------------------------
     #  Setup menu items
@@ -286,13 +315,13 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # create blueprint option actions
         menu_data["setBlueprintPath"] = QtWidgets.QAction("S&et Blueprint Path")
-        menu_data["saveBlueprint"] = QtWidgets.QAction("&Save Blueprint")
+        menu_data["saveNewBlueprint"] = QtWidgets.QAction("Save &New Blueprint")
         menu_data["loadBlueprint"] = QtWidgets.QAction("&Load Blueprint")
         menu_data["removeBlueprint"] = QtWidgets.QAction("&Remove Blueprint")
 
         # blueprint options
         menu_data["blueprintOptions"].addAction(menu_data["setBlueprintPath"])
-        menu_data["blueprintOptions"].addAction(menu_data["saveBlueprint"])
+        menu_data["blueprintOptions"].addAction(menu_data["saveNewBlueprint"])
         menu_data["blueprintOptions"].addAction(menu_data["loadBlueprint"])
         menu_data["blueprintOptions"].addAction(menu_data["removeBlueprint"])
 
@@ -319,12 +348,23 @@ class MainWindow(QtWidgets.QMainWindow):
         """
         print("blueprint loaded.")
 
-    def save_blueprint_call(self):
+    def save_new_blueprint_call(self):
         """
         saves the blueprint.
         :return:
         """
-        print("blueprint saved.")
+        dialog = ui_tools.GetNameWidget(label="Please choose a name.", text="CreatureA")
+        dialog.exec_()
+        creature_name = dialog.result
+        save_blueprint(creature_name, get_module_data())
+
+    def get_selected_creature_data(self):
+        """
+        grabs the selected creature file name.
+        :return:
+        """
+        selected_creature = self.module_form.get_selected_blueprint()
+        return blueprint_utils.read_blueprint(selected_creature)
 
     def remove_blueprint_call(self):
         """
@@ -341,7 +381,10 @@ class ModuleForm(QtWidgets.QWidget):
 
         self.vertical_layout = QtWidgets.QVBoxLayout(self)
         self.combo_layout = QtWidgets.QHBoxLayout()
+
         self.creature_combo = QtWidgets.QComboBox(self)
+        self.fill_blueprints()
+
         self.creature_label = QtWidgets.QLabel("Select Blueprint: ")
         self.combo_layout.addWidget(self.creature_label)
         self.combo_layout.addWidget(self.creature_combo)
@@ -363,6 +406,22 @@ class ModuleForm(QtWidgets.QWidget):
     # -----------------------------------------------
     #  Module Form utilities
     # -----------------------------------------------
+    def get_selected_blueprint(self):
+        """
+        returns the name of the selected blueprint.
+        :return: <str> selected blueprint.
+        """
+        return self.creature_combo.currentText()
+
+    def fill_blueprints(self):
+        """
+        fills the creature combobox with blueprints.
+        :return:
+        """
+        blueprints = ['New']
+        blueprints += build_utils.get_blueprints()
+        self.creature_combo.addItems(blueprints)
+
     def add_button(self):
         return QtWidgets.QPushButton("Build All")
 
@@ -484,20 +543,18 @@ class InformationForm(QtWidgets.QWidget):
         self.parent.set_selected_module_name(self.information["name"])
 
         # update the widgets' published attributes
-        print self.information
         self.parent.update_selected_item_attributes(self.information)
-
-        # data = {self.information["name"]: self.information}
-        # self.parent.INFORMATION.update(data)
         return True
 
     def update_information(self, key_name, value):
         """
         updates the specific fields with information.
-        :return: <bool> True for success.
+        :return: <bool> True for success. <bool> False for failure.
         """
-        self.info_widgets[key_name].set_text(value)
-        return True
+        if key_name in self.info_widgets:
+            self.info_widgets[key_name].set_text(value)
+            return True
+        return False
 
     def update_field_information(self):
         """
@@ -526,6 +583,8 @@ class InformationForm(QtWidgets.QWidget):
         """
         for item, widget in self.info_widgets.items():
             self.information[item] = widget.get_info()
+        self.information["positions"] = self.parent.get_selected_module_guide_positions()
+        print self.information["positions"]
         return True
 
 
@@ -638,7 +697,7 @@ class ModuleWidget(QtWidgets.QWidget):
         Opens up a new dialog window to help with renaming a module widget.
         :return: <str> chosen module name.
         """
-        self.dialog = ui_tools.RenameWidget(label=self.name_label.text(), text=self.name)
+        self.dialog = ui_tools.GetNameWidget(label=self.name_label.text(), text=self.name)
         self.dialog.exec_()
         self.set_name(self.dialog.result)
         return self.dialog.result
@@ -792,6 +851,13 @@ class ModuleWidget(QtWidgets.QWidget):
         """
         self.module.finish()
         # change the pixmap icon
+
+    def get_module_positions(self):
+        """
+        returns the positions of this module's guide joints
+        :return: <tuple> positions.
+        """
+        return self.module.get_positions()
 
     # -----------------------------------------------
     #  Builds the module widget

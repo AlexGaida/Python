@@ -7,6 +7,8 @@ import re
 import os
 import xml.etree.cElementTree as ET
 import json
+import glob
+import ast
 
 # import maya modules
 from maya import cmds
@@ -14,6 +16,30 @@ from maya import cmds
 # define local variables
 # re_slash = re.compile(r'[^\\/]+|[\\/]')
 re_slash = re.compile('(\\\\|/)')
+
+
+def get_files(path_name, file_ext='json'):
+    """
+    get the list of files in the path name
+    :param path_name:
+    :param file_ext:
+    :return:
+    """
+    return glob.glob(path_name + '/*{}'.format(file_ext))
+
+
+def get_directories(path_name, full_path=False):
+    """
+    get directories found in this path name.
+    :param path_name: <str> use this path to get the files from.
+    :param full_path: <bool> returns the full path of the directory path.
+    :return: <tuple> files found.
+    """
+    files = tuple(glob.glob(path_name + '/*'))
+    if full_path:
+        return files
+    else:
+        return tuple(map(lambda x: os.path.split(x)[-1], files))
 
 
 def build_dir(dir_name):
@@ -394,3 +420,46 @@ def scanf(file_name, token):
     else:
         raise ValueError('[ScanF] :: No token found.')
     return re_compiled.findall(file_name)
+
+
+def get_file_variables():
+    """
+    return full set of file variables associated with this Maya file.
+    :return: <list> array of variables set.
+    """
+    file_list = cmds.fileInfo(query=True)
+    file_data = {}
+    for idx in range(0, len(file_list), 2):
+        key_name = file_list[idx]
+        key_value = file_list[idx + 1]
+        file_data[key_name] = key_value
+    return file_data
+
+
+def update_internal_file_variables(variable_name, value_name):
+    """
+    updates the internalVar with variables.
+    :return: <bool> True for success.
+    """
+    if isinstance(value_name, (dict, list, tuple)):
+        value_name = "{}".format(value_name)
+    cmds.fileInfo(variable_name, value_name)
+    return True
+
+
+def get_internal_var_file_variable(variable_name):
+    """
+    gets the internal variable.
+    :param variable_name:
+    :return:
+    """
+    file_data = get_file_variables()
+    if not variable_name in file_data:
+        return False
+    var_value = file_data[variable_name]
+    # if the variable is a dictionary
+    if var_value.find("{") or var_value.find("}"):
+        return ast.literal_eval(var_value)
+    # else return as is
+    return var_value
+

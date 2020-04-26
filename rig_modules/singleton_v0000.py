@@ -54,6 +54,16 @@ class Singleton(template.TemplateModule):
         self.create_joint()
         return True
 
+    def get_positions(self):
+        """
+        returns the positions of each guide joint.
+        :return:
+        """
+        guide_positions = ()
+        for jnt in self.guide_joints:
+            guide_positions += cmds.xform(jnt, ws=1, m=1, q=1),
+        return guide_positions
+
     def rename(self, name):
         """
         updates the guide joint with the information
