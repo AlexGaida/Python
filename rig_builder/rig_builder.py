@@ -17,6 +17,7 @@ from functools import partial
 import build_utils
 import blueprint_utils
 import ui_tools
+from rig_utils import name_utils
 from maya_utils import ui_utils
 from maya_utils import file_utils
 
@@ -28,12 +29,15 @@ from PySide2 import QtWidgets, QtGui, QtCore
 reload(build_utils)
 reload(ui_tools)
 reload(file_utils)
+reload(name_utils)
 
 # define local variables
 parent_win = ui_utils.get_maya_parent_window()
 builder_win = None
 title = "Rig Builder"
 modules = build_utils.get_available_modules()
+proper_modules = build_utils.get_proper_modules()
+
 MODULES_LIST = []
 MODULE_NAMES_LIST = []
 BUILD_BLUEPRINT = ()
@@ -47,6 +51,21 @@ buttons = {"empty": build_utils.empty_icon,
            "green": build_utils.green_icon,
            "yellow": build_utils.yellow_icon
            }
+
+
+def clear_module_list_data():
+    """
+    clears the module list data.
+    :return: <bool> True for success.
+    """
+    global MODULES_LIST
+    global MODULE_NAMES_LIST
+    global BUILD_BLUEPRINT
+
+    MODULES_LIST = []
+    MODULE_NAMES_LIST = []
+    BUILD_BLUEPRINT = ()
+    return True
 
 
 def get_file_blueprint():
@@ -171,6 +190,17 @@ class MainWindow(QtWidgets.QMainWindow):
     # -----------------------------------------------
     #  Main Window utility items
     # -----------------------------------------------
+    def add_module_menu(self):
+        """
+        module menu item
+        :return:
+        """
+        mod_widget = ui_tools.ModulesList(list_items=proper_modules)
+        mod_widget.exec_()
+        selected_module = mod_widget.result
+        self.add_module(selected_module)
+        return True
+
     @add_module_decorator
     def add_module(self, *args):
         """
@@ -215,7 +245,7 @@ class MainWindow(QtWidgets.QMainWindow):
     #  Performs connections
     # -----------------------------------------------
     def connect_menu_options(self):
-        self.menu_bar_data["addModule"].triggered.connect(self.add_module)
+        self.menu_bar_data["addModule"].triggered.connect(self.add_module_menu)
         self.menu_bar_data["clearModules"].triggered.connect(self.remove_modules)
 
     def connect_blueprint_options(self):
@@ -226,6 +256,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def clear_information(self):
         self.information_form.clear_instructions()
+        return True
 
     # -----------------------------------------------
     #  Selected module widget utility
@@ -290,9 +321,7 @@ class MainWindow(QtWidgets.QMainWindow):
         adds menu actions.
         """
         actions = {}
-        for mod in modules:
-            if "_v" in mod:
-                mod = mod.split('_v')[0]
+        for mod in proper_modules:
             actions[mod] = QtWidgets.QAction(self)
             actions[mod].setText(mod)
             actions[mod].triggered.connect(partial(self.add_module, mod))
@@ -351,12 +380,16 @@ class MainWindow(QtWidgets.QMainWindow):
     def save_new_blueprint_call(self):
         """
         saves the blueprint.
-        :return:
+        :return: <bool> saves the blueprint.
         """
         dialog = ui_tools.GetNameWidget(label="Please choose a name.", text="CreatureA")
         dialog.exec_()
         creature_name = dialog.result
         save_blueprint(creature_name, get_module_data())
+
+        # refresh the creature combo box
+        self.module_form.fill_blueprints()
+        return True
 
     def get_selected_creature_data(self):
         """
@@ -378,6 +411,7 @@ class ModuleForm(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super(ModuleForm, self).__init__(parent)
         self.resize(200, 400)
+        self.parent = parent
 
         self.vertical_layout = QtWidgets.QVBoxLayout(self)
         self.combo_layout = QtWidgets.QHBoxLayout()
@@ -403,6 +437,9 @@ class ModuleForm(QtWidgets.QWidget):
         # connect the widget
         self.list.itemClicked.connect(parent.select_item)
 
+        # connect the combo changer
+        self.creature_combo.currentIndexChanged.connect(self.creature_selected_call)
+
     # -----------------------------------------------
     #  Module Form utilities
     # -----------------------------------------------
@@ -411,7 +448,10 @@ class ModuleForm(QtWidgets.QWidget):
         returns the name of the selected blueprint.
         :return: <str> selected blueprint.
         """
-        return self.creature_combo.currentText()
+        text = self.creature_combo.currentText()
+        if "New" in text:
+            return False
+        return text
 
     def fill_blueprints(self):
         """
@@ -420,6 +460,7 @@ class ModuleForm(QtWidgets.QWidget):
         """
         blueprints = ['New']
         blueprints += build_utils.get_blueprints()
+        self.creature_combo.clear()
         self.creature_combo.addItems(blueprints)
 
     def add_button(self):
@@ -432,6 +473,33 @@ class ModuleForm(QtWidgets.QWidget):
         """
         for mod in MODULES_LIST:
             mod.perform_module_finish_call()
+
+    def creature_selected_call(self, args):
+        """
+        calls the creature selection comboBox.
+        :return: <bool> True for success.
+        """
+        # clear history cache
+        clear_module_list_data()
+
+        # clear the current instructions
+        self.parent.remove_modules()
+
+        # get the information
+        current_selection = self.get_selected_blueprint()
+        if not current_selection:
+            return False
+
+        # reads the current blueprint
+        blueprint_array = blueprint_utils.read_blueprint(current_selection)
+
+        # initiate add module call
+        for module_data in blueprint_array:
+            module_data = module_data.values()[0]
+            module_type = module_data["moduleType"]
+
+            self.parent.add_module(module_type)
+        return True
 
 
 class InformationForm(QtWidgets.QWidget):
@@ -699,7 +767,12 @@ class ModuleWidget(QtWidgets.QWidget):
         """
         self.dialog = ui_tools.GetNameWidget(label=self.name_label.text(), text=self.name)
         self.dialog.exec_()
-        self.set_name(self.dialog.result)
+
+        # get proper name
+        new_name = name_utils.get_start_name_with_num(self.dialog.result)
+        # new_name = name_utils.get_start_name(self.dialog.result)
+
+        self.set_name(new_name)
         return self.dialog.result
 
     # -----------------------------------------------
@@ -743,13 +816,20 @@ class ModuleWidget(QtWidgets.QWidget):
         :param name: <str> set the name in question.
         :return: <bool> True for success.
         """
+        # change the name of the text label
         self.name_label.change_text(name)
+        # change the name in the module itself
         self.module.name = name
+        # change the name of this class
         self.name = name
         return True
 
     def clear_information(self):
-        self.parent.clear_information()
+        """
+        clears information from the Module Form.
+        :return: <bool> True for success.
+        """
+        return self.parent.clear_information()
 
     def change_status(self, color="green"):
         """
@@ -990,15 +1070,13 @@ class ModuleWidget(QtWidgets.QWidget):
 
 def open_ui():
     global builder_win
-    global MODULES_LIST
-    global MODULE_NAMES_LIST
 
     if builder_win:
         builder_win.close()
         builder_win.deleteLater()
-        MODULES_LIST = None
-        MODULE_NAMES_LIST = None
         builder_win = None
+        # clear history cache
+        clear_module_list_data()
 
     builder_win = MainWindow(parent=parent_win)
     builder_win.show()

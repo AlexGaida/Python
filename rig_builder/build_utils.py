@@ -57,14 +57,17 @@ def get_rig_module(module_name, module_version):
     if py_version == 2:
         fp, pathname, description = imp.find_module(module_file, [rig_modules_dir])
         rig_module_name = imp.load_module(module_file, fp, pathname, description)
+        # imp.reload(rig_module_name)
     elif py_version == 3:
         module_data = importlib.util.find_spec(module_file)
         rig_module_name = module_data.loader.load_module()
+        # importlib.reload(rig_module_name)
+
     # except ImportError:
     #     print("[Module Not Loaded] :: {}".format(module_file))
     #     return False
 
-    # instantiate the chosen serializer file class
+    # initializes the modules' class name
     module_class_name = get_module_class_name(rig_module_name)
     return getattr(rig_module_name, module_class_name)
 
@@ -78,6 +81,19 @@ def get_available_modules():
             if "template" not in x
             if "__init__" not in x
             if ".pyc" not in x]
+
+
+def get_proper_modules():
+    """
+    returns proper module name.
+    :return:
+    """
+    mod_data = ()
+    for mod in get_available_modules():
+        if "_v" in mod:
+            mod_name = mod.split('_v')[0]
+            mod_data += mod_name,
+    return mod_data
 
 
 def find_files(module_name, by_name=True):

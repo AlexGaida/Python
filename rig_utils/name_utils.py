@@ -12,7 +12,89 @@ from maya_utils import object_utils
 
 # define local variables
 re_brackets = re.compile(r"\[?\]?")
-# re_brackets = re.compile("[|]")
+re_numbers = re.compile("\d+")
+
+
+def get_name_count(name, suffix_name=""):
+    """
+    queries and returns the name in scene.
+    :param name: <str> check this name.
+    :param suffix_name: <str> suffix name.
+    :return: <int> names found.
+    """
+    transforms = cmds.ls(type='transform')
+    collector = ()
+    for t_obj in transforms:
+        if t_obj.startswith(name) and t_obj.endswith(suffix_name):
+            collector += t_obj,
+    return len(collector)
+
+
+def get_start_name(name, prefix_name=""):
+    """
+    gets the start name.
+    :return: <str> start name.
+    """
+    return '{prefix}{name}'.format(prefix=prefix_name, name=name)
+
+
+def get_start_name_with_num(name, prefix_name="", suffix_name=""):
+    """
+    grabs the start name with the number attached.
+    :param name: <str> use this name.
+    :param prefix_name: <str> use this prefix name.
+    :param suffix_name: <str> use this suffix name.
+    :return: <str> return the start name.
+    """
+    start_name = get_start_name(name, prefix_name=prefix_name)
+    # check if there is a number already in the name provided.
+    if not re_numbers.findall(start_name):
+        i = get_name_count(start_name, suffix_name=suffix_name)
+        return '{start_name}_{idx}'.format(start_name=start_name, idx=i)
+    else:
+        return start_name
+
+
+def get_guide_name(prefix_name="", name="", suffix_name=""):
+    """
+    get the guide joint name. Checks to see if the name already exists, if so, append the number.
+    :param prefix_name: <str> prefix name.
+    :param name: <str> actual name.
+    :param suffix_name: <str> name after the name.
+    :return: <str> guide joint name.
+    """
+    start_name = get_start_name(name, prefix_name=prefix_name)
+    if not re_numbers.findall(start_name):
+        i = get_name_count(start_name, suffix_name=suffix_name)
+        return '{start_name}_{idx}__{suffix}'.format(start_name=start_name, idx=i, suffix=suffix_name)
+    else:
+        return '{start_name}__{suffix}'.format(start_name=start_name, suffix=suffix_name)
+
+
+def replace_guide_name_with_bnd_name(guide_jnt_name):
+    """
+    replaces the guide joint name with the bound name.
+    :param guide_jnt_name: <str> joint name.
+    """
+    if "__" in guide_jnt_name:
+        return guide_jnt_name.rpartition("__")[0] + '_bnd_jnt'
+    return True
+
+
+def get_bound_joint_name(prefix_name="", name="", suffix_name="bnd"):
+    """
+    returns the name of the bound joint.
+    :param prefix_name: <str> prefix name.
+    :param name: <str> actual name.
+    :param suffix_name: <str> name after the name.
+    :return: <str> bound joint name.
+    """
+    start_name = get_start_name(name, prefix_name=prefix_name)
+    if not re_numbers.findall(start_name):
+        i = get_name_count(start_name, suffix_name=suffix_name)
+        return '{start_name}_{idx}_bnd_jnt'.format(start_name=start_name, idx=i)
+    else:
+        return '{start_name}_bnd_jnt'.format(start_name=start_name)
 
 
 def search_replace_brackets_name(name):

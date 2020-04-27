@@ -112,3 +112,10 @@ class TemplateModule(object):
         :return:
         """
         pass
+
+    def replace_guides(self):
+        """
+        replaces the guide joints with the actual bound joints.
+        :return: <tuple> bound joint array.
+        """
+        pass

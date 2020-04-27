@@ -6,6 +6,7 @@ from maya import cmds
 
 # import local modules
 from rig_utils import control_utils
+from rig_utils import name_utils
 from rig_utils import joint_utils
 from rig_modules import template
 
@@ -14,7 +15,7 @@ class_name = "Singleton"
 
 
 class Singleton(template.TemplateModule):
-    suffix_name = '_guide_jnt'
+    suffix_name = 'guide_jnt'
     class_name = class_name
 
     def __init__(self, name="", control_shape="cube", prefix_name=""):
@@ -34,8 +35,7 @@ class Singleton(template.TemplateModule):
         self.guide_joints.append(joint_utils.create_joint(name=self.name,
                                  prefix_name=self.prefix_name,
                                  suffix_name=self.suffix_name,
-                                 as_strings=True,
-                                 add_index=False)[0])
+                                 as_strings=True)[0])
 
     def create_controller(self, constraint_object):
         """
@@ -71,7 +71,8 @@ class Singleton(template.TemplateModule):
         """
         self.name = name
         for idx, guide_jnt in enumerate(self.guide_joints):
-            new_name = joint_utils.get_joint_name("", name, "", self.suffix_name)
+            new_name = name_utils.get_guide_name("", name, self.suffix_name)
+            print(guide_jnt, new_name)
             cmds.rename(guide_jnt, new_name)
             self.guide_joints[idx] = new_name
 
@@ -98,6 +99,17 @@ class Singleton(template.TemplateModule):
         if self.built_controllers:
             cmds.delete(self.built_controllers[0])
 
+    def replace_guides(self):
+        """
+        replaces the guide joints with actual joints.
+        :return: <bool> True for success.
+        """
+        for jnt in self.guide_joints:
+            # get the correct name from guides.
+            bnd_jnt_name = name_utils.replace_guide_name_with_bnd_name(jnt)
+            joint_utils.create_joint_at_transform(jnt, bnd_jnt_name)
+        return True
+
     def finish(self):
         """
         finish the construction of this module.
@@ -106,9 +118,9 @@ class Singleton(template.TemplateModule):
         self.controller_data = self.create_controller(self.guide_joints)[0]
         parent_to = self.PUBLISH_ATTRIBUTES['parentTo']
         constrain_to = self.PUBLISH_ATTRIBUTES['constrainTo']
-        if constrain_to:
+        if constrain_to and cmds.objExists(constrain_to):
             cmds.parentConstraint(self.controller_data['controller'], constrain_to, mo=True)
-        if parent_to:
+        if parent_to and cmds.objExists(parent_to):
             cmds.parent(self.controller_data['group_names'][-1], parent_to)
 
         # store this

@@ -102,7 +102,6 @@ class Label(QtWidgets.QLabel):
     """
     a custom QLabel that emits a named signal
     """
-
     named = QtCore.Signal()
 
     def __init__(self, parent=None, label=""):
@@ -113,3 +112,70 @@ class Label(QtWidgets.QLabel):
     def change_text(self, name):
         self.setText(name)
         self.named.emit()
+
+
+class ModulesList(QtWidgets.QDialog):
+    """
+    lists all available modules.
+    """
+
+    def __init__(self, parent=None, list_items=()):
+        super(ModulesList, self).__init__(parent)
+        self.selected_item = None
+
+        self.list_items = list_items
+
+        vertical_layout = QtWidgets.QVBoxLayout()
+        self.list_widget = QtWidgets.QListWidget()
+        vertical_layout.addWidget(self.list_widget)
+
+        horizontal_layout = QtWidgets.QHBoxLayout()
+        self.ok_button = QtWidgets.QPushButton("Ok")
+        self.cancel_button = QtWidgets.QPushButton("Cancel")
+        horizontal_layout.addWidget(self.ok_button)
+        horizontal_layout.addWidget(self.cancel_button)
+
+        vertical_layout.addLayout(horizontal_layout)
+
+        self.list_widget.addItems(self.list_items)
+
+        self.create_connections()
+
+        self.setLayout(vertical_layout)
+        self.setWindowTitle("Modules List")
+
+    def get_list_selection(self, args):
+        self.selected_item = args.text()
+
+    def ok_ui(self):
+        """
+
+        :return:
+        """
+        self.close()
+        self.deleteLater()
+
+    def cancel_ui(self):
+        """
+        close this ui.
+        :return: <bool> True for success.
+        """
+        self.ok_ui()
+        self.selected_item = False
+        return True
+
+    def create_connections(self):
+        """
+        creates the necessary connections.
+        :return: <bool> True for success.
+        """
+        self.ok_button.clicked.connect(self.ok_ui)
+        self.cancel_button.clicked.connect(self.cancel_ui)
+
+        # connect list widget
+        self.list_widget.itemClicked.connect(self.get_list_selection)
+        return True
+
+    @property
+    def result(self):
+        return self.selected_item
