@@ -75,6 +75,29 @@ def read_blueprint(creature_name):
     return json_file.read()
 
 
+def delete_blueprint_dir(file_name):
+    """
+    deletes blueprint directory from the file name path.
+    :param file_name: <str> file_name.
+    :return: <bool> True for success.
+    """
+    file_dir = file_utils.directory_name(file_name)
+    file_utils.remove_directory(file_dir)
+    return True
+
+
+def delete_blueprint(creature_name):
+    """
+    removes this file and directory from disk.
+    :return: <bool> True for success.
+    """
+    blueprint_file_name = get_blueprint_path(creature_name)
+    json_file = file_utils.JSONSerializer(file_name=blueprint_file_name)
+    json_file.delete()
+    delete_blueprint_dir(json_file.FILE_NAME)
+    return True
+
+
 def write_blueprint(creature_name, data):
     """
     writes the creature blueprint at default file path
@@ -83,7 +106,6 @@ def write_blueprint(creature_name, data):
     :return: <bool> True for success.
     """
     blueprint_file_name = get_blueprint_path(creature_name)
-    print(blueprint_file_name, "Saved")
     json_file = file_utils.JSONSerializer(file_name=blueprint_file_name, data=data)
     json_file.write()
     return True

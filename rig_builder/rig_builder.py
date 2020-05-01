@@ -12,11 +12,13 @@ Information:
 """
 # import standard modules
 from functools import partial
+from pprint import pprint
 
 # import local modules
 import build_utils
 import blueprint_utils
 import ui_tools
+import ui_stylesheets
 from rig_utils import name_utils
 from maya_utils import ui_utils
 from maya_utils import file_utils
@@ -26,10 +28,12 @@ from maya_utils import file_utils
 from PySide2 import QtWidgets, QtGui, QtCore
 
 # reloads
+reload(ui_stylesheets)
 reload(build_utils)
 reload(ui_tools)
 reload(file_utils)
 reload(name_utils)
+reload(blueprint_utils)
 
 # define local variables
 parent_win = ui_utils.get_maya_parent_window()
@@ -53,93 +57,27 @@ buttons = {"empty": build_utils.empty_icon,
            }
 
 
-def clear_module_list_data():
-    """
-    clears the module list data.
-    :return: <bool> True for success.
-    """
-    global MODULES_LIST
-    global MODULE_NAMES_LIST
-    global BUILD_BLUEPRINT
-
-    MODULES_LIST = []
-    MODULE_NAMES_LIST = []
-    BUILD_BLUEPRINT = ()
-    return True
-
-
-def get_file_blueprint():
-    """
-    gets the blueprint saves into this Maya File.
-    :return:
-    """
-    return blueprint_utils.get_file_creature_data()
-
-
-def save_blueprint(creature_name, data):
-    """
-    saves the blueprint file into the creature name specified.
-    :param creature_name:
-    :param data:
-    :return:
-    """
-    blueprint_utils.write_blueprint(creature_name, data)
-    # save the blueprint information
-    file_utils.update_internal_file_variables("creatureData", data)
-    return True
-
-
-def get_module_count(module_name):
-    """
-    get the module count.
-    :param module_name:
-    :return: <int> modules count
-    """
-    return MODULE_NAMES_LIST.count(module_name)
-
-
-def get_module_data():
-    """
-    extracts the currently created module data.
-    :return: <tuple> blueprint module data.
-    """
-    global MODULES_LIST
-    global MODULE_NAMES_LIST
-    global BUILD_BLUEPRINT
-
-    if not MODULES_LIST or not MODULE_NAMES_LIST:
-        raise ValueError("Modules list is empty, could not load data.")
-
-    for idx, name in enumerate(MODULE_NAMES_LIST):
-        module_info = MODULES_LIST[idx].module_attributes
-        module_name = MODULES_LIST[idx].name
-
-        MODULE_DATA = {}
-        if module_name not in MODULE_DATA:
-            MODULE_DATA[module_name] = module_info
-        BUILD_BLUEPRINT += MODULE_DATA,
-    return BUILD_BLUEPRINT
-
-
 def add_module_decorator(func):
-    global MODULES_LIST
-    global MODULE_NAMES_LIST
-
+    """
+    adds the module to the global list variable.
+    :param func: <PythonFunc>
+    :return: <PythonFunc>
+    """
     def wrapper(*args, **kwargs):
         widget = func(*args, **kwargs)
-        MODULES_LIST.append(widget)
-        MODULE_NAMES_LIST.append(widget.module_name)
+        add_item(widget)
     return wrapper
 
 
 def remove_module_decorator(func):
-    global MODULES_LIST
-    global MODULE_NAMES_LIST
-
+    """
+    removes the module from the global list variable.
+    :param func: <PythonFunc>
+    :return: <PythonFunc>
+    """
     def wrapper(*args, **kwargs):
         index = func(*args, **kwargs)
-        MODULES_LIST.pop(index)
-        MODULE_NAMES_LIST.pop(index)
+        remove_item(index)
     return wrapper
 
 
@@ -181,11 +119,61 @@ class MainWindow(QtWidgets.QMainWindow):
         # connect triggers
         self.connect_menu_options()
         self.connect_blueprint_options()
+        self.connect_utilities_options()
 
         # add main layout
         self.main_widget.setLayout(self.main_layout)
         self.setCentralWidget(self.main_widget)
         self.setWindowTitle(title)
+
+        self.setStyleSheet(ui_stylesheets.dark_orange_stylesheet)
+
+        # initialize the builder with options
+        # initialized = self.initializer(this_file=True)
+        # print("[Builder] :: Modules intitialized {}.".format(initialized))
+
+    # -----------------------------------------------
+    #  Creature UI Initialize
+    # -----------------------------------------------
+    def initializer(self, this_file=False, selected_file=False):
+        """
+        fill the module form with blueprint information.
+        :param this_file:
+        :param selected_file:
+        :return: <bool> Modules initialized.
+        """
+        if this_file:
+            blueprint_array = get_file_blueprint()
+        elif selected_file:
+            # get the information
+            current_selection = self.module_form.get_selected_blueprint()
+            if not current_selection:
+                return False
+            blueprint_array = blueprint_utils.read_blueprint(current_selection)
+
+        if blueprint_array:
+            # clear the built modules history
+            clear_module_list_data()
+
+            # initiate add module call
+            for module_data in blueprint_array:
+                module_data = module_data.values()[0]
+                module_type = module_data["moduleType"]
+                self.add_module(module_type, module_data)
+            return True
+        return False
+
+    # -----------------------------------------------
+    #  Events
+    # -----------------------------------------------
+    def closeEvent(self, *args):
+        """
+        MainWindow close event call.
+        :return: <bool> True for success.
+        """
+        # clear history cache
+        clear_module_list_data()
+        return True
 
     # -----------------------------------------------
     #  Main Window utility items
@@ -193,13 +181,15 @@ class MainWindow(QtWidgets.QMainWindow):
     def add_module_menu(self):
         """
         module menu item
-        :return:
+        :return: <bool> True if the module has been selected. <bool> False module is not selected.
         """
         mod_widget = ui_tools.ModulesList(list_items=proper_modules)
         mod_widget.exec_()
         selected_module = mod_widget.result
-        self.add_module(selected_module)
-        return True
+        if selected_module:
+            self.add_module(selected_module)
+            return True
+        return False
 
     @add_module_decorator
     def add_module(self, *args):
@@ -209,8 +199,17 @@ class MainWindow(QtWidgets.QMainWindow):
         :return:
         """
         module_name = args[0]
+        information = {}
+        if len(args) > 1:
+            information = args[1]
+
         item = QtWidgets.QListWidgetItem()
-        widget = ModuleWidget(module_name=module_name, list_widget=self.module_form.list, item=item, parent=self)
+
+        widget = ModuleWidget(module_name=module_name,
+                              list_widget=self.module_form.list,
+                              item=item,
+                              parent=self,
+                              information=information)
         # makes sure the modules are shown correctly in the list widget
         item.setSizeHint(widget.sizeHint())
 
@@ -245,16 +244,39 @@ class MainWindow(QtWidgets.QMainWindow):
     #  Performs connections
     # -----------------------------------------------
     def connect_menu_options(self):
+        """
+        connects the MainWindow module menu options.
+        :return: <bool> True for success.
+        """
         self.menu_bar_data["addModule"].triggered.connect(self.add_module_menu)
         self.menu_bar_data["clearModules"].triggered.connect(self.remove_modules)
+        return True
 
     def connect_blueprint_options(self):
+        """
+        connects the MainWindow blueprint menu options.
+        :return: <bool> True for success.
+        """
         self.menu_bar_data["setBlueprintPath"].triggered.connect(self.set_blueprint_path_call)
         self.menu_bar_data["saveNewBlueprint"].triggered.connect(self.save_new_blueprint_call)
+        self.menu_bar_data["saveBlueprint"].triggered.connect(self.save_blueprint_call)
         self.menu_bar_data["loadBlueprint"].triggered.connect(self.load_blueprint_call)
         self.menu_bar_data["removeBlueprint"].triggered.connect(self.remove_blueprint_call)
+        return True
+
+    def connect_utilities_options(self):
+        """
+        connects the utility options
+        :return: <bool> True for success.
+        """
+        self.menu_bar_data["printData"].triggered.connect(self.print_module_data)
+        return True
 
     def clear_information(self):
+        """
+        clears the information form.
+        :return: <bool> True for success.
+        """
         self.information_form.clear_instructions()
         return True
 
@@ -337,6 +359,10 @@ class MainWindow(QtWidgets.QMainWindow):
         menu_bar = QtWidgets.QMenuBar()
         menu_data["options"] = menu_bar.addMenu("&Module Options")
         menu_data["blueprintOptions"] = menu_bar.addMenu("&Blueprint Options")
+        menu_data["utilities"] = menu_bar.addMenu("&Utilities")
+
+        # create utility
+        menu_data["printData"] = QtWidgets.QAction("&Print Module Data")
 
         # create regular option actions
         menu_data["addModule"] = QtWidgets.QAction("Add Module")
@@ -344,12 +370,17 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # create blueprint option actions
         menu_data["setBlueprintPath"] = QtWidgets.QAction("S&et Blueprint Path")
+        menu_data["saveBlueprint"] = QtWidgets.QAction("Save &Blueprint")
         menu_data["saveNewBlueprint"] = QtWidgets.QAction("Save &New Blueprint")
         menu_data["loadBlueprint"] = QtWidgets.QAction("&Load Blueprint")
         menu_data["removeBlueprint"] = QtWidgets.QAction("&Remove Blueprint")
 
+        # utility actions
+        menu_data["utilities"].addAction(menu_data["printData"])
+
         # blueprint options
         menu_data["blueprintOptions"].addAction(menu_data["setBlueprintPath"])
+        menu_data["blueprintOptions"].addAction(menu_data["saveBlueprint"])
         menu_data["blueprintOptions"].addAction(menu_data["saveNewBlueprint"])
         menu_data["blueprintOptions"].addAction(menu_data["loadBlueprint"])
         menu_data["blueprintOptions"].addAction(menu_data["removeBlueprint"])
@@ -377,6 +408,15 @@ class MainWindow(QtWidgets.QMainWindow):
         """
         print("blueprint loaded.")
 
+    def save_blueprint_call(self):
+        """
+        blueprint save.
+        :return:
+        """
+        creature_name = self.get_selected_creature_name()
+        if creature_name:
+            save_blueprint(creature_name, get_module_data())
+
     def save_new_blueprint_call(self):
         """
         saves the blueprint.
@@ -385,10 +425,11 @@ class MainWindow(QtWidgets.QMainWindow):
         dialog = ui_tools.GetNameWidget(label="Please choose a name.", text="CreatureA")
         dialog.exec_()
         creature_name = dialog.result
-        save_blueprint(creature_name, get_module_data())
+        if creature_name:
+            save_blueprint(creature_name, get_module_data())
 
-        # refresh the creature combo box
-        self.module_form.fill_blueprints()
+            # refresh the creature combo box
+            self.module_form.fill_blueprints(set_to_name=creature_name)
         return True
 
     def get_selected_creature_data(self):
@@ -404,10 +445,33 @@ class MainWindow(QtWidgets.QMainWindow):
         removes the blueprint.
         :return:
         """
-        print("blueprint removed.")
+        selected_creature = self.module_form.get_selected_blueprint()
+        blueprint_utils.delete_blueprint(selected_creature)
+        self.module_form.fill_blueprints()
+
+        # removes all files stored.
+        clear_module_list_data()
+        return True
+
+    def get_selected_creature_name(self):
+        """
+        get creature name.
+        :return: <str> creature name.
+        """
+        return self.module_form.get_selected_blueprint()
+
+    # -----------------------------------------------
+    #  Additional utilities
+    # -----------------------------------------------
+    def print_module_data(self):
+        """
+        prints the module data to the console.
+        :return: <bool> True for success.
+        """
+        pprint(get_module_data())
 
 
-class ModuleForm(QtWidgets.QWidget):
+class ModuleForm(QtWidgets.QFrame):
     def __init__(self, parent=None):
         super(ModuleForm, self).__init__(parent)
         self.resize(200, 400)
@@ -424,14 +488,14 @@ class ModuleForm(QtWidgets.QWidget):
         self.combo_layout.addWidget(self.creature_combo)
         self.vertical_layout.addLayout(self.combo_layout)
 
-        self.list = QtWidgets.QListWidget(self)
-        self.button = self.add_button()
+        self.list = self.add_module_list()
+        slider_layout = self.add_build_slider()
 
         # connect buttons
-        self.button.clicked.connect(self.finish_all_call)
+        # self.button.clicked.connect(self.finish_all_call)
 
+        self.vertical_layout.addLayout(slider_layout)
         self.vertical_layout.addWidget(self.list)
-        self.vertical_layout.addWidget(self.button)
         self.setLayout(self.vertical_layout)
 
         # connect the widget
@@ -453,28 +517,108 @@ class ModuleForm(QtWidgets.QWidget):
             return False
         return text
 
-    def fill_blueprints(self):
+    def fill_blueprints(self, set_to_name=""):
         """
         fills the creature combobox with blueprints.
-        :return:
+        :param set_to_name: (optional) <str> set the combo box to this creature name.
+        :return: <bool> True for success.
         """
+        self.creature_combo.blockSignals(True)
+
         blueprints = ['New']
         blueprints += build_utils.get_blueprints()
         self.creature_combo.clear()
         self.creature_combo.addItems(blueprints)
+        self.set_creature_combo(set_to_name)
 
-    def add_button(self):
-        return QtWidgets.QPushButton("Build All")
+        self.creature_combo.blockSignals(False)
+        return True
+
+    def set_creature_combo(self, text="", block_signal=False):
+        """
+        sets the combo-box with the provided creature name.
+        :return: <bool> True for success.
+        """
+        if text:
+            text_int = self.creature_combo.findText(text)
+            if block_signal:
+                self.creature_combo.blockSignals(True)
+
+            self.creature_combo.setCurrentIndex(text_int)
+
+            if block_signal:
+                self.creature_combo.blockSignals(False)
+        return True
+
+    def toggle_build_call(self, args):
+        if args == 1:
+            self.finish_all_call()
+        elif args == 0:
+            self.create_all_call()
+
+    def connect_slider(self, slider):
+        """
+        connects the slider.
+        :return:
+        """
+        slider.valueChanged.connect(self.toggle_build_call)
+
+    def add_module_list(self):
+        """
+        adds a module list to the widget.
+        :return: <QtWidgets.QListWidget>
+        """
+        list = QtWidgets.QListWidget(self)
+        list.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        list.setMinimumHeight(self.parent.HEIGHT - 50)
+        list.setMinimumWidth(self.parent.WIDTH - 50)
+        return list
+
+    def add_build_slider(self):
+        """
+        adds the new button.
+        :return: <QTWidgets.QPushButton>
+        """
+        h_layout = QtWidgets.QHBoxLayout()
+
+        label = QtWidgets.QLabel("Build: ")
+        label.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
+
+        # set slider options
+        slider = QtWidgets.QSlider()
+        slider.setTickInterval(1)
+        slider.setMinimum(0)
+        slider.setMaximum(1)
+        slider.setSliderPosition(0)
+        slider.setOrientation(QtCore.Qt.Horizontal)
+        slider.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
+        # slider.setStyleSheet(ui_stylesheets.slider_stylesheet)
+
+        h_layout.addWidget(label)
+        h_layout.addWidget(slider)
+
+        self.connect_slider(slider)
+        return h_layout
+        # return QtWidgets.QPushButton("Build All")
 
     def finish_all_call(self):
         """
         builds all the items in the list.
-        :return:
+        :return: <bool> True for success.
         """
         for mod in MODULES_LIST:
             mod.perform_module_finish_call()
+        return True
 
-    def creature_selected_call(self, args):
+    def create_all_call(self):
+        """
+        returns the modules back to default setting.
+        :return: <bool> True for success.
+        """
+        self.creature_selected_call()
+        return True
+
+    def creature_selected_call(self, *args):
         """
         calls the creature selection comboBox.
         :return: <bool> True for success.
@@ -485,24 +629,12 @@ class ModuleForm(QtWidgets.QWidget):
         # clear the current instructions
         self.parent.remove_modules()
 
-        # get the information
-        current_selection = self.get_selected_blueprint()
-        if not current_selection:
-            return False
-
-        # reads the current blueprint
-        blueprint_array = blueprint_utils.read_blueprint(current_selection)
-
-        # initiate add module call
-        for module_data in blueprint_array:
-            module_data = module_data.values()[0]
-            module_type = module_data["moduleType"]
-
-            self.parent.add_module(module_type)
+        # fill the modules with the selected blueprint
+        self.parent.initializer(selected_file=True)
         return True
 
 
-class InformationForm(QtWidgets.QWidget):
+class InformationForm(QtWidgets.QFrame):
     information = {}
     info_widgets = {}
 
@@ -608,10 +740,17 @@ class InformationForm(QtWidgets.QWidget):
         :return: <bool> True for success.
         """
         self.get_information()
-        self.parent.set_selected_module_name(self.information["name"])
+        if self.information:
+            self.parent.set_selected_module_name(self.information["name"])
 
-        # update the widgets' published attributes
-        self.parent.update_selected_item_attributes(self.information)
+            # update the widgets' published attributes
+            self.parent.update_selected_item_attributes(self.information)
+
+        # update the file information with data
+        creature_name = self.parent.get_selected_creature_name()
+        if creature_name:
+            update_module_data_information()
+            save_blueprint(creature_name, get_module_data())
         return True
 
     def update_information(self, key_name, value):
@@ -649,10 +788,9 @@ class InformationForm(QtWidgets.QWidget):
         extracts the information from the widgets.
         :return: <bool> True for success.
         """
+        # get the information from informationWidget
         for item, widget in self.info_widgets.items():
-            self.information[item] = widget.get_info()
-        self.information["positions"] = self.parent.get_selected_module_guide_positions()
-        print self.information["positions"]
+            self.information[item] = widget.get_text()
         return True
 
 
@@ -664,7 +802,7 @@ class ModuleWidget(QtWidgets.QWidget):
     # store the information inside this attributes variable
     module_attributes = {}
 
-    def __init__(self, parent=None, module_name="", list_widget=None, item=None):
+    def __init__(self, parent=None, module_name=str, list_widget=None, item=None, information=dict):
         super(ModuleWidget, self).__init__(parent)
         # initialize the module main layout
         self.main_layout = QtWidgets.QHBoxLayout()
@@ -700,7 +838,7 @@ class ModuleWidget(QtWidgets.QWidget):
         self.connect_buttons()
 
         # activate this module
-        self.create_module()
+        self.create_module(information=information)
 
         # initialize the attributes
         # Python never implicitly copies the objects, when set, it is referred to the exact same module.
@@ -850,10 +988,11 @@ class ModuleWidget(QtWidgets.QWidget):
     # -----------------------------------------------
     #  Class module utilities
     # -----------------------------------------------
-    def get_module(self, activate=False):
+    def get_module(self, activate=False, information={}):
         """
         instantiates the selected module class
         :param activate: <bool> create the instance of the specified class.
+        :param information: <dict> create the module with incoming saved information.
         :return: <Class> module class.
         """
         module_name = self.q_text.text()
@@ -862,16 +1001,16 @@ class ModuleWidget(QtWidgets.QWidget):
         module_class = build_utils.get_rig_module(module_name, module_version)
 
         if activate:
-            return module_class(name=self.name)
+            return module_class(name=self.name, information=information)
         else:
             return module_class
 
-    def create_module(self):
+    def create_module(self, information):
         """
         creates a new module.
         :return:
         """
-        self.module = self.get_module(activate=True)
+        self.module = self.get_module(activate=True, information=information)
         self.module.create()
         self.change_status(color="yellow")
 
@@ -929,8 +1068,15 @@ class ModuleWidget(QtWidgets.QWidget):
         module build call perform
         :return:
         """
-        self.module.finish()
-        # change the pixmap icon
+        self.finish_module()
+
+    def update_module(self):
+        """
+        updates the current module with current information.
+        :return:
+        """
+        self.module.update()
+        self.update_attributes(self.module.information)
 
     def get_module_positions(self):
         """
@@ -1065,10 +1211,128 @@ class ModuleWidget(QtWidgets.QWidget):
 
     @property
     def current_version(self):
+        """
+        returns the version number from QComboBox.
+        :return: <str> version number.
+        """
         return self.get_current_version()
 
 
+def clear_module_list_data():
+    """
+    clears the module list data.
+    :return: <bool> True for success.
+    """
+    global MODULES_LIST
+    global MODULE_NAMES_LIST
+    global BUILD_BLUEPRINT
+
+    MODULES_LIST = []
+    MODULE_NAMES_LIST = []
+    BUILD_BLUEPRINT = ()
+    return True
+
+
+def get_file_blueprint():
+    """
+    gets the blueprint saves into this Maya File.
+    :return: <dict> creature data.
+    """
+    return build_utils.get_file_creature_data()
+
+
+def save_blueprint(creature_name, data):
+    """
+    saves the blueprint file into the creature name specified.
+    :param creature_name:
+    :param data:
+    :return:
+    """
+    blueprint_utils.write_blueprint(creature_name, data)
+    # save the blueprint information
+    file_utils.update_internal_file_variables("creatureData", data)
+    return True
+
+
+def get_module_count(module_name):
+    """
+    get the module count.
+    :param module_name:
+    :return: <int> modules count
+    """
+    return MODULE_NAMES_LIST.count(module_name)
+
+
+def update_module_data_information():
+    """
+    updates the current modules in the scene.
+    :return: <bool> True for success.
+    """
+    global MODULES_LIST
+
+    print("updating module list information.")
+
+    for mod in MODULES_LIST:
+        mod.update_module()
+    return True
+
+
+def get_module_data():
+    """
+    extracts the currently created module data.
+    :return: <tuple> blueprint module data.
+    """
+    global MODULES_LIST
+    global MODULE_NAMES_LIST
+    global BUILD_BLUEPRINT
+
+    BUILD_BLUEPRINT = ()
+
+    if not MODULES_LIST or not MODULE_NAMES_LIST:
+        raise ValueError("Modules list is empty, could not load data.")
+
+    for idx, name in enumerate(MODULE_NAMES_LIST):
+        module_info = MODULES_LIST[idx].module_attributes
+        module_name = MODULES_LIST[idx].name
+
+        MODULE_DATA = {}
+        if module_name not in MODULE_DATA:
+            MODULE_DATA[module_name] = module_info
+        BUILD_BLUEPRINT += MODULE_DATA,
+    return BUILD_BLUEPRINT
+
+
+def add_item(widget):
+    """
+    adds item.
+    :param widget: <PySide.QtWidget>
+    :return: <bool> True for success.
+    """
+    global MODULES_LIST
+    global MODULE_NAMES_LIST
+    MODULES_LIST.append(widget)
+    MODULE_NAMES_LIST.append(widget.module_name)
+    return True
+
+
+def remove_item(index):
+    """
+    remove item.
+    :param index: <int> item at index.
+    :return: <bool> True for success.
+    """
+    global MODULES_LIST
+    global MODULE_NAMES_LIST
+    MODULES_LIST.pop(index)
+    MODULE_NAMES_LIST.pop(index)
+    return True
+
+
 def open_ui():
+    """
+    Opens the builder User Interface.
+    :return: <PySide.QtMainWindow>
+    """
     global builder_win
 
     if builder_win:

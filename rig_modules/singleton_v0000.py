@@ -18,8 +18,8 @@ class Singleton(template.TemplateModule):
     suffix_name = 'guide_jnt'
     class_name = class_name
 
-    def __init__(self, name="", control_shape="cube", prefix_name=""):
-        super(Singleton, self).__init__(name=name, prefix_name=prefix_name)
+    def __init__(self, name="", control_shape="cube", prefix_name="", information=""):
+        super(Singleton, self).__init__(name=name, prefix_name=prefix_name, information=information)
         self.name = name
         self.prefix_name = prefix_name
         self.control_shape = control_shape
@@ -27,7 +27,7 @@ class Singleton(template.TemplateModule):
         self.guide_joints = []
         self.built_controllers = []
 
-    def create_joint(self):
+    def create_guides(self):
         """
         creates a guide joint object.
         :return: <str> joint object name.
@@ -45,14 +45,6 @@ class Singleton(template.TemplateModule):
         name = self.prefix_name + self.name
         return control_utils.create_controllers_with_standard_constraints(
             name, objects_array=constraint_object, shape_name=self.control_shape)
-
-    def create(self):
-        """
-        creates a joint controlled by one joint.
-        :return: <bool> True for success.
-        """
-        self.create_joint()
-        return True
 
     def get_positions(self):
         """
@@ -72,7 +64,6 @@ class Singleton(template.TemplateModule):
         self.name = name
         for idx, guide_jnt in enumerate(self.guide_joints):
             new_name = name_utils.get_guide_name("", name, self.suffix_name)
-            print(guide_jnt, new_name)
             cmds.rename(guide_jnt, new_name)
             self.guide_joints[idx] = new_name
 
@@ -84,11 +75,13 @@ class Singleton(template.TemplateModule):
     def update(self, *args):
         """
         update the module.
-        :param args: <list> updates the guide joints
+        :param args: <list> updates the guide joints. the first argument is the name.
         :return:
         """
-        name = args[0]
-        return self.rename(name)
+        if args:
+            name = args[0]
+            self.rename(name)
+        self.information["positions"] = self.get_positions()
 
     def remove(self):
         """
@@ -98,6 +91,8 @@ class Singleton(template.TemplateModule):
         cmds.delete(self.guide_joints)
         if self.built_controllers:
             cmds.delete(self.built_controllers[0])
+        self.finished = False
+        self.created = False
 
     def replace_guides(self):
         """
@@ -110,11 +105,33 @@ class Singleton(template.TemplateModule):
             joint_utils.create_joint_at_transform(jnt, bnd_jnt_name)
         return True
 
+    def create(self):
+        """
+        creates a joint controlled by one joint.
+        :return: <bool> True for success.
+        """
+        if self.created:
+            return False
+
+        # create the guide joints, collect the self.guide_joints class array.
+        self.create_guides()
+
+        # set the guide joint positions
+        self.set_guide_positions()
+
+        self.created = True
+        return True
+
     def finish(self):
         """
         finish the construction of this module.
         :return: <bool> True for success.
         """
+        if self.finished:
+            return False
+
+        print('finished ::', self.finished)
+
         self.controller_data = self.create_controller(self.guide_joints)[0]
         parent_to = self.PUBLISH_ATTRIBUTES['parentTo']
         constrain_to = self.PUBLISH_ATTRIBUTES['constrainTo']
@@ -125,4 +142,6 @@ class Singleton(template.TemplateModule):
 
         # store this
         self.built_controllers.append(self.controller_data['group_names'])
+        print("[{}] :: finished.".format(self.name))
+        self.finished = True
         return True

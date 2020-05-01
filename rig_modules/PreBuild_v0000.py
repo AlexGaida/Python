@@ -19,8 +19,8 @@ class PreBuild(template.TemplateModule):
         'label': ["moduleType"]
     }
 
-    def __init__(self, name=""):
-        super(PreBuild, self).__init__(name=name)
+    def __init__(self, name="", information={}):
+        super(PreBuild, self).__init__(name=name, information=information)
         self.name = name
 
     def create(self):
@@ -28,11 +28,16 @@ class PreBuild(template.TemplateModule):
         do nothing
         :return:
         """
-        return True
+        cmds.file(new=True, f=1)
+        self.created = True
 
     def finish(self):
         """
         perform an action of creating a new file.
         :return:
         """
-        cmds.file(new=True, f=1)
+        if self.finished:
+            return False
+        print("[{}] :: finished.".format(class_name))
+        self.finished = True
+

@@ -47,8 +47,8 @@ def get_module_class_name(module_name):
 def get_rig_module(module_name, module_version):
     """
     find and return the rig module file.
-    :param module_name:
-    :param module_version:
+    :param module_name: <str> name.
+    :param module_version: <str> version.
     :return:
     """
     module_file = module_file_name(module_name, module_version)
@@ -195,9 +195,7 @@ def get_file_creature_data():
     gets the blueprint saves into this Maya File.
     :return:
     """
-    file_data = file_utils.get_internal_var_file_variable("creatureData")
-    if file_data:
-        return file_data[0]
+    return file_utils.get_internal_var_file_variable("creatureData")
 
 
 def save_blueprint(creature_name, data):

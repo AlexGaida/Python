@@ -175,7 +175,7 @@ def get_m_selection(objects_array=(), as_strings=False):
         OpenMaya.MGlobal.getActiveSelectionList(m_list)
     elif objects_array:
         map(m_list.add, objects_array)
-    OpenMaya.MItSelectionList(m_list, OpenMaya.MFn.kInvalid)
+    OpenMaya.MItSelectionList(m_list)
     if as_strings:
         m_string_array = list()
         m_list.getSelectionStrings(m_string_array)

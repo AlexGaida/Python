@@ -40,7 +40,7 @@ class LineEdit(QtWidgets.QWidget):
         self.setLayout(main_layout)
         return self.widgets
 
-    def get_info(self):
+    def get_text(self):
         """
         return information from the line edit.
         :return: <str> gets the information from the line edit widget
@@ -48,6 +48,13 @@ class LineEdit(QtWidgets.QWidget):
         return str(self.widgets["lineEdit"].text())
 
     def set_text(self, value):
+        """
+        populates the lineEdit with information.
+        :param value:
+        :return:
+        """
+        if not isinstance(value, str):
+            value = "{}".format(value)
         return str(self.widgets["lineEdit"].setText(value))
 
 

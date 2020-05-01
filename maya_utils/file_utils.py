@@ -9,6 +9,7 @@ import xml.etree.cElementTree as ET
 import json
 import glob
 import ast
+import shutil
 
 # import maya modules
 from maya import cmds
@@ -18,12 +19,34 @@ from maya import cmds
 re_slash = re.compile('(\\\\|/)')
 
 
+def remove_file(file_name):
+    """
+    removes this file from disk.
+    :param file_name: <str> file path name.
+    :return: <bool> True for success.
+    :raises: <OSError> invalid file path.
+    """
+    os.unlink(file_name)
+    return True
+
+
+def remove_directory(dir_name):
+    """
+    removes directory from path.
+    :param dir_name: <str> directory name.
+    :return: <bool> True for success.
+    :raises: <OSError> invalid directory path.
+    """
+    os.rmdir(dir_name)
+    return True
+
+
 def get_files(path_name, file_ext='json'):
     """
     get the list of files in the path name
-    :param path_name:
-    :param file_ext:
-    :return:
+    :param path_name: <str> file path name to search.
+    :param file_ext: <str> file extension to save.
+    :return: <list> array of files found.
     """
     return glob.glob(path_name + '/*{}'.format(file_ext))
 
@@ -46,8 +69,10 @@ def build_dir(dir_name):
     """
     creates the directory path.
     :param dir_name: <str> directory name to create.
-    :return:
+    :return: <str> directory name is successful. <bool> False if invalid directory path is given.
     """
+    if is_file(dir_name):
+        return False
     if not is_dir(dir_name):
         os.mkdir(dir_name)
     return dir_name
@@ -288,6 +313,9 @@ class JSONSerializer:
         :return: <bool> True for success. <bool> False for failure.
         """
         with open(self._get_file_name(file_name), "w") as write_file:
+            # now write the file from the start
+            write_file.seek(0)
+            # then write the file
             json.dump(self._get_data(data), write_file, indent=4, sort_keys=True)
 
     def read(self, file_name=""):
@@ -324,6 +352,13 @@ class JSONSerializer:
     @property
     def has_data(self):
         return bool(self.READ_DATA)
+
+    def delete(self):
+        if self.is_file_valid:
+            remove_file(self.FILE_NAME)
+
+    def __repr__(self):
+        return self.FILE_NAME
 
 
 class XMLSerializer:
@@ -454,7 +489,7 @@ def get_internal_var_file_variable(variable_name):
     :return:
     """
     file_data = get_file_variables()
-    if not variable_name in file_data:
+    if variable_name not in file_data:
         return False
     var_value = file_data[variable_name]
     # if the variable is a dictionary
