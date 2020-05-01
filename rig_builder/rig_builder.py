@@ -498,6 +498,8 @@ class ModuleForm(QtWidgets.QFrame):
         self.vertical_layout.addWidget(self.list)
         self.setLayout(self.vertical_layout)
 
+        self.setMinimumWidth(self.parent.WIDTH / 2)
+
         # connect the widget
         self.list.itemClicked.connect(parent.select_item)
 
@@ -729,6 +731,8 @@ class InformationForm(QtWidgets.QFrame):
                 widget_item = item.widget()
                 if widget_item:
                     item.widget().deleteLater()
+        # revert the widgets back to default
+        self.info_widgets = {}
         return True
 
     # -----------------------------------------------

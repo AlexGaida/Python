@@ -106,7 +106,7 @@ def find_files(module_name, by_name=True):
     modules = os.listdir(rig_modules_dir)
     found = ()
     for mod in modules:
-        if not mod.endswith('.pyc'):
+        if not mod.endswith('.py'):
             continue
         if by_name:
             if mod.startswith(module_name):
