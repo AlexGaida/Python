@@ -12,6 +12,12 @@ I have encapsulated the OpenMaya.MScriptUtil module in a class object so that I 
 
 Lots of _rigging_ utility modules to help me solve problems relating to the projects I work on better.
 
+### General Function Return:
+
+  Unlike the standard C++ of return 0 which denotes as return of no problems.
+
+  In here, each function returns _bool_ True for success. and _bool_ False for failure. This is to signify that the function has been called and run successfully. This is useful for unit test purposes.
+
 ### The maya_utils:
 
 In this directory I store anything relating to manipulation of Maya objects inside the scenes.
@@ -35,9 +41,15 @@ In this directory I store anything relating to the utility of rigging.
 * joint_utils -- Creation of kJoint objects.
 * name_utils -- Getting and retrieving nomenclature data.
 
-
 ### The deformers
 
 In this directory I manipulate the deformers within maya
 
 * skincluster_utils -- Querying, getting and setting skincluster information.
+
+### The tools
+
+All of the utilities I wrote are to support a variety of available tools:
+
+* rig_builder -- Creation of rig modules.
+* rig_builder -- Creation of rig modules.

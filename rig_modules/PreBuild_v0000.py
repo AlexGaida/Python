@@ -13,15 +13,17 @@ class PreBuild(template.TemplateModule):
     PUBLISH_ATTRIBUTES = {
         "name": "",
         "moduleType": ""
+        "geoFile"
     }
     ATTRIBUTE_EDIT_TYPES = {
-        'line-edit': ["name"],
-        'label': ["moduleType"]
+        'line-edit': ["name", "geoFile"],
+        'label': ["moduleType"],
     }
 
     def __init__(self, name="", information={}):
         super(PreBuild, self).__init__(name=name, information=information)
         self.name = name
+        self.information = information
 
     def create(self):
         """
@@ -38,6 +40,11 @@ class PreBuild(template.TemplateModule):
         """
         if self.finished:
             return False
+
+        # imports the geo file
+        if 'geoFile' in self.information:
+            cmds.file(self.information['geoFile'], i=1, f=1)
+
         print("[{}] :: finished.".format(class_name))
         self.finished = True
 

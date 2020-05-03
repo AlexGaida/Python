@@ -20,25 +20,31 @@ import blueprint_utils
 import ui_tools
 import ui_stylesheets
 from rig_utils import name_utils
+from rig_utils import joint_utils
 from maya_utils import ui_utils
 from maya_utils import file_utils
 
-
 # import qt modules
-from PySide2 import QtWidgets, QtGui, QtCore
+from maya_utils.ui_utils import QtWidgets
+from maya_utils.ui_utils import Qt
+from maya_utils.ui_utils import QtCore
+from maya_utils.ui_utils import QPixmap
+from maya_utils.ui_utils import MayaQWidgetBaseMixin
 
-# reloads
+# module reloads
 reload(ui_stylesheets)
 reload(build_utils)
+reload(joint_utils)
 reload(ui_tools)
+reload(ui_utils)
 reload(file_utils)
 reload(name_utils)
 reload(blueprint_utils)
 
 # define local variables
 parent_win = ui_utils.get_maya_parent_window()
-builder_win = None
 title = "Rig Builder"
+object_name = title.replace(" ", "")
 modules = build_utils.get_available_modules()
 proper_modules = build_utils.get_proper_modules()
 
@@ -81,7 +87,7 @@ def remove_module_decorator(func):
     return wrapper
 
 
-class MainWindow(QtWidgets.QMainWindow):
+class MainWindow(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
     HEIGHT = 400
     WIDTH = 400
     INFORMATION = {}
@@ -96,6 +102,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.main_widget = QtWidgets.QWidget(self)
         self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         self.main_layout = QtWidgets.QHBoxLayout(self)
+
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose, True)
 
         # add the two widgets to the main layout
         horizontal_split = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
@@ -127,7 +135,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setWindowTitle(title)
 
         self.setStyleSheet(ui_stylesheets.dark_orange_stylesheet)
-
+        self.setObjectName(object_name)
         # initialize the builder with options
         # initialized = self.initializer(this_file=True)
         # print("[Builder] :: Modules intitialized {}.".format(initialized))
@@ -472,6 +480,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
 
 class ModuleForm(QtWidgets.QFrame):
+    build_slider = None
+
     def __init__(self, parent=None):
         super(ModuleForm, self).__init__(parent)
         self.resize(200, 400)
@@ -553,17 +563,38 @@ class ModuleForm(QtWidgets.QFrame):
         return True
 
     def toggle_build_call(self, args):
-        if args == 1:
-            self.finish_all_call()
-        elif args == 0:
-            self.create_all_call()
+        """
+        toggles the build call.
+        :param args: <int> incoming set integer.
+        :return:
+        """
+        if self.get_selected_blueprint():
+            if args == 1:
+                self.finish_all_call()
+            elif args == 0:
+                self.create_all_call()
+        else:
+            QtWidgets.QMessageBox().warning(self, "Creature Blueprint Not Saved.", "Please save creature blueprint.")
+            self.reset_slider(args)
+
+    def reset_slider(self, index):
+        """
+        sets the slider position at the opposite to that of the given index.
+        :param index: <int> index position of the build slider.
+        :return: <bool> True for success.
+        """
+        self.build_slider.blockSignals(True)
+        self.build_slider.setValue(int(not index))
+        self.build_slider.blockSignals(False)
+        return True
 
     def connect_slider(self, slider):
         """
         connects the slider.
-        :return:
+        :return: <bool> True for success.
         """
         slider.valueChanged.connect(self.toggle_build_call)
+        return True
 
     def add_module_list(self):
         """
@@ -587,19 +618,19 @@ class ModuleForm(QtWidgets.QFrame):
         label.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
 
         # set slider options
-        slider = QtWidgets.QSlider()
-        slider.setTickInterval(1)
-        slider.setMinimum(0)
-        slider.setMaximum(1)
-        slider.setSliderPosition(0)
-        slider.setOrientation(QtCore.Qt.Horizontal)
-        slider.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
+        self.build_slider = QtWidgets.QSlider()
+        self.build_slider.setTickInterval(1)
+        self.build_slider.setMinimum(0)
+        self.build_slider.setMaximum(1)
+        self.build_slider.setSliderPosition(0)
+        self.build_slider.setOrientation(QtCore.Qt.Horizontal)
+        self.build_slider.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
         # slider.setStyleSheet(ui_stylesheets.slider_stylesheet)
 
         h_layout.addWidget(label)
-        h_layout.addWidget(slider)
+        h_layout.addWidget(self.build_slider)
 
-        self.connect_slider(slider)
+        self.connect_slider(self.build_slider)
         return h_layout
         # return QtWidgets.QPushButton("Build All")
 
@@ -977,7 +1008,7 @@ class ModuleWidget(QtWidgets.QWidget):
         """
         Change the status of the widget to "built"
         """
-        self.q_pix = QtGui.QPixmap(buttons[color])
+        self.q_pix = QPixmap(buttons[color])
         self.icon.setPixmap(self.q_pix)
 
     def get_module_name(self):
@@ -1127,31 +1158,31 @@ class ModuleWidget(QtWidgets.QWidget):
     def add_text(self, name):
         """
         adds a QLabel text widget.
-        :return: <QtGui.QPushButton>
+        :return: <QtWidgets.QLabel>
         """
         return QtWidgets.QLabel(name)
 
     def add_build_button(self):
         """
         adds a push button.
-        :return: <QtGui.QPushButton>
+        :return: <QtWidgets.QPushButton>
         """
         return QtWidgets.QPushButton("Build")
 
     def add_delete_button(self):
         """
         adds a push button.
-        :return: <QtGui.QPushButton>
+        :return: <QtWidgets.QPushButton>
         """
         return QtWidgets.QPushButton("Remove")
 
     def add_icon(self):
         """
         adds an empty 6`x6x icon.
-        :return: <QtGui.QIcon>
+        :return: <QtGui.QPixmap>
         """
         label = QtWidgets.QLabel()
-        pix = QtGui.QPixmap(buttons["empty"])
+        pix = QPixmap(buttons["empty"])
         label.setPixmap(pix)
         return label, pix
 
@@ -1193,7 +1224,7 @@ class ModuleWidget(QtWidgets.QWidget):
         remove = QtWidgets.QAction(label)
         remove.setText("Remove")
 
-        label.setContextMenuPolicy(QtGui.Qt.ActionsContextMenu)
+        label.setContextMenuPolicy(Qt.ActionsContextMenu)
         rename.triggered.connect(self.rename_call)
         remove.triggered.connect(self.remove_item_call)
         label.addAction(rename)
@@ -1332,19 +1363,24 @@ def remove_item(index):
     return True
 
 
+def close_ui():
+    """
+    closes the builder User Interface.
+    :return: <bool> True for success.
+    """
+    ui_utils.close_window(object_name)
+
+    # clear history cache
+    clear_module_list_data()
+    return True
+
+
 def open_ui():
     """
     Opens the builder User Interface.
     :return: <PySide.QtMainWindow>
     """
-    global builder_win
-
-    if builder_win:
-        builder_win.close()
-        builder_win.deleteLater()
-        builder_win = None
-        # clear history cache
-        clear_module_list_data()
+    close_ui()
 
     builder_win = MainWindow(parent=parent_win)
     builder_win.show()

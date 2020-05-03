@@ -1,10 +1,9 @@
 """
 ui_tools module for adding ui elements to a widget.
 """
-
 # import qt module
-from PySide2 import QtWidgets
-from PySide2 import QtCore
+from maya_utils.ui_utils import QtWidgets
+from maya_utils.ui_utils import QtCore
 
 
 class ModuleDialog(QtWidgets.QDialog):

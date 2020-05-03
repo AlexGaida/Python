@@ -627,12 +627,11 @@ def get_m_obj_array(objects=()):
     """
     returns the objects as MObjectArray
     :param objects:
-    :return:
+    :return: <OpenMaya.MObjectArray>
     """
     m_array = OpenMaya.MObjectArray()
-    for obj in objects:
-        m_obj = get_m_obj(obj)
-        m_array.append(m_obj)
+    for idx, obj in enumerate(objects):
+        m_array.insert(get_m_obj(obj), idx)
     return m_array
 
 
@@ -644,8 +643,7 @@ def get_m_shape_obj_array(objects=()):
     """
     m_array = OpenMaya.MObjectArray()
     for obj in objects:
-        m_obj = get_shape_obj(obj)[0]
-        m_array.append(m_obj)
+        m_array.append(get_shape_obj(obj)[0])
     return m_array
 
 
@@ -675,6 +673,24 @@ def rename_node(object_name, this_name):
     m_dag_mod.renameNode(get_m_obj(object_name), this_name)
     m_dag_mod.doIt()
     return this_name
+
+
+def remove_node(object_name):
+    """
+    removes the node(s) form the Maya scene.
+    :param object_name: <str> object node to remove.
+    :return: <bool> True for success.
+    """
+    m_dag_mod = OpenMaya.MDagModifier()
+    if isinstance(object_name, (list, tuple)):
+        array = get_m_obj_array(object_name)
+        for i in xrange(array.length()):
+            m_dag_mod.deleteNode(array[i])
+            m_dag_mod.doIt()
+    elif isinstance(object_name, (str, unicode)):
+        m_dag_mod.deleteNode(get_m_obj(object_name))
+        m_dag_mod.doIt()
+    return True
 
 
 def get_m_object_name(m_object=OpenMaya.MObject):
@@ -902,6 +918,8 @@ def get_fn(m_object):
         return OpenMaya.MFnNurbsSurface(m_object)
     elif type_str(m_object) == 'camera':
         return OpenMaya.MFnCamera(m_object)
+    elif type_str(m_object) == 'joint':
+        return OpenMayaAnim.MFnIkJoint(m_object)
     else:
         return OpenMaya.MFnDependencyNode(m_object)
 
@@ -1481,6 +1499,30 @@ def create_container(name="", nodes=()):
     return True
 
 
+def set_object_transform(object_name, m=(), t=(), ws=True):
+    """
+    sets the object transformation values.
+    :param object_name: <str> object name to use.
+    :param m: <list> matrix list.
+    :param t: <list> translation list.
+    :param ws: <bool> worldSpace boolean.
+    :return: <None>
+    """
+    return cmds.xform(object_name, m=m, t=t, ws=ws)
+
+
+def get_object_transform(object_name, m=False, t=False, ws=True):
+    """
+    sets the object transformation values.
+    :param object_name: <str> object name to use.
+    :param m: <list> matrix list.
+    :param t: <list> translation list.
+    :param ws: <bool> worldSpace boolean.
+    :return: <None>
+    """
+    return cmds.xform(object_name, m=m, t=t, ws=ws, q=1)
+
+
 def snap_to_transform(source="", target="", matrix=False, translate=False, rotation=False):
     """
     grabs matrix information from target and applies to source transform.
@@ -1871,3 +1913,23 @@ def create_node(node_type, node_name=""):
     if not cmds.objExists(node_name):
         return cmds.createNode(node_type, name=node_name)
     return node_name
+
+
+def do_parent_constraint(master_obj, slave_obj, maintain_offset=True):
+    """
+    perform parent constraint
+    :param master_obj: <str>
+    :param slave_obj: <str>
+    :return: <str> parent constraint node.
+    """
+    return cmds.parentConstraint(master_obj, slave_obj, mo=maintain_offset)[0]
+
+
+def do_parent(child_obj, parent_obj):
+    """
+    perform parenting.
+    :param child_obj:
+    :param parent_obj:
+    :return:
+    """
+    return cmds.parent(child_obj, parent_obj)

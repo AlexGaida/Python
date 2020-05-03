@@ -1,21 +1,18 @@
 """
 Singleton method to creating a single joint in the scene.
 """
-# import maya modules
-from maya import cmds
-
 # import local modules
 from rig_utils import control_utils
 from rig_utils import name_utils
 from rig_utils import joint_utils
 from rig_modules import template
+from maya_utils import object_utils
 
 # define module variables
 class_name = "Singleton"
 
 
 class Singleton(template.TemplateModule):
-    suffix_name = 'guide_jnt'
     class_name = class_name
 
     def __init__(self, name="", control_shape="cube", prefix_name="", information=""):
@@ -53,7 +50,7 @@ class Singleton(template.TemplateModule):
         """
         guide_positions = ()
         for jnt in self.guide_joints:
-            guide_positions += cmds.xform(jnt, ws=1, m=1, q=1),
+            guide_positions += object_utils.get_object_transform(jnt, ws=1, m=1)
         return guide_positions
 
     def rename(self, name):
@@ -64,7 +61,7 @@ class Singleton(template.TemplateModule):
         self.name = name
         for idx, guide_jnt in enumerate(self.guide_joints):
             new_name = name_utils.get_guide_name("", name, self.suffix_name)
-            cmds.rename(guide_jnt, new_name)
+            object_utils.rename_node(guide_jnt, new_name)
             self.guide_joints[idx] = new_name
 
         if self.built_controllers:
@@ -88,9 +85,10 @@ class Singleton(template.TemplateModule):
         removes the guide joints from the scene.
         :return: <bool> True for success.
         """
-        cmds.delete(self.guide_joints)
+        if self.guide_joints:
+            object_utils.remove_node(self.guide_joints)
         if self.built_controllers:
-            cmds.delete(self.built_controllers[0])
+            object_utils.remove_node(self.built_controllers[0])
         self.finished = False
         self.created = False
 
@@ -135,10 +133,10 @@ class Singleton(template.TemplateModule):
         self.controller_data = self.create_controller(self.guide_joints)[0]
         parent_to = self.PUBLISH_ATTRIBUTES['parentTo']
         constrain_to = self.PUBLISH_ATTRIBUTES['constrainTo']
-        if constrain_to and cmds.objExists(constrain_to):
-            cmds.parentConstraint(self.controller_data['controller'], constrain_to, mo=True)
-        if parent_to and cmds.objExists(parent_to):
-            cmds.parent(self.controller_data['group_names'][-1], parent_to)
+        if constrain_to and object_utils.is_exists(constrain_to):
+            object_utils.do_parent_constraint(self.controller_data['controller'], constrain_to)
+        if parent_to and object_utils.is_exists(parent_to):
+            object_utils.do_parent(self.controller_data['group_names'][-1], parent_to)
 
         # store this
         self.built_controllers.append(self.controller_data['group_names'])

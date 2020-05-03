@@ -14,6 +14,10 @@ from maya_utils import object_utils
 re_brackets = re.compile(r"\[?\]?")
 re_numbers = re.compile("\d+")
 
+JNT_SUFFIX_NAME = 'jnt'
+GUIDE_JNT_SUFFIX_NAME = '__guide_jnt'
+BND_JNT_SUFFIX_NAME = 'bnd_{}'.format(JNT_SUFFIX_NAME)
+
 
 def get_name_count(name, suffix_name=""):
     """
@@ -69,6 +73,68 @@ def get_guide_name(prefix_name="", name="", suffix_name=""):
         return '{start_name}_{idx}__{suffix}'.format(start_name=start_name, idx=i, suffix=suffix_name)
     else:
         return '{start_name}__{suffix}'.format(start_name=start_name, suffix=suffix_name)
+
+
+def get_bound_name_array(prefix_name="", name="", length=1):
+    """
+    return an array of bound joint names.
+    :param prefix_name: <str> prefix name.
+    :param name: <str> the base name.
+    :param length: <int> length of created names.
+    :return: <tuple> joint names array.
+    """
+    bound_names = ()
+    start_name = get_start_name(name, prefix_name=prefix_name)
+    for index in xrange(length):
+        bound_names += '{name}_{idx}_{suffix}'.format(name=start_name, idx=index, suffix=BND_JNT_SUFFIX_NAME),
+    return bound_names
+
+
+def get_name_array(prefix_name="", name="", length=1):
+    """
+    gets the names array.
+    :param prefix_name:
+    :param name:
+    :param length:
+    :return:
+    """
+    names = ()
+    start_name = get_start_name(name, prefix_name=prefix_name)
+    for index in xrange(length):
+        names += '{name}_{idx}'.format(name=start_name, idx=index),
+    return names
+
+
+def get_guide_name_array(prefix_name="", name="", length=1):
+    """
+    gets the guide name array.
+    :param prefix_name: <str> prefix name.
+    :param name: <str> the main name to use.
+    :param length: <int> use this length to get the counting names.
+    :return: <tuple> guide joint names.
+    """
+    guide_names = ()
+    start_name = get_start_name(name, prefix_name=prefix_name)
+    for index in xrange(length):
+        guide_names += '{name}_{idx}__{suffix}'.format(name=start_name, idx=index, suffix=GUIDE_JNT_SUFFIX_NAME),
+    return guide_names
+
+
+def get_joint_name_array(name, length=1, bind_name=False):
+    """
+    return an array of joint array names.
+    :param name: <str> the name to use when creating the array of names.
+    :param length: <int> the length to go for.
+    :param bind_name: <bool> if set True, creates joints with bind joint name.
+    :return: <tuple> array of names.
+    """
+    names = ()
+    for idx in xrange(length):
+        if bind_name:
+            names += '{}_{}_{}'.format(name, idx, BND_JNT_SUFFIX_NAME),
+        else:
+            names += '{}_{}_{}'.format(name, idx, JNT_SUFFIX_NAME),
+    return names
 
 
 def replace_guide_name_with_bnd_name(guide_jnt_name):

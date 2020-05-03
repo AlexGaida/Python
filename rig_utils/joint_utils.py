@@ -9,10 +9,10 @@ from maya import cmds
 from maya import OpenMaya
 
 # import local modules
+import name_utils
 from maya_utils import object_utils
 from maya_utils import transform_utils
 from maya_utils import curve_utils
-from rig_utils import name_utils
 
 # define local variables
 JNT_SUFFIX = 'jnt'
@@ -138,25 +138,60 @@ def create_joint_at_transform(transform_name="", name=""):
     return jnt_name
 
 
+def create_joint_at_transforms(transform_objects=(), name=""):
+    """
+    creates joint at transforms.
+    :return:
+    """
+    joints = ()
+    for t_obj in transform_objects:
+        joints += create_joint_at_transform(t_obj, name),
+    return joints
+
+
 @reload_selection
-def create_joints(objects_array, name, bind=False):
+def create_joints(objects_array, name, bind_name=False):
     """
     create joints at transform objects.
     :param objects_array: <tuple> array of transform objects.
     :param name: <str> the name to use when creating the joints.
-    :param bind: <bool> create bind joint name.
+    :param bind_name: <bool> create bind joint name.
     :return: <tuple> array of joints.
     """
-    names = ()
-    for idx in xrange(len(objects_array)):
-        if bind:
-            names += '{}_{}_{}'.format(name, idx, BND_JNT_SUFFIX),
-        else:
-            names += '{}_{}_{}'.format(name, idx, JNT_SUFFIX),
+    names = name_utils.get_joint_name_array(name, length=len(objects_array), bind_name=bind_name)
     joints = ()
     for trfm_name, obj_name in zip(objects_array, names):
         joints += create_joint_at_transform(trfm_name, obj_name),
     return joints
+
+
+def create_joints_at_positions(position_array, name, prefix_name="", suffix_name="", bind_name=False):
+    """
+    create joints at transform objects.
+    :param position_array: <tuple> array of transform objects.
+    :param name: <str> the name to use when creating the joints.
+    :param bind_name: <bool> create bind joint name.
+    :return: <tuple> array of joints.
+    """
+    joint_names = create_joint(name=name, num_joints=len(position_array),
+                               prefix_name=prefix_name,
+                               suffix_name=suffix_name,
+                               as_strings=True)
+    for joint_name, position in zip(joint_names, position_array):
+        cmds.xform(joint_name, t=position, ws=1)
+    return joint_names
+
+
+def create_joint_at_position(position, name):
+    """
+    creates joint at position.
+    :param position: <tuple> array of transform position.
+    :param name: <str> joint name to use.
+    :return: <str> joint name.
+    """
+    joint = cmds.joint(name=name)
+    cmds.xform(joint, t=position, ws=1)
+    return joint
 
 
 def create_joints_at_selection(name):
@@ -230,15 +265,14 @@ def get_joint_name(prefix_name, name, i, suffix_name):
     return '{prefix}{name}_{idx}{suffix}'.format(prefix=prefix_name, name=name, idx=i, suffix=suffix_name)
 
 
-def create_joint(name, num_joints=1, prefix_name="", suffix_name="", as_strings=False):
+def create_joint(name, num_joints=1, prefix_name="", suffix_name="", as_strings=False, guide_joint=False, bound_joint=False):
     """
-    creates a joint and names it.
+    creates a joint and names it using OpenMaya.
     :param name: <str> the name of the joint to create !important.
     :param num_joints: the number of joints created.
     :param prefix_name: <str> the prefix name to use.
     :param suffix_name: <str> the suffix name to use.
     :param as_strings: <bool> returns <str> objects instead of <OpenMaya.MObject> objects.
-    :param add_index: <bool> adds an index number to the name.
     :return: <tuple> array of created joint objects.
     """
     if not name:
@@ -247,23 +281,62 @@ def create_joint(name, num_joints=1, prefix_name="", suffix_name="", as_strings=
 
     # Create the joint MObjects we will be manipulating.
     jnt_objects = ()
+    jnt_names = ()
+
+    if guide_joint:
+        joint_names = name_utils.get_guide_name_array(prefix_name=prefix_name,
+                                                      name=name,
+                                                      length=num_joints)
+    elif bound_joint:
+        joint_names = name_utils.get_bound_name_array(prefix_name=prefix_name,
+                                                      name=name,
+                                                      length=num_joints)
+    else:
+        joint_names = name_utils.get_name_array(prefix_name=prefix_name,
+                                                name=name,
+                                                length=num_joints)
+
     for i in xrange(0, num_joints):
         # only create new if the objects's names do not exist
-        new_name = name_utils.get_guide_name(prefix_name, name, suffix_name)
-
+        new_name = joint_names[i]
+        # create only when the name does not exist
         if name and not cmds.objExists(new_name):
+            jnt_names += new_name,
             if i == 0:
                 # The first joint has no parent.
                 jnt_obj = dag_mod.createNode('joint')
             else:
                 # Assign the new joint as a child to the previous joint.
                 jnt_obj = dag_mod.createNode('joint', jnt_objects[i - 1])
+
             # rename the joint using OpenMaya
             dag_mod.renameNode(jnt_obj, new_name)
             dag_mod.doIt()
-        # Keep track of all the joints created.
-        if not as_strings:
+            # Keep track of all the joints created.
             jnt_objects += jnt_obj,
-        else:
-            jnt_objects += new_name,
-    return jnt_objects
+
+    if not as_strings:
+        return jnt_objects
+    elif as_strings:
+        return jnt_names
+
+
+def get_joint_orientation(joint_name):
+    """
+    joint orientation
+    :param joint_name: <str> joint name to get orientation from.
+    :return: <OpenMaya.MMatrix> orientation matrix.
+    """
+    # Factor in Joint Orientation
+    j_obj = object_utils.get_m_obj(joint_name)
+    j_fn = object_utils.get_fn(j_obj)
+    j_quat = OpenMaya.MQuaternion()
+    j_fn.getOrientation(j_quat)
+    return j_quat.asMatrix()
+
+
+def create_joint_from_array(joints, names):
+    """
+    creates the joints from array of names and joints given.
+    :return:
+    """

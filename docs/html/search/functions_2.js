@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['remove_5fitem_5fcall_23',['remove_item_call',['../class_maya_1_1_python_1_1rig__builder_1_1rig__builder_1_1_module_widget.html#a5756974480ec111e0146c8702b690410',1,'Maya::Python::rig_builder::rig_builder::ModuleWidget']]]
+  ['ok_5fui_26',['ok_ui',['../class_maya_1_1_python_1_1rig__builder_1_1ui__tools_1_1_modules_list.html#a9cb44db048d3d43634238f0b6eeda825',1,'Maya::Python::rig_builder::ui_tools::ModulesList']]]
 ];

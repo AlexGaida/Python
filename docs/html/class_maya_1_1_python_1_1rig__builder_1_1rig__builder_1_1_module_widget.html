@@ -84,9 +84,9 @@ Inheritance diagram for Maya.Python.rig_builder.rig_builder.ModuleWidget:</div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:adb26775ebe2b509765ef177abae1181b"><td class="memItemLeft" align="right" valign="top"><a id="adb26775ebe2b509765ef177abae1181b"></a>
-def&#160;</td><td class="memItemRight" valign="bottom"><b>__init__</b> (self, parent=None, module_name=&quot;&quot;, list_widget=None, item=None)</td></tr>
-<tr class="separator:adb26775ebe2b509765ef177abae1181b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:abb5b47da47ba07c9ffcf70911b722ff0"><td class="memItemLeft" align="right" valign="top"><a id="abb5b47da47ba07c9ffcf70911b722ff0"></a>
+def&#160;</td><td class="memItemRight" valign="bottom"><b>__init__</b> (self, parent=None, module_name=str, list_widget=None, item=None, information=dict)</td></tr>
+<tr class="separator:abb5b47da47ba07c9ffcf70911b722ff0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3017ef5076ade4db85394304e7ddd91d"><td class="memItemLeft" align="right" valign="top"><a id="a3017ef5076ade4db85394304e7ddd91d"></a>
 def&#160;</td><td class="memItemRight" valign="bottom"><b>update_information</b> (self, key_name, value)</td></tr>
 <tr class="separator:a3017ef5076ade4db85394304e7ddd91d"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -134,12 +134,12 @@ def&#160;</td><td class="memItemRight" valign="bottom"><b>get_name</b> (self)</t
 <tr class="memitem:ad66f609f0714bcadd44839729e761159"><td class="memItemLeft" align="right" valign="top"><a id="ad66f609f0714bcadd44839729e761159"></a>
 def&#160;</td><td class="memItemRight" valign="bottom"><b>get_module_version</b> (self)</td></tr>
 <tr class="separator:ad66f609f0714bcadd44839729e761159"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a965fac85cfcb14c0768bfe32bbbf7937"><td class="memItemLeft" align="right" valign="top"><a id="a965fac85cfcb14c0768bfe32bbbf7937"></a>
-def&#160;</td><td class="memItemRight" valign="bottom"><b>get_module</b> (self, activate=False)</td></tr>
-<tr class="separator:a965fac85cfcb14c0768bfe32bbbf7937"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a974af54dcbb27dcedad61569516e2239"><td class="memItemLeft" align="right" valign="top"><a id="a974af54dcbb27dcedad61569516e2239"></a>
-def&#160;</td><td class="memItemRight" valign="bottom"><b>create_module</b> (self)</td></tr>
-<tr class="separator:a974af54dcbb27dcedad61569516e2239"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa452d3af50d587db17410aede71904e7"><td class="memItemLeft" align="right" valign="top"><a id="aa452d3af50d587db17410aede71904e7"></a>
+def&#160;</td><td class="memItemRight" valign="bottom"><b>get_module</b> (self, activate=False, information={})</td></tr>
+<tr class="separator:aa452d3af50d587db17410aede71904e7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad514d20a2d0fa575a861d8661db51637"><td class="memItemLeft" align="right" valign="top"><a id="ad514d20a2d0fa575a861d8661db51637"></a>
+def&#160;</td><td class="memItemRight" valign="bottom"><b>create_module</b> (self, information)</td></tr>
+<tr class="separator:ad514d20a2d0fa575a861d8661db51637"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9790e5f28dbe5d11a4872c834157b44f"><td class="memItemLeft" align="right" valign="top"><a id="a9790e5f28dbe5d11a4872c834157b44f"></a>
 def&#160;</td><td class="memItemRight" valign="bottom"><b>finish_module</b> (self)</td></tr>
 <tr class="separator:a9790e5f28dbe5d11a4872c834157b44f"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -161,6 +161,9 @@ def&#160;</td><td class="memItemRight" valign="bottom"><b>perform_module_create_
 <tr class="memitem:a85a42eae7e6911b6bfcd4a0497894b26"><td class="memItemLeft" align="right" valign="top"><a id="a85a42eae7e6911b6bfcd4a0497894b26"></a>
 def&#160;</td><td class="memItemRight" valign="bottom"><b>perform_module_finish_call</b> (self)</td></tr>
 <tr class="separator:a85a42eae7e6911b6bfcd4a0497894b26"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa311ba4e928321b543dba4d0224c1c41"><td class="memItemLeft" align="right" valign="top"><a id="aa311ba4e928321b543dba4d0224c1c41"></a>
+def&#160;</td><td class="memItemRight" valign="bottom"><b>update_module</b> (self)</td></tr>
+<tr class="separator:aa311ba4e928321b543dba4d0224c1c41"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aed1cdf4b16840c06825cec40df5db64f"><td class="memItemLeft" align="right" valign="top"><a id="aed1cdf4b16840c06825cec40df5db64f"></a>
 def&#160;</td><td class="memItemRight" valign="bottom"><b>get_module_positions</b> (self)</td></tr>
 <tr class="separator:aed1cdf4b16840c06825cec40df5db64f"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -271,7 +274,7 @@ dictionary&#160;</td><td class="memItemRight" valign="bottom"><b>module_attribut
 <tr class="separator:ae3cea3f1a68ac6c4150ef0b033262e14"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <hr/>The documentation for this class was generated from the following file:<ul>
-<li>rig_builder/rig_builder.py</li>
+<li>D:/Work/Pipeline/Maya/Python/rig_builder/rig_builder.py</li>
 </ul>
 </div><!-- contents -->
 <!-- start footer part -->

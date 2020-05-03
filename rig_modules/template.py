@@ -1,8 +1,8 @@
 """
 This is a sample module for adding a singleton joint.
 """
-# import maya modules
-from maya import cmds
+# import custom modules
+from maya_utils import object_utils
 
 # define module variables
 class_name = "Template"
@@ -37,6 +37,7 @@ class TemplateModule(object):
         self.name = name
         self.prefix_name = prefix_name
         self.information = information
+        self.suffix_name = 'guide_jnt'
 
         # publish attributes
         self.PUBLISH_ATTRIBUTES["moduleType"] = self.class_name
@@ -153,7 +154,7 @@ class TemplateModule(object):
         """
         if self.guide_joints and "positions" in self.information:
             for jnt, pos in zip(self.guide_joints, self.information["positions"]):
-                cmds.xform(jnt, m=pos, ws=True)
+                object_utils.set_object_transform(jnt, m=pos, ws=True)
             return True
         return False
 
@@ -163,3 +164,11 @@ class TemplateModule(object):
         :return: <tuple> bound joint array.
         """
         pass
+
+    def if_guides_exist(self):
+        """
+        checking function to search the validity of guides in the scene.
+        :return:
+        """
+        for guide_jnt in self.guide_joints:
+            object_utils.is_exists
