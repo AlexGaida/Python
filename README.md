@@ -43,13 +43,17 @@ In this directory I store anything relating to the utility of rigging.
 
 ### The deformers
 
-In this directory I manipulate the deformers within maya
+In this directory I manipulate the deformers within the Maya application.
 
-* skincluster_utils -- Querying, getting and setting skincluster information.
+* skincluster_utils -- Querying, getting and setting skin-cluster information.
 
 ### The tools
 
 All of the utilities I wrote are to support a variety of available tools:
 
-* rig_builder -- Creation of rig modules.
-* rig_builder -- Creation of rig modules.
+* agRigBuilder -- Creation of rig modules.
+
+![Rig Builder](agRigBuillder.PNG)
+* agBlendConnect -- Connection of available blendshapes using attributes.
+
+![Blend Shape Connector](agBlendConnect.PNG)
