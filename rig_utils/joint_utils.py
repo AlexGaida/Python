@@ -15,8 +15,8 @@ from maya_utils import transform_utils
 from maya_utils import curve_utils
 
 # define local variables
-JNT_SUFFIX = 'jnt'
-BND_JNT_SUFFIX = 'bnd_{}'.format(JNT_SUFFIX)
+BND_JNT_SUFFIX = name_utils.BND_JNT_SUFFIX_NAME
+JNT_SUFFIX = name_utils.JNT_SUFFIX_NAME
 
 
 def reload_selection(func):
@@ -265,14 +265,18 @@ def get_joint_name(prefix_name, name, i, suffix_name):
     return '{prefix}{name}_{idx}{suffix}'.format(prefix=prefix_name, name=name, idx=i, suffix=suffix_name)
 
 
-def create_joint(name, num_joints=1, prefix_name="", suffix_name="", as_strings=False, guide_joint=False, bound_joint=False):
+def create_joint(name, num_joints=1, prefix_name="", as_strings=False,
+                 guide_joint=False, bound_joint=False, use_transform="", use_position=()):
     """
     creates a joint and names it using OpenMaya.
     :param name: <str> the name of the joint to create !important.
     :param num_joints: the number of joints created.
     :param prefix_name: <str> the prefix name to use.
-    :param suffix_name: <str> the suffix name to use.
+    :param guide_joint: <str> create joint with '_bnd_jnt' name.
+    :param bound_joint: <str> create joint with '__guide_jnt' name.
     :param as_strings: <bool> returns <str> objects instead of <OpenMaya.MObject> objects.
+    :param use_transform: <str> use this object's transform co-ordinates.
+    :param use_position: <tuple, list> array of floats to use as transform or matrix.
     :return: <tuple> array of created joint objects.
     """
     if not name:
@@ -300,7 +304,7 @@ def create_joint(name, num_joints=1, prefix_name="", suffix_name="", as_strings=
         # only create new if the objects's names do not exist
         new_name = joint_names[i]
         # create only when the name does not exist
-        if name and not cmds.objExists(new_name):
+        if name and not object_utils.is_exists(new_name):
             jnt_names += new_name,
             if i == 0:
                 # The first joint has no parent.
@@ -312,7 +316,21 @@ def create_joint(name, num_joints=1, prefix_name="", suffix_name="", as_strings=
             # rename the joint using OpenMaya
             dag_mod.renameNode(jnt_obj, new_name)
             dag_mod.doIt()
-            # Keep track of all the joints created.
+
+            # snap the joint to the transform
+            if use_transform and object_utils.is_exists(new_name):
+                object_utils.snap_to_transform(new_name, use_transform, matrix=True)
+
+            # set the translation
+            if use_position and len(use_position) == 3:
+                print('position is called.')
+                object_utils.set_object_transform(new_name, t=use_position)
+
+            elif use_position and len(use_position) > 3:
+                print('matrix is called.')
+                object_utils.set_object_transform(new_name, m=use_position)
+
+            # keep track of all the joints created.
             jnt_objects += jnt_obj,
 
     if not as_strings:
@@ -335,8 +353,11 @@ def get_joint_orientation(joint_name):
     return j_quat.asMatrix()
 
 
-def create_joint_from_array(joints, names):
+def create_joints_from_transform_array(joints, names):
     """
     creates the joints from array of names and joints given.
     :return:
     """
+    for joint, name in zip(joints, names):
+        create_joint(name)
+    return True

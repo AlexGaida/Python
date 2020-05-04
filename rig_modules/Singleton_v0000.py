@@ -22,17 +22,16 @@ class Singleton(template.TemplateModule):
         self.control_shape = control_shape
         self.controller_data = {}
         self.guide_joints = []
-        self.built_controllers = []
+        self.built_groups = []
 
     def create_guides(self):
         """
         creates a guide joint object.
         :return: <str> joint object name.
         """
-        self.guide_joints.append(joint_utils.create_joint(name=self.name,
-                                 prefix_name=self.prefix_name,
-                                 suffix_name=self.suffix_name,
-                                 as_strings=True)[0])
+        jnt_name = joint_utils.create_joint(
+            name=self.name, guide_joint=True, prefix_name=self.prefix_name, as_strings=True)
+        self.guide_joints.append(jnt_name[0])
 
     def create_controller(self, constraint_object):
         """
@@ -42,16 +41,6 @@ class Singleton(template.TemplateModule):
         name = self.prefix_name + self.name
         return control_utils.create_controllers_with_standard_constraints(
             name, objects_array=constraint_object, shape_name=self.control_shape)
-
-    def get_positions(self):
-        """
-        returns the positions of each guide joint.
-        :return:
-        """
-        guide_positions = ()
-        for jnt in self.guide_joints:
-            guide_positions += object_utils.get_object_transform(jnt, ws=1, m=1)
-        return guide_positions
 
     def rename(self, name):
         """
@@ -78,7 +67,7 @@ class Singleton(template.TemplateModule):
         if args:
             name = args[0]
             self.rename(name)
-        self.information["positions"] = self.get_positions()
+        self.information["positions"] = self.get_guide_positions()
 
     def remove(self):
         """
@@ -87,21 +76,12 @@ class Singleton(template.TemplateModule):
         """
         if self.guide_joints:
             object_utils.remove_node(self.guide_joints)
-        if self.built_controllers:
-            object_utils.remove_node(self.built_controllers[0])
+        if self.built_groups:
+            object_utils.remove_node(self.built_groups[0])
+        if self.finished_joints:
+            object_utils.remove_node(self.finished_joints)
         self.finished = False
         self.created = False
-
-    def replace_guides(self):
-        """
-        replaces the guide joints with actual joints.
-        :return: <bool> True for success.
-        """
-        for jnt in self.guide_joints:
-            # get the correct name from guides.
-            bnd_jnt_name = name_utils.replace_guide_name_with_bnd_name(jnt)
-            joint_utils.create_joint_at_transform(jnt, bnd_jnt_name)
-        return True
 
     def create(self):
         """
@@ -128,9 +108,13 @@ class Singleton(template.TemplateModule):
         if self.finished:
             return False
 
-        print('finished ::', self.finished)
+        # populate the finished joints using the positions of the guide joints
+        self.replace_guides()
 
-        self.controller_data = self.create_controller(self.guide_joints)[0]
+        # creates the controller object on the bound joint.
+        self.controller_data = self.create_controller(self.finished_joints)[0]
+
+        # create connections to other nodes in the scene
         parent_to = self.PUBLISH_ATTRIBUTES['parentTo']
         constrain_to = self.PUBLISH_ATTRIBUTES['constrainTo']
         if constrain_to and object_utils.is_exists(constrain_to):
@@ -139,7 +123,7 @@ class Singleton(template.TemplateModule):
             object_utils.do_parent(self.controller_data['group_names'][-1], parent_to)
 
         # store this
-        self.built_controllers.append(self.controller_data['group_names'])
+        self.built_groups = self.controller_data['group_names']
         print("[{}] :: finished.".format(self.name))
         self.finished = True
         return True

@@ -23,6 +23,7 @@ from rig_utils import name_utils
 from rig_utils import joint_utils
 from maya_utils import ui_utils
 from maya_utils import file_utils
+from maya_utils import object_utils
 
 # import qt modules
 from maya_utils.ui_utils import QtWidgets
@@ -34,6 +35,7 @@ from maya_utils.ui_utils import MayaQWidgetBaseMixin
 # module reloads
 reload(ui_stylesheets)
 reload(build_utils)
+reload(object_utils)
 reload(joint_utils)
 reload(ui_tools)
 reload(ui_utils)
@@ -51,6 +53,7 @@ proper_modules = build_utils.get_proper_modules()
 MODULES_LIST = []
 MODULE_NAMES_LIST = []
 BUILD_BLUEPRINT = ()
+MODULE_DATA = {}
 
 # define private variables
 __version__ = "0.0.1"
@@ -278,6 +281,7 @@ class MainWindow(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         :return: <bool> True for success.
         """
         self.menu_bar_data["printData"].triggered.connect(self.print_module_data)
+        self.menu_bar_data["reloadModules"].triggered.connect(self.reload_module_data)
         return True
 
     def clear_information(self):
@@ -371,6 +375,7 @@ class MainWindow(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
 
         # create utility
         menu_data["printData"] = QtWidgets.QAction("&Print Module Data")
+        menu_data["reloadModules"] = QtWidgets.QAction("&Reload Rig Modules")
 
         # create regular option actions
         menu_data["addModule"] = QtWidgets.QAction("Add Module")
@@ -385,6 +390,7 @@ class MainWindow(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
 
         # utility actions
         menu_data["utilities"].addAction(menu_data["printData"])
+        menu_data["utilities"].addAction(menu_data["reloadModules"])
 
         # blueprint options
         menu_data["blueprintOptions"].addAction(menu_data["setBlueprintPath"])
@@ -471,12 +477,22 @@ class MainWindow(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
     # -----------------------------------------------
     #  Additional utilities
     # -----------------------------------------------
-    def print_module_data(self):
+    @staticmethod
+    def print_module_data():
         """
         prints the module data to the console.
         :return: <bool> True for success.
         """
         pprint(get_module_data())
+        return True
+
+    @staticmethod
+    def reload_module_data():
+        """
+        reloads all the modules in the rig_modules directory folder.
+        :return: <bool> True for success.
+        """
+        build_utils.reload_modules()
 
 
 class ModuleForm(QtWidgets.QFrame):
@@ -933,6 +949,13 @@ class ModuleWidget(QtWidgets.QWidget):
         # update the class attributes
         self.update_attribute('name', name)
 
+    def select_call(self):
+        """
+        selects the objects.
+        :return:
+        """
+        self.module.select_guides()
+
     def rename_call(self):
         """
         Opens up a new dialog window to help with renaming a module widget.
@@ -1218,6 +1241,9 @@ class ModuleWidget(QtWidgets.QWidget):
         :param label:
         :return:
         """
+        select = QtWidgets.QAction(label)
+        select.setText("Select")
+
         rename = QtWidgets.QAction(label)
         rename.setText("Rename")
 
@@ -1227,7 +1253,10 @@ class ModuleWidget(QtWidgets.QWidget):
         label.setContextMenuPolicy(Qt.ActionsContextMenu)
         rename.triggered.connect(self.rename_call)
         remove.triggered.connect(self.remove_item_call)
+        select.triggered.connect(self.select_call)
         label.addAction(rename)
+        label.addAction(remove)
+        label.addAction(select)
 
     def add_version(self):
         """

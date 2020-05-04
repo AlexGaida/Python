@@ -3,6 +3,7 @@ This is a sample module for adding a singleton joint.
 """
 # import custom modules
 from maya_utils import object_utils
+from rig_utils import joint_utils
 
 # define module variables
 class_name = "Template"
@@ -12,6 +13,7 @@ class TemplateModule(object):
     class_name = class_name
     positions = ()
     guide_joints = []
+    finished_joints = ()
     information = {}
     created = False
     finished = False
@@ -50,7 +52,11 @@ class TemplateModule(object):
         print('created decorator called.')
 
         def wrapper(*args, **kwargs):
-            called = func(*args, **kwargs)
+            called = False
+            try:
+                called = func(*args, **kwargs)
+            except RuntimeError:
+                self.created = False
             if called:
                 self.created = True
         return wrapper
@@ -59,8 +65,12 @@ class TemplateModule(object):
         print('finished decorator called.')
 
         def wrapper(*args, **kwargs):
+            called = False
             if self.created and not self.finished:
-                called = func(*args, **kwargs)
+                try:
+                    called = func(*args, **kwargs)
+                except AttributeError:
+                    self.finished = False
                 if called:
                     self.finished = True
         return wrapper
@@ -158,17 +168,44 @@ class TemplateModule(object):
             return True
         return False
 
+    def get_guide_positions(self):
+        """
+        gets the current positions of guide joints.
+        :return: <tuple> array of translation values.
+        """
+        if self.guide_joints:
+            transforms = ()
+            for jnt in self.guide_joints:
+                transforms += object_utils.get_object_transform(jnt, m=True),
+            return transforms
+        return ()
+
     def replace_guides(self):
         """
         replaces the guide joints with the actual bound joints.
         :return: <tuple> bound joint array.
         """
-        pass
+        self.finished_joints = ()
+        if self.if_guides_exist():
+            positions = self.get_guide_positions()
+            object_utils.remove_node(self.guide_joints)
+            for position in positions:
+                self.finished_joints += joint_utils.create_joint(self.name, prefix_name=self.prefix_name,
+                                                                 use_position=position, bound_joint=True,
+                                                                 as_strings=True)[0],
+            self.guide_joints = []
 
     def if_guides_exist(self):
         """
         checking function to search the validity of guides in the scene.
         :return:
         """
-        for guide_jnt in self.guide_joints:
-            object_utils.is_exists
+        return all(map(object_utils.is_exists, self.guide_joints))
+
+    def select_guides(self):
+        """
+        select the guide joints
+        :return:
+        """
+        if self.guide_joints:
+            object_utils.select_object(self.guide_joints)

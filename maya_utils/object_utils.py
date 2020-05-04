@@ -1508,7 +1508,10 @@ def set_object_transform(object_name, m=(), t=(), ws=True):
     :param ws: <bool> worldSpace boolean.
     :return: <None>
     """
-    return cmds.xform(object_name, m=m, t=t, ws=ws)
+    if m:
+        return cmds.xform(object_name, m=m, ws=ws)
+    if t:
+        return cmds.xform(object_name, t=t, ws=ws)
 
 
 def get_object_transform(object_name, m=False, t=False, ws=True):

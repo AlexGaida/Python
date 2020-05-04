@@ -57,6 +57,7 @@ def get_rig_module(module_name, module_version):
     if py_version == 2:
         fp, pathname, description = imp.find_module(module_file, [rig_modules_dir])
         rig_module_name = imp.load_module(module_file, fp, pathname, description)
+        print rig_module_name
         # imp.reload(rig_module_name)
     elif py_version == 3:
         module_data = importlib.util.find_spec(module_file)
@@ -182,18 +183,34 @@ def find_module_data(module_name):
     return module_data
 
 
+def reload_modules():
+    """
+    calling imp.load_module again actually reloads the module.
+    :return: <bool> True for success.
+    """
+    proper_modules = get_proper_modules()
+    for module_name in proper_modules:
+        modules = find_files(module_name, by_name=True)
+        for mod in modules:
+            version = extract_version(mod)
+            mod_name = extract_name(mod)
+            get_rig_module(mod_name, version)
+    return True
+
+
 def set_creatures_path(path):
     """
     set the creature building path.
     :return:
     """
     os.environ('BLUEPRINTS_PATH', path)
+    return True
 
 
 def get_file_creature_data():
     """
     gets the blueprint saves into this Maya File.
-    :return:
+    :return: <dict> creature data.
     """
     return file_utils.get_internal_var_file_variable("creatureData")
 
@@ -208,7 +225,7 @@ def save_blueprint(creature_name, data):
 
 def get_blueprints():
     """
-    returns a list of avaliable blueprint JSON files.
-    :return:
+    returns a list of available blueprint JSON data files.
+    :return: <tuple> array of blueprints.
     """
     return blueprint_utils.get_blueprints()

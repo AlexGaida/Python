@@ -15,8 +15,12 @@ re_brackets = re.compile(r"\[?\]?")
 re_numbers = re.compile("\d+")
 
 JNT_SUFFIX_NAME = 'jnt'
-GUIDE_JNT_SUFFIX_NAME = '__guide_jnt'
+GUIDE_JNT_SUFFIX_NAME = 'guide_jnt'
 BND_JNT_SUFFIX_NAME = 'bnd_{}'.format(JNT_SUFFIX_NAME)
+IK_JNT_SUFFIX_NAME = 'ik_{}'.format(JNT_SUFFIX_NAME)
+FK_JNT_SUFFIX_NAME = 'fk_{}'.format(JNT_SUFFIX_NAME)
+
+GROUP_SUFFIX_NAME = 'grp'
 
 
 def get_name_count(name, suffix_name=""):
