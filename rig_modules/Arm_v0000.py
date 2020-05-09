@@ -37,7 +37,7 @@ class Arm(template.TemplateModule):
         self.guide_joints = joint_utils.create_joints_at_positions(self.positions,
                                                                    self.name,
                                                                    prefix_name=self.prefix_name,
-                                                                   suffix_name=self.suffix_name)
+                                                                   guide_joint=True)
         return self.guide_joints
 
     def create_controller(self, constraint_object):

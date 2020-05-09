@@ -48,6 +48,8 @@ node_types = {
     'follicle':             OpenMaya.MFn.kFollicle,
     'dag':                  OpenMaya.MFn.kDagNode,
     'joint':                OpenMaya.MFn.kJoint,
+    'ikHandle':             OpenMaya.MFn.kIkHandle,
+    'effector':             OpenMaya.MFn.kIkEffector,
     'component':            OpenMaya.MFn.kComponent,
     'lattice':              OpenMaya.MFn.kLattice,
     'blendShape':           OpenMaya.MFn.kBlendShape,
@@ -685,11 +687,14 @@ def remove_node(object_name):
     if isinstance(object_name, (list, tuple)):
         array = get_m_obj_array(object_name)
         for i in xrange(array.length()):
-            m_dag_mod.deleteNode(array[i])
-            m_dag_mod.doIt()
+            if is_exists(array[i]):
+                m_dag_mod.deleteNode(array[i])
+                m_dag_mod.doIt()
     elif isinstance(object_name, (str, unicode)):
-        m_dag_mod.deleteNode(get_m_obj(object_name))
-        m_dag_mod.doIt()
+        node = get_m_obj(object_name)
+        if is_exists(node):
+            m_dag_mod.deleteNode(node)
+            m_dag_mod.doIt()
     return True
 
 
@@ -920,6 +925,8 @@ def get_fn(m_object):
         return OpenMaya.MFnCamera(m_object)
     elif type_str(m_object) == 'joint':
         return OpenMayaAnim.MFnIkJoint(m_object)
+    elif type_str(m_object) == 'ikHandle':
+        return OpenMayaAnim.MFnIkEffector(m_object)
     else:
         return OpenMaya.MFnDependencyNode(m_object)
 
@@ -1862,6 +1869,18 @@ def attr_add_float(node_name, attribute_name):
     return attr_name(node_name, attribute_name)
 
 
+def attr_set_min_max(node_name, attribute_name, min=0.0, max=1.0):
+    """
+    sets the minimum and maximum limits on the attribute.
+    :param node_name: <str> valid node name.
+    :param attribute_name: <str> valid attribute name.
+    :param min: <float> sets the minimum value of this attribute.
+    :param max: <float> sets the maximum value of this attribute.
+    :return: <bool> True for success. <bool> False for failure.
+    """
+    return cmds.addAttr(attr_name(node_name, attribute_name), min=min, max=max, edit=True)
+
+
 def attr_get_value(node_name, attribute_name):
     """
     add the new attribute to this node.
@@ -1921,8 +1940,9 @@ def create_node(node_type, node_name=""):
 def do_parent_constraint(master_obj, slave_obj, maintain_offset=True):
     """
     perform parent constraint
-    :param master_obj: <str>
-    :param slave_obj: <str>
+    :param master_obj: <str> driver object
+    :param slave_obj: <str> driven object
+    :param maintain_offset: <bool> let the child object maintain its offset when constrained to the master.
     :return: <str> parent constraint node.
     """
     return cmds.parentConstraint(master_obj, slave_obj, mo=maintain_offset)[0]

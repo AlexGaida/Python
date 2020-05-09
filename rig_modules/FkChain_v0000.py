@@ -9,16 +9,17 @@ from rig_modules import template
 from maya_utils import object_utils
 
 # define module variables
-class_name = "Singleton"
+class_name = "FkChain"
 
 
-class Singleton(template.TemplateModule):
+class FkChain(template.TemplateModule):
     class_name = class_name
 
     def __init__(self, name="", control_shape="cube", prefix_name="", information=""):
-        super(Singleton, self).__init__(name=name, prefix_name=prefix_name, information=information)
+        super(FkChain, self).__init__(name=name, prefix_name=prefix_name, information=information)
 
         self.add_new_information('positions')
+        self.add_new_information('numberOfBones', value=3)
 
         self.name = name
         self.prefix_name = prefix_name

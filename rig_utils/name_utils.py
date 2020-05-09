@@ -19,7 +19,6 @@ GUIDE_JNT_SUFFIX_NAME = 'guide_jnt'
 BND_JNT_SUFFIX_NAME = 'bnd_{}'.format(JNT_SUFFIX_NAME)
 IK_JNT_SUFFIX_NAME = 'ik_{}'.format(JNT_SUFFIX_NAME)
 FK_JNT_SUFFIX_NAME = 'fk_{}'.format(JNT_SUFFIX_NAME)
-
 GROUP_SUFFIX_NAME = 'grp'
 
 

@@ -258,6 +258,7 @@ class Attributes:
         get attribute names for this object.
         :return: <bool> True for success. <bool> False for failure.
         """
+        self.attr_data = {}
         for i in range(self.MAYA_MFN_OBJECT.attributeCount()):
             attrib = None
             a_obj = self.MAYA_MFN_OBJECT.attribute(i)
@@ -297,7 +298,7 @@ class Attributes:
                     self.attr_data[attrib] = round(attr_value, 4)
                 except TypeError:
                     self.attr_data[attrib] = attr_value
-        return True
+        return self.attr_data
 
     def __get_attr_value(self, attr_obj=None, api_type=None, attr_plug=None):
         """

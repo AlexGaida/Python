@@ -165,20 +165,24 @@ def create_joints(objects_array, name, bind_name=False):
     return joints
 
 
-def create_joints_at_positions(position_array, name, prefix_name="", suffix_name="", bind_name=False):
+def create_joints_at_positions(position_array, name, prefix_name="", guide_joint=False, bound_joint=False):
     """
     create joints at transform objects.
     :param position_array: <tuple> array of transform objects.
     :param name: <str> the name to use when creating the joints.
+    :param prefix_name: <str> use this prefix name.
+    :param guide_joint: <bool> create a joint using the guide joint suffix name.
+    :param bound_joint: <bool> create a joint using the bound joint suffix name.
     :param bind_name: <bool> create bind joint name.
     :return: <tuple> array of joints.
     """
     joint_names = create_joint(name=name, num_joints=len(position_array),
                                prefix_name=prefix_name,
-                               suffix_name=suffix_name,
+                               guide_joint=guide_joint,
+                               bound_joint=bound_joint,
                                as_strings=True)
-    for joint_name, position in zip(joint_names, position_array):
-        cmds.xform(joint_name, t=position, ws=1)
+    for jnt_name, position in zip(joint_names, position_array):
+        cmds.xform(jnt_name, t=position, ws=1)
     return joint_names
 
 
@@ -265,8 +269,49 @@ def get_joint_name(prefix_name, name, i, suffix_name):
     return '{prefix}{name}_{idx}{suffix}'.format(prefix=prefix_name, name=name, idx=i, suffix=suffix_name)
 
 
-def create_joint(name, num_joints=1, prefix_name="", as_strings=False,
-                 guide_joint=False, bound_joint=False, use_transform="", use_position=()):
+def get_joint_names(name,
+                    prefix_name="",
+                    num_joints=1,
+                    use_name=False,
+                    guide_joint=False,
+                    bound_joint=False):
+    """
+    returns an array of joint names.
+    :param name: <str> (mandatory) base name of the joint to use at creation.
+    :param num_joints: the number of joints created.
+    :param prefix_name: <str> the prefix name to use.
+    :param guide_joint: <str> create joint with '_bnd_jnt' name.
+    :param use_name: <str> use the name that is coming in as-is.
+    :param guide_joint: <bool> returns guide joint names.
+    :param bound_joint: <bool> returns bound joint names.
+    :return:
+    """
+    if use_name:
+        joint_names = [name]
+
+    else:
+        if guide_joint:
+            joint_names = name_utils.get_guide_name_array(prefix_name=prefix_name,
+                                                          name=name,
+                                                          length=num_joints)
+        elif bound_joint:
+            joint_names = name_utils.get_bound_name_array(prefix_name=prefix_name,
+                                                          name=name,
+                                                          length=num_joints)
+        else:
+            joint_names = name_utils.get_name_array(prefix_name=prefix_name,
+                                                    name=name,
+                                                    length=num_joints)
+    return joint_names
+
+
+def create_joint(name, num_joints=1, prefix_name="",
+                 as_strings=False,
+                 guide_joint=False,
+                 bound_joint=False,
+                 use_name=False,
+                 use_transform="",
+                 use_position=()):
     """
     creates a joint and names it using OpenMaya.
     :param name: <str> the name of the joint to create !important.
@@ -275,6 +320,7 @@ def create_joint(name, num_joints=1, prefix_name="", as_strings=False,
     :param guide_joint: <str> create joint with '_bnd_jnt' name.
     :param bound_joint: <str> create joint with '__guide_jnt' name.
     :param as_strings: <bool> returns <str> objects instead of <OpenMaya.MObject> objects.
+    :param use_name: <str> use the name that is coming in.
     :param use_transform: <str> use this object's transform co-ordinates.
     :param use_position: <tuple, list> array of floats to use as transform or matrix.
     :return: <tuple> array of created joint objects.
@@ -283,26 +329,22 @@ def create_joint(name, num_joints=1, prefix_name="", as_strings=False,
         name = 'joint'
     dag_mod = OpenMaya.MDagModifier()
 
-    # Create the joint MObjects we will be manipulating.
+    # create the joint MObjects we will be manipulating.
     jnt_objects = ()
     jnt_names = ()
 
-    if guide_joint:
-        joint_names = name_utils.get_guide_name_array(prefix_name=prefix_name,
-                                                      name=name,
-                                                      length=num_joints)
-    elif bound_joint:
-        joint_names = name_utils.get_bound_name_array(prefix_name=prefix_name,
-                                                      name=name,
-                                                      length=num_joints)
-    else:
-        joint_names = name_utils.get_name_array(prefix_name=prefix_name,
-                                                name=name,
-                                                length=num_joints)
+    # grabs the joint names
+    joint_names = get_joint_names(prefix_name=prefix_name,
+                                  name=name,
+                                  num_joints=num_joints,
+                                  use_name=use_name,
+                                  guide_joint=guide_joint,
+                                  bound_joint=bound_joint)
 
     for i in xrange(0, num_joints):
         # only create new if the objects's names do not exist
         new_name = joint_names[i]
+
         # create only when the name does not exist
         if name and not object_utils.is_exists(new_name):
             jnt_names += new_name,
@@ -317,21 +359,23 @@ def create_joint(name, num_joints=1, prefix_name="", as_strings=False,
             dag_mod.renameNode(jnt_obj, new_name)
             dag_mod.doIt()
 
-            # snap the joint to the transform
-            if use_transform and object_utils.is_exists(new_name):
-                object_utils.snap_to_transform(new_name, use_transform, matrix=True)
-
-            # set the translation
-            if use_position and len(use_position) == 3:
-                print('position is called.')
-                object_utils.set_object_transform(new_name, t=use_position)
-
-            elif use_position and len(use_position) > 3:
-                print('matrix is called.')
-                object_utils.set_object_transform(new_name, m=use_position)
-
             # keep track of all the joints created.
             jnt_objects += jnt_obj,
+
+        elif name and object_utils.is_exists(new_name):
+            jnt_names += new_name,
+            jnt_objects += object_utils.get_m_obj(new_name),
+
+        # snap the joint to the transform
+        if use_transform and object_utils.is_exists(new_name):
+            object_utils.snap_to_transform(new_name, use_transform, matrix=True)
+
+        # set the translation
+        if use_position and len(use_position) == 3:
+            object_utils.set_object_transform(new_name, t=use_position)
+
+        elif use_position and len(use_position) > 3:
+            object_utils.set_object_transform(new_name, m=use_position)
 
     if not as_strings:
         return jnt_objects
@@ -353,11 +397,72 @@ def get_joint_orientation(joint_name):
     return j_quat.asMatrix()
 
 
-def create_joints_from_transform_array(joints, names):
+def create_joints_from_arrays(positions, names, parented=False):
     """
     creates the joints from array of names and joints given.
     :return:
     """
-    for joint, name in zip(joints, names):
-        create_joint(name)
+    idx = 0
+    joints = ()
+    for position, name in zip(positions, names):
+        joints += create_joint(name, use_position=position, use_name=True, as_strings=True)[0],
+        if parented and idx > 0:
+            # parent the last joint created to the newly created joint
+            cmds.parent(joints[idx], joints[idx - 1])
+        idx += 1
+    return joints
+
+
+def create_ik_handle(joint_array, name=''):
+    """
+    creates the ik handle from the joints array provided.
+    :param joint_array: <tuple>, <list> the joint array to use.
+    :param name: <str> create an IkHandle with this name.
+    :return: <str> ikHandle created.
+    """
+    return cmds.ikHandle(startJoint=joint_array[0], endEffector=joint_array[-1], name=name)
+
+
+def freeze_transformations(object_name, translate=True, rotate=True, scale=True):
+    """
+    freezes the transformations.
+    :param object_name: <str> the object to freeze transforms to.
+    :return: <bool>
+    """
+    return cmds.makeIdentity(object_name, apply=1, t=translate, r=rotate, s=scale, n=0, pn=1)
+
+
+def zero_joint_orient(object_name, x=True, y=True, z=True):
+    """
+    zeroes the joint orient attribute.
+    :return: <bool>
+    """
+    if x:
+        cmds.setAttr(object_name + '.jointOrientX')
+    if y:
+        cmds.setAttr(object_name + '.jointOrientY')
+    if z:
+        cmds.setAttr(object_name + '.jointOrientZ')
     return True
+
+
+def orient_joints(joint_array, primary_axis='x', secondary_world_axis='y'):
+    """
+    orients the joints.
+    :param joint_array: <tuple> array of joints.
+    :param primary_axis: <str> the axis to orient joints towards.
+    :param secondary_world_axis: <str> the secondary axis to orient joints towards.
+    :return:
+    """
+    for jnt_name in joint_array:
+        # freezes all transform values on this joint
+        freeze_transformations(jnt_name)
+
+        # reorient joint
+        if primary_axis == 'x':
+            return cmds.joint(jnt_name, e=True, oj='xyz', secondaryAxisOrient='yup', ch=True, zso=True)
+        if primary_axis == 'y':
+            return cmds.joint(jnt_name, e=True, oj='yzx', secondaryAxisOrient='yup', ch=True, zso=True)
+        if primary_axis == 'z':
+            return cmds.joint(jnt_name, e=True, oj='zxy', secondaryAxisOrient='yup', ch=True, zso=True)
+    raise ValueError("[OrientJoints] :: You must specify the axis of orientation: x, y or z.")

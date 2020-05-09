@@ -52,12 +52,10 @@ def get_rig_module(module_name, module_version):
     :return:
     """
     module_file = module_file_name(module_name, module_version)
-
     # try:
     if py_version == 2:
         fp, pathname, description = imp.find_module(module_file, [rig_modules_dir])
         rig_module_name = imp.load_module(module_file, fp, pathname, description)
-        print rig_module_name
         # imp.reload(rig_module_name)
     elif py_version == 3:
         module_data = importlib.util.find_spec(module_file)

@@ -21,6 +21,7 @@ import ui_tools
 import ui_stylesheets
 from rig_utils import name_utils
 from rig_utils import joint_utils
+from rig_utils import control_utils
 from maya_utils import ui_utils
 from maya_utils import file_utils
 from maya_utils import object_utils
@@ -39,6 +40,7 @@ reload(object_utils)
 reload(joint_utils)
 reload(ui_tools)
 reload(ui_utils)
+reload(control_utils)
 reload(file_utils)
 reload(name_utils)
 reload(blueprint_utils)
@@ -207,20 +209,19 @@ class MainWindow(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         """
         adds the module to the list widget.
         :param args: <list> incoming arguments
-        :return:
+        :return: <QtWidgets.QWidget>
         """
         module_name = args[0]
         information = {}
         if len(args) > 1:
             information = args[1]
-
         item = QtWidgets.QListWidgetItem()
-
         widget = ModuleWidget(module_name=module_name,
                               list_widget=self.module_form.list,
                               item=item,
                               parent=self,
                               information=information)
+
         # makes sure the modules are shown correctly in the list widget
         item.setSizeHint(widget.sizeHint())
 
@@ -249,6 +250,7 @@ class MainWindow(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         """
         self.module_form.list.clear()
         self.information_form.clear_instructions()
+        clear_module_list_data()
         return True
 
     # -----------------------------------------------
@@ -271,7 +273,6 @@ class MainWindow(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         self.menu_bar_data["setBlueprintPath"].triggered.connect(self.set_blueprint_path_call)
         self.menu_bar_data["saveNewBlueprint"].triggered.connect(self.save_new_blueprint_call)
         self.menu_bar_data["saveBlueprint"].triggered.connect(self.save_blueprint_call)
-        self.menu_bar_data["loadBlueprint"].triggered.connect(self.load_blueprint_call)
         self.menu_bar_data["removeBlueprint"].triggered.connect(self.remove_blueprint_call)
         return True
 
@@ -378,6 +379,7 @@ class MainWindow(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         menu_data["reloadModules"] = QtWidgets.QAction("&Reload Rig Modules")
 
         # create regular option actions
+        menu_data["updateModules"] = QtWidgets.QAction("Update Modules")
         menu_data["addModule"] = QtWidgets.QAction("Add Module")
         menu_data["clearModules"] = QtWidgets.QAction("Clear Modules")
 
@@ -385,7 +387,6 @@ class MainWindow(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         menu_data["setBlueprintPath"] = QtWidgets.QAction("S&et Blueprint Path")
         menu_data["saveBlueprint"] = QtWidgets.QAction("Save &Blueprint")
         menu_data["saveNewBlueprint"] = QtWidgets.QAction("Save &New Blueprint")
-        menu_data["loadBlueprint"] = QtWidgets.QAction("&Load Blueprint")
         menu_data["removeBlueprint"] = QtWidgets.QAction("&Remove Blueprint")
 
         # utility actions
@@ -396,10 +397,10 @@ class MainWindow(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         menu_data["blueprintOptions"].addAction(menu_data["setBlueprintPath"])
         menu_data["blueprintOptions"].addAction(menu_data["saveBlueprint"])
         menu_data["blueprintOptions"].addAction(menu_data["saveNewBlueprint"])
-        menu_data["blueprintOptions"].addAction(menu_data["loadBlueprint"])
         menu_data["blueprintOptions"].addAction(menu_data["removeBlueprint"])
 
         # set actions
+        menu_data["options"].addAction(menu_data["updateModules"])
         menu_data["options"].addAction(menu_data["addModule"])
         menu_data["options"].addAction(menu_data["clearModules"])
         self.setMenuBar(menu_bar)
@@ -460,11 +461,12 @@ class MainWindow(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         :return:
         """
         selected_creature = self.module_form.get_selected_blueprint()
-        blueprint_utils.delete_blueprint(selected_creature)
-        self.module_form.fill_blueprints()
+        if selected_creature:
+            blueprint_utils.delete_blueprint(selected_creature)
+            self.module_form.fill_blueprints()
 
-        # removes all files stored.
-        clear_module_list_data()
+            # removes all files stored.
+            clear_module_list_data()
         return True
 
     def get_selected_creature_name(self):
@@ -791,16 +793,19 @@ class InformationForm(QtWidgets.QFrame):
         :return: <bool> True for success.
         """
         self.get_information()
+
         if self.information:
             self.parent.set_selected_module_name(self.information["name"])
 
             # update the widgets' published attributes
             self.parent.update_selected_item_attributes(self.information)
 
+        # update the dictionary information
+        update_module_data_information()
+
         # update the file information with data
         creature_name = self.parent.get_selected_creature_name()
         if creature_name:
-            update_module_data_information()
             save_blueprint(creature_name, get_module_data())
         return True
 
@@ -1068,6 +1073,7 @@ class ModuleWidget(QtWidgets.QWidget):
         creates a new module.
         :return:
         """
+        print("module created: {}".format(information))
         self.module = self.get_module(activate=True, information=information)
         self.module.create()
         self.change_status(color="yellow")
@@ -1141,7 +1147,7 @@ class ModuleWidget(QtWidgets.QWidget):
         returns the positions of this module's guide joints
         :return: <tuple> positions.
         """
-        return self.module.get_positions()
+        return self.module.get_guide_positions()
 
     # -----------------------------------------------
     #  Builds the module widget

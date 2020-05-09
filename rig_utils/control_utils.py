@@ -7,6 +7,9 @@ from functools import partial
 
 # import local modules
 import read_sides
+import constraint_utils
+import name_utils
+
 from maya_utils import file_utils
 from maya_utils import object_utils
 from maya_utils import attribute_utils
@@ -353,7 +356,7 @@ def parent_curve_shapes(curve_names):
     return curve_name
 
 
-def create_control(shape_name, name='', groups=('grp', CONSTRAINT_GRP)):
+def create_control(shape_name='cube', name='', groups=('grp', CONSTRAINT_GRP)):
     """
     create a controller object with specified groups.
     :param shape_name: <str> create this shape.
@@ -375,13 +378,18 @@ def create_control(shape_name, name='', groups=('grp', CONSTRAINT_GRP)):
     return return_data
 
 
-def create_control_at_transform(object_name, name='', shape_name="cube"):
+def create_control_at_transform(object_name, name='', shape_name="cube", auto_num=True):
     """
     creates a controller object at the same space as the transform.
+    :param object_name: <str> object name to use.
+    :param name: <str> the name for the new controller object.
     :param shape_name: <str> build this shape.
+    :param auto_num: <int> generate a number associated with the name.
     :return: <str> control grp.
     """
     tfm = transform_utils.Transform(object_name)
+    if auto_num:
+        name = name_utils.get_start_name_with_num(name)
     ctrl_data = create_control(shape_name, name=name)
     grps = ctrl_data['group_names']
     cmds.xform(grps[-1], m=tfm.world_matrix(), ws=1)
@@ -403,8 +411,7 @@ def rename_controls(ctrl_grp, new_name=""):
     new_children = ()
     for ch in children:
         part_name = ch.partition('_')
-        part_name[0] = new_name
-        cmds.rename(ch, ''.join(part_name))
+        cmds.rename(ch, ''.join((new_name, part_name[1], part_name[2])))
         new_children += ch,
     return new_children
 
@@ -436,13 +443,13 @@ def create_controls(objects_array, name, shape_name="cube", apply_constraints=No
 
         if apply_constraints:
             if 'parent' in apply_constraints:
-                apply_parent_constraint(data['controller'], trfm_name, maintain_offset)
+                constraint_utils.parent_constraint(data['controller'], trfm_name, maintain_offset)
             if 'scale' in apply_constraints:
-                apply_scale_constraint(data['controller'], trfm_name, maintain_offset)
+                constraint_utils.scale_constraint(data['controller'], trfm_name, maintain_offset)
             if 'point' in apply_constraints:
-                apply_point_constraint(data['controller'], trfm_name, maintain_offset)
+                constraint_utils.point_constraint(data['controller'], trfm_name, maintain_offset)
             if 'orient' in apply_constraints:
-                apply_orient_constraint(data['controller'], trfm_name, maintain_offset)
+                constraint_utils.orient_constraint(data['controller'], trfm_name, maintain_offset)
         groups += data,
     return groups
 
@@ -481,47 +488,3 @@ def create_controllers_with_point_constraints(name, objects_array=(), shape_name
         shape_name=shape_name,
         apply_constraints=['point'],
         maintain_offset=maintain_offset)
-
-
-def apply_parent_constraint(source_obj, target_obj, maintain_offset=True):
-    """
-    create parent constraint.
-    :param source_obj:
-    :param target_obj:
-    :param maintain_offset:
-    :return:
-    """
-    return cmds.parentConstraint(source_obj, target_obj, mo=maintain_offset)[0]
-
-
-def apply_scale_constraint(source_obj, target_obj, maintain_offset=True):
-    """
-    create scale constraint.
-    :param source_obj:
-    :param target_obj:
-    :param maintain_offset:
-    :return:
-    """
-    return cmds.scaleConstraint(source_obj, target_obj, mo=maintain_offset)[0]
-
-
-def apply_point_constraint(source_obj, target_obj, maintain_offset=True):
-    """
-    create point constraint.
-    :param source_obj:
-    :param target_obj:
-    :param maintain_offset:
-    :return:
-    """
-    return cmds.pointConstraint(source_obj, target_obj, mo=maintain_offset)[0]
-
-
-def apply_orient_constraint(source_obj, target_obj, maintain_offset=True):
-    """
-    create orient constraint
-    :param source_obj:
-    :param target_obj:
-    :param maintain_offset:
-    :return:
-    """
-    return cmds.orientConstraint(source_obj, target_obj, mo=maintain_offset)[0]
