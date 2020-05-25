@@ -357,6 +357,9 @@ class JSONSerializer:
         if self.is_file_valid:
             remove_file(self.FILE_NAME)
 
+    def file(self):
+        return self._get_file_name()
+
     def __repr__(self):
         return self.FILE_NAME
 
@@ -498,3 +501,20 @@ def get_internal_var_file_variable(variable_name):
     # else return as is
     return var_value
 
+
+def interpret_text_data(text=""):
+    """
+    interprets text data.
+    :param text: <str> incoming text string data.
+    :return: <TypeName> of data.
+    """
+    # if the variable is a dictionary
+    print text
+    if text.find("{") > -1 and text.find("}") > -1:
+        return ast.literal_eval(text)
+    elif text.find("[") > -1 and text.find("]") > -1:
+        return ast.literal_eval(text)
+    elif text.isdigit():
+        return ast.literal_eval(text)
+    else:
+        return text

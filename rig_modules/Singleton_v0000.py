@@ -17,12 +17,15 @@ class Singleton(template.TemplateModule):
 
     def __init__(self, name="", control_shape="cube", prefix_name="", information=""):
         super(Singleton, self).__init__(name=name, prefix_name=prefix_name, information=information)
-
+        self.update_information(information)
         self.add_new_information('positions')
 
+        # define template variables
         self.name = name
         self.prefix_name = prefix_name
         self.control_shape = control_shape
+        self.parent_to = ""
+        self.constrain_to = ""
 
         # redefine template variables
         self.guide_joints = []
@@ -78,15 +81,21 @@ class Singleton(template.TemplateModule):
 
     def update(self, *args):
         """
-        update the module.
+        updates the module.
         :param args: <list> updates the guide joints. the first argument is the name.
         :return:
         """
         if args:
             name = args[0]
             self.rename(name)
-        print('update called.')
+
+        # updates the module information
         self.information["positions"] = self.get_guide_positions()
+        self.information["name"] = self.name
+
+        # updates the relationship information
+        self.information["parentTo"] = self.PUBLISH_ATTRIBUTES['parentTo']
+        self.information["constrainTo"] = self.PUBLISH_ATTRIBUTES['constrainTo']
 
     def remove(self):
         """

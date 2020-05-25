@@ -15,6 +15,7 @@ from shiboken2 import isValid
 from shiboken2 import wrapInstance
 from PySide2 import QtCore
 from PySide2 import QtWidgets
+from PySide2 import QtGui
 from PySide2.QtGui import QStandardItemModel
 from PySide2.QtGui import QStandardItem
 from PySide2.QtGui import QPixmap

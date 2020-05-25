@@ -87,9 +87,10 @@ def build(joint_1, joint_2, joint_3, name="", prefix_name="", suffix_name=""):
     for idx in xrange(3):
         constraints += object_utils.do_parent_constraint((ik_joints[idx], fk_joints[idx]),
                                                          bnd_joints[idx], maintain_offset=False),
-        cnst_attr = attribute_utils.Attributes(constraints[idx], custom=True)
-        first_attr = cnst_attr.custom.keys()[0]
-        second_attr = cnst_attr.custom.keys()[1]
+
+        cnst_attr = attribute_utils.get_custom_attributes(constraints[idx])
+        first_attr = cnst_attr[0]
+        second_attr = cnst_attr[1]
 
         # create the switch and attach it to the constraints created
         node_utils.create_binary_switch(ik_fk_attr, driven_attr_0=first_attr, driven_attr_1=second_attr)

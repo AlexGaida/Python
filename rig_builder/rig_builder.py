@@ -148,6 +148,16 @@ class MainWindow(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
     # -----------------------------------------------
     #  Creature UI Initialize
     # -----------------------------------------------
+    def __add_module_to_ui(self, blueprint_array):
+        """
+        blueprint array add
+        """
+        for module_data in blueprint_array:
+            module_data = module_data.values()[0]
+            module_type = module_data["moduleType"]
+            self.add_module(module_type, module_data)
+        return True
+
     def initializer(self, this_file=False, selected_file=False):
         """
         fill the module form with blueprint information.
@@ -168,11 +178,8 @@ class MainWindow(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
             # clear the built modules history
             clear_module_list_data()
 
-            # initiate add module call
-            for module_data in blueprint_array:
-                module_data = module_data.values()[0]
-                module_type = module_data["moduleType"]
-                self.add_module(module_type, module_data)
+            # adds modules to the builder
+            self.__add_module_to_ui(blueprint_array)
             return True
         return False
 
@@ -274,6 +281,8 @@ class MainWindow(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         self.menu_bar_data["saveNewBlueprint"].triggered.connect(self.save_new_blueprint_call)
         self.menu_bar_data["saveBlueprint"].triggered.connect(self.save_blueprint_call)
         self.menu_bar_data["removeBlueprint"].triggered.connect(self.remove_blueprint_call)
+        self.menu_bar_data["openBlueprintDir"].triggered.connect(self.open_blueprint_dir_call)
+        self.menu_bar_data["openBlueprintFile"].triggered.connect(self.open_blueprint_file_call)
         return True
 
     def connect_utilities_options(self):
@@ -348,6 +357,12 @@ class MainWindow(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
     def get_selected_module_guide_positions(self):
         return self.get_selected_list_item().get_module_positions()
 
+    @staticmethod
+    def update_guide_position_data():
+        for mod in MODULES_LIST:
+            mod.update_attribute('positions', mod.get_module_positions())
+        return True
+
     # -----------------------------------------------
     #  Setup menu items
     # -----------------------------------------------
@@ -388,6 +403,8 @@ class MainWindow(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         menu_data["saveBlueprint"] = QtWidgets.QAction("Save &Blueprint")
         menu_data["saveNewBlueprint"] = QtWidgets.QAction("Save &New Blueprint")
         menu_data["removeBlueprint"] = QtWidgets.QAction("&Remove Blueprint")
+        menu_data["openBlueprintDir"] = QtWidgets.QAction("&Open Blueprint Dir")
+        menu_data["openBlueprintFile"] = QtWidgets.QAction("Open Blueprint &File")
 
         # utility actions
         menu_data["utilities"].addAction(menu_data["printData"])
@@ -398,6 +415,8 @@ class MainWindow(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         menu_data["blueprintOptions"].addAction(menu_data["saveBlueprint"])
         menu_data["blueprintOptions"].addAction(menu_data["saveNewBlueprint"])
         menu_data["blueprintOptions"].addAction(menu_data["removeBlueprint"])
+        menu_data["blueprintOptions"].addAction(menu_data["openBlueprintDir"])
+        menu_data["blueprintOptions"].addAction(menu_data["openBlueprintFile"])
 
         # set actions
         menu_data["options"].addAction(menu_data["updateModules"])
@@ -467,6 +486,26 @@ class MainWindow(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
 
             # removes all files stored.
             clear_module_list_data()
+        return True
+
+    def open_blueprint_dir_call(self):
+        """
+        opens the selected blueprint directory
+        :return: <bool> True for success.
+        """
+        selected_creature = self.module_form.get_selected_blueprint()
+        if selected_creature:
+            blueprint_utils.open_blueprint_dir(selected_creature)
+        return True
+
+    def open_blueprint_file_call(self):
+        """
+        opens the selected blueprint directory
+        :return: <bool> True for success.
+        """
+        selected_creature = self.module_form.get_selected_blueprint()
+        if selected_creature:
+            blueprint_utils.open_blueprint_file(selected_creature)
         return True
 
     def get_selected_creature_name(self):
@@ -792,18 +831,24 @@ class InformationForm(QtWidgets.QFrame):
         information update when the update button is clicked.
         :return: <bool> True for success.
         """
+        # get information
         self.get_information()
 
+        # update the selected widget information data
         if self.information:
             self.parent.set_selected_module_name(self.information["name"])
 
             # update the widgets' published attributes
             self.parent.update_selected_item_attributes(self.information)
+            print("Updating module: %s with data: %s " % (self.information["name"], self.information))
 
-        # update the dictionary information
-        update_module_data_information()
+        # update each module's guide positions (if any)
+        self.parent.update_guide_position_data()
 
-        # update the file information with data
+        # trigger the update function for each of the modules loaded in the UI
+        update_data_modules()
+
+        # save the dictionary data into the chosen creature file
         creature_name = self.parent.get_selected_creature_name()
         if creature_name:
             save_blueprint(creature_name, get_module_data())
@@ -846,8 +891,21 @@ class InformationForm(QtWidgets.QFrame):
         """
         # get the information from informationWidget
         for item, widget in self.info_widgets.items():
-            self.information[item] = widget.get_text()
+            # self.information[item] = widget.get_text()
+            # let's get the positions data
+            if item == "positions":
+                self.information[item] = self.parent.get_selected_module_guide_positions()
+            else:
+                self.information[item] = self.get_text_data(widget.get_text())
         return True
+
+    def get_text_data(self, text=""):
+        """
+        interprets the text data from the QLineEdits.
+        :param text: <str> interpret this text data.
+        :return: <bool> True for success. <bool> False for failure.
+        """
+        return file_utils.interpret_text_data(text)
 
 
 class ModuleWidget(QtWidgets.QWidget):
@@ -858,7 +916,7 @@ class ModuleWidget(QtWidgets.QWidget):
     # store the information inside this attributes variable
     module_attributes = {}
 
-    def __init__(self, parent=None, module_name=str, list_widget=None, item=None, information=dict):
+    def __init__(self, parent=None, module_name="", list_widget=None, item=None, information={}):
         super(ModuleWidget, self).__init__(parent)
         # initialize the module main layout
         self.main_layout = QtWidgets.QHBoxLayout()
@@ -881,9 +939,16 @@ class ModuleWidget(QtWidgets.QWidget):
         self.item = item
         self.parent = parent
         self.version = 0000
+
+        # set name of the module
+        if information:
+            if "name" in information:
+                self.name = information["name"]
+        else:
+            self.name = '{}_{}'.format(module_name, self.module_index)
+
         self.module_name = module_name
         self.module_index = get_module_count(module_name)
-        self.name = '{}_{}'.format(module_name, self.module_index)
         self.module_data = self.find_module_data(module_name)
 
         # build the module widgets
@@ -1112,11 +1177,17 @@ class ModuleWidget(QtWidgets.QWidget):
 
     def update_attributes(self, dictionary):
         """
-        updates the publish dictionary with new parameters.
+        updates the modules' publish dictionary with new parameters.
         :param dictionary:
         :return: <bool> True for success.
         """
+        print(" ------- Updating Publish Dictionary ------- ")
         self.module_attributes.update(dictionary)
+        pprint(self.module_attributes)
+
+        print(" ------- Updating Module Dictionary ------- ")
+        self.module.information.update(dictionary)
+        pprint(self.module.information)
         return True
 
     def perform_module_create_call(self):
@@ -1140,7 +1211,7 @@ class ModuleWidget(QtWidgets.QWidget):
         :return:
         """
         self.module.update()
-        self.update_attributes(self.module.information)
+        # self.update_attributes(self.module.information)
 
     def get_module_positions(self):
         """
@@ -1333,7 +1404,7 @@ def get_module_count(module_name):
     return MODULE_NAMES_LIST.count(module_name)
 
 
-def update_module_data_information():
+def update_data_modules():
     """
     updates the current modules in the scene.
     :return: <bool> True for success.

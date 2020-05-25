@@ -4,6 +4,7 @@ ui_tools module for adding ui elements to a widget.
 # import qt module
 from maya_utils.ui_utils import QtWidgets
 from maya_utils.ui_utils import QtCore
+from maya_utils.ui_utils import QtGui
 
 
 class ModuleDialog(QtWidgets.QDialog):
@@ -78,8 +79,15 @@ class GetNameWidget(QtWidgets.QDialog):
         layout.addWidget(self.line)
 
         button_layout = QtWidgets.QHBoxLayout()
+        # button_group = QtGui.QButtonGroup()
         layout.addLayout(button_layout)
+
+        # sets the default button at confirm
         button = QtWidgets.QPushButton("Confirm")
+        button.setDefault(True)
+        button.setFocus()
+
+        # adds the cancel button
         cancel = QtWidgets.QPushButton("Cancel")
         button.clicked.connect(self.rename_call)
         cancel.clicked.connect(self.close_ui)

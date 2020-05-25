@@ -1,6 +1,8 @@
 """
 blue print information module for writing and updating blueprint files.
 """
+# import standard modules
+import os
 
 # import local modules
 from maya_utils import file_utils
@@ -95,6 +97,31 @@ def delete_blueprint(creature_name):
     json_file = file_utils.JSONSerializer(file_name=blueprint_file_name)
     json_file.delete()
     delete_blueprint_dir(json_file.FILE_NAME)
+    return True
+
+
+def open_blueprint_dir(creature_name):
+    """
+    opens the blueprint directory
+    :param creature_name: <str> creature name for append path.
+    :return: <bool> True for success.
+    """
+    blueprint_dir = build_dir(creature_name)
+    print("[Opening Creature Dir] :: {}".format(blueprint_dir))
+    os.startfile(blueprint_dir)
+    return True
+
+
+def open_blueprint_file(creature_name):
+    """
+    opens the blueprint directory
+    :param creature_name: <str> creature name for append path.
+    :return: <bool> True for success.
+    """
+    blueprint_file_name = get_blueprint_path(creature_name)
+    json_file = file_utils.JSONSerializer(file_name=blueprint_file_name)
+    print("[Opening Creature File] :: {}".format(json_file))
+    os.startfile(json_file.file_name)
     return True
 
 

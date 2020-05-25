@@ -89,6 +89,23 @@ class TemplateModule(object):
         if key_name not in self.PUBLISH_ATTRIBUTES:
             self.PUBLISH_ATTRIBUTES[key_name] = value
 
+    # def update_information(self, key_name="", value=None):
+    #     """
+    #     updates the publush attributes dictionary
+    #     :param key_name:
+    #     :param value:
+    #     :return:
+    #     """
+    #     self.PUBLISH_ATTRIBUTES[key_name] = value
+
+    def update_information(self, dictionary):
+        """
+        updates the publush attributes dictionary
+        :param dictionary: <dict> input dictionary
+        :return:
+        """
+        self.PUBLISH_ATTRIBUTES.update(dictionary)
+
     def parent_to(self, destination):
         """
         utility method to parenting to.

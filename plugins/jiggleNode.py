@@ -108,9 +108,9 @@ def initialize():
 
     # creates a switch to turn on and off the jiggling.
     JigglePoint.aJiggleAmount = uAttr.create('jiggle', 'jiggle', OpenMaya.MFnUnitAttribute.kFloat, 0.0)
-    nAttr.setKeyable(True)
-    nAttr.setMin(0.0)
-    nAttr.setMax(1.0)
+    uAttr.setKeyable(True)
+    uAttr.setMin(0.0)
+    uAttr.setMax(1.0)
     JigglePoint.addAttribute(JigglePoint.aJiggleAmount)
     JigglePoint.attributeAffects(JigglePoint.aJiggleAmount, JigglePoint.aOutput)
 

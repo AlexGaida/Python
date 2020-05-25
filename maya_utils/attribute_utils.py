@@ -11,6 +11,46 @@ import object_utils
 import transform_utils
 
 
+def get_custom_attributes(object_name=""):
+    """
+    return an array of custom attributes.
+    :param object_name: <str> object name to pass throguh.
+    :return: <list> custom attributes found for this object.
+    """
+    cnst_attr = Attributes(object_name, custom=True)
+    return cnst_attr.custom.keys()
+
+
+def get_keyable_attributes(object_name=""):
+    """
+    return an array of keyable attributes.
+    :param object_name:
+    :return: <list> keyable attributes found for this object.
+    """
+    cnst_attr = Attributes(object_name, keyable=True)
+    return cnst_attr.keyable.keys()
+
+
+def get_connected_attributes(object_name=""):
+    """
+    return an array of connected attributes.
+    :param object_name:
+    :return: <list> connected attributes found for this object.
+    """
+    cnst_attr = Attributes(object_name, keyable=True)
+    return cnst_attr.connected.keys()
+
+
+def get_all_attributes(object_name=""):
+    """
+    return an array of keyable attributes.
+    :param object_name:
+    :return: <list> all attributes found for this object.
+    """
+    cnst_attr = Attributes(object_name, keyable=True)
+    return cnst_attr.all_attrs.keys()
+
+
 class ImmutableDict(dict):
     def __setitem__(self, key, value):
         raise TypeError("%r object does not support item assignment" % type(self).__name__)
