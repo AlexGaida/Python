@@ -39,7 +39,6 @@ reload(build_utils)
 reload(object_utils)
 reload(joint_utils)
 reload(ui_tools)
-reload(ui_utils)
 reload(control_utils)
 reload(file_utils)
 reload(name_utils)
@@ -66,6 +65,16 @@ buttons = {"empty": build_utils.empty_icon,
            "green": build_utils.green_icon,
            "yellow": build_utils.yellow_icon
            }
+
+debug = False
+
+
+def debug_print(pp=False, *args):
+    if debug:
+        if pp:
+            pprint(args)
+        else:
+            print(args)
 
 
 def add_module_decorator(func):
@@ -141,6 +150,8 @@ class MainWindow(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
 
         self.setStyleSheet(ui_stylesheets.dark_orange_stylesheet)
         self.setObjectName(object_name)
+
+        # we do not need the extra functionality right now..
         # initialize the builder with options
         # initialized = self.initializer(this_file=True)
         # print("[Builder] :: Modules intitialized {}.".format(initialized))
@@ -152,6 +163,7 @@ class MainWindow(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         """
         blueprint array add
         """
+        print "-->\n", blueprint_array
         for module_data in blueprint_array:
             module_data = module_data.values()[0]
             module_type = module_data["moduleType"]
@@ -220,8 +232,10 @@ class MainWindow(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         """
         module_name = args[0]
         information = {}
+
         if len(args) > 1:
             information = args[1]
+
         item = QtWidgets.QListWidgetItem()
         widget = ModuleWidget(module_name=module_name,
                               list_widget=self.module_form.list,
@@ -544,6 +558,9 @@ class ModuleForm(QtWidgets.QFrame):
         self.resize(200, 400)
         self.parent = parent
 
+        # set the toggle back at default
+        self.build = 0
+
         self.vertical_layout = QtWidgets.QVBoxLayout(self)
         self.combo_layout = QtWidgets.QHBoxLayout()
 
@@ -619,16 +636,23 @@ class ModuleForm(QtWidgets.QFrame):
                 self.creature_combo.blockSignals(False)
         return True
 
+    @property
+    def is_build_toggled(self):
+        return self.build
+
     def toggle_build_call(self, args):
         """
         toggles the build call.
         :param args: <int> incoming set integer.
         :return:
         """
+        self.build = 0
         if self.get_selected_blueprint():
             if args == 1:
+                self.build = 1
                 self.finish_all_call()
             elif args == 0:
+                self.build = 0
                 self.create_all_call()
         else:
             QtWidgets.QMessageBox().warning(self, "Creature Blueprint Not Saved.", "Please save creature blueprint.")
@@ -721,6 +745,9 @@ class ModuleForm(QtWidgets.QFrame):
 
         # fill the modules with the selected blueprint
         self.parent.initializer(selected_file=True)
+
+        # if the creature has been changed, reset the slider back at default position
+        self.reset_slider(True)
         return True
 
 
@@ -791,7 +818,6 @@ class InformationForm(QtWidgets.QFrame):
 
         # build divider
         divider = QtWidgets.QLabel("Information: ")
-        # spacer = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
         self.widgets['instructions'].addWidget(divider)
         self.widgets['instructions'].insertStretch(len(self.info_widgets) + 1)
 
@@ -829,8 +855,12 @@ class InformationForm(QtWidgets.QFrame):
     def update_call(self):
         """
         information update when the update button is clicked.
-        :return: <bool> True for success.
+        :return: <bool> True for success. <bool> False for failure.
         """
+        if self.parent.module_form.is_build_toggled:
+            QtWidgets.QMessageBox().warning(self, "Could not update.", "Please revert back to guides (Turn off build).")
+            return False
+
         # get information
         self.get_information()
 
@@ -840,7 +870,7 @@ class InformationForm(QtWidgets.QFrame):
 
             # update the widgets' published attributes
             self.parent.update_selected_item_attributes(self.information)
-            print("Updating module: %s with data: %s " % (self.information["name"], self.information))
+            debug_print("Updating module: %s with data: %s " % (self.information["name"], self.information))
 
         # update each module's guide positions (if any)
         self.parent.update_guide_position_data()
@@ -870,6 +900,7 @@ class InformationForm(QtWidgets.QFrame):
         :return: <bool> True for success.
         """
         attributes = self.parent.get_selected_item_attributes()
+        debug_print('attributes: >> {}'.format(attributes))
         for attr_name, attr_val in attributes.items():
             self.update_information(attr_name, attr_val)
         return True
@@ -940,6 +971,10 @@ class ModuleWidget(QtWidgets.QWidget):
         self.parent = parent
         self.version = 0000
 
+        self.module_name = module_name
+        self.module_data = self.find_module_data(module_name)
+        self.module_index = get_module_count(module_name)
+
         # set name of the module
         if information:
             if "name" in information:
@@ -947,9 +982,9 @@ class ModuleWidget(QtWidgets.QWidget):
         else:
             self.name = '{}_{}'.format(module_name, self.module_index)
 
-        self.module_name = module_name
-        self.module_index = get_module_count(module_name)
-        self.module_data = self.find_module_data(module_name)
+        # debug print
+        debug_print("{}\n".format(self.name))
+        debug_print(information)
 
         # build the module widgets
         self.build()
@@ -960,6 +995,8 @@ class ModuleWidget(QtWidgets.QWidget):
 
         # activate this module
         self.create_module(information=information)
+
+        debug_print(self.module.PUBLISH_ATTRIBUTES)
 
         # initialize the attributes
         # Python never implicitly copies the objects, when set, it is referred to the exact same module.
@@ -1025,6 +1062,7 @@ class ModuleWidget(QtWidgets.QWidget):
         :return:
         """
         self.module.select_guides()
+        self.module.select_built_objects()
 
     def rename_call(self):
         """
@@ -1033,13 +1071,13 @@ class ModuleWidget(QtWidgets.QWidget):
         """
         self.dialog = ui_tools.GetNameWidget(label=self.name_label.text(), text=self.name)
         self.dialog.exec_()
-
         # get proper name
-        new_name = name_utils.get_start_name_with_num(self.dialog.result)
-        # new_name = name_utils.get_start_name(self.dialog.result)
+        if self.dialog.result:
+            new_name = name_utils.get_start_name_with_num(self.dialog.result)
+            # new_name = name_utils.get_start_name(self.dialog.result)
 
-        self.set_name(new_name)
-        return self.dialog.result
+            self.set_name(new_name)
+            return self.dialog.result
 
     # -----------------------------------------------
     #  Module widget utilities
@@ -1125,6 +1163,7 @@ class ModuleWidget(QtWidgets.QWidget):
         """
         module_name = self.q_text.text()
         module_version = self.get_module_version()
+
         # get the right rig module type with the associated version
         module_class = build_utils.get_rig_module(module_name, module_version)
 
@@ -1138,7 +1177,6 @@ class ModuleWidget(QtWidgets.QWidget):
         creates a new module.
         :return:
         """
-        print("module created: {}".format(information))
         self.module = self.get_module(activate=True, information=information)
         self.module.create()
         self.change_status(color="yellow")
@@ -1149,6 +1187,8 @@ class ModuleWidget(QtWidgets.QWidget):
         :return:
         """
         self.module.finish()
+        print "finishing >>", self.module.name
+        print "information >> ", self.module.information
         self.change_status(color="green")
         return True
 
@@ -1157,7 +1197,9 @@ class ModuleWidget(QtWidgets.QWidget):
         removes a module.
         :return:
         """
-        return self.module.remove()
+        self.module.remove()
+        del self.module
+        return True
 
     def build_module(self):
         """
@@ -1181,22 +1223,14 @@ class ModuleWidget(QtWidgets.QWidget):
         :param dictionary:
         :return: <bool> True for success.
         """
-        print(" ------- Updating Publish Dictionary ------- ")
+        # debug_print(" ------- Updating Publish Dictionary ------- ")
         self.module_attributes.update(dictionary)
-        pprint(self.module_attributes)
+        # debug_print(self.module_attributes, pp=1)
 
-        print(" ------- Updating Module Dictionary ------- ")
+        # debug_print(" ------- Updating Module Dictionary ------- ")
         self.module.information.update(dictionary)
-        pprint(self.module.information)
+        # debug_print(self.module.informationm pp=1)
         return True
-
-    def perform_module_create_call(self):
-        """
-        module build call perform
-        :return:
-        """
-        self.create_module()
-        # change the pixmap icon
 
     def perform_module_finish_call(self):
         """
@@ -1464,8 +1498,10 @@ def remove_item(index):
     """
     global MODULES_LIST
     global MODULE_NAMES_LIST
-    MODULES_LIST.pop(index)
-    MODULE_NAMES_LIST.pop(index)
+    del(MODULES_LIST[index])
+    del(MODULE_NAMES_LIST[index])
+    # MODULES_LIST.pop(index)
+    # MODULE_NAMES_LIST.pop(index)
     return True
 
 

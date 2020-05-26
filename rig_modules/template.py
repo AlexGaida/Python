@@ -1,6 +1,9 @@
 """
 This is a sample module for adding a singleton joint.
 """
+# import standard modules
+import gc
+
 # import custom modules
 from maya_utils import object_utils
 from rig_utils import joint_utils
@@ -23,7 +26,7 @@ class TemplateModule(object):
 
     """
     publish_attributes:
-        attributes to be saved to a build dictionary.
+        attributes to be saved to another, build dictionary.
     attribute_q_types:
         create line edit fields.
     """
@@ -48,8 +51,8 @@ class TemplateModule(object):
         self.PUBLISH_ATTRIBUTES["moduleType"] = self.class_name
 
         # update class attributes with incoming information
-        if information:
-            self.PUBLISH_ATTRIBUTES.update(information)
+        # if information:
+        #     self.PUBLISH_ATTRIBUTES.update(information)
 
     def created_decorator(self, func):
         print('created decorator called.')
@@ -89,14 +92,30 @@ class TemplateModule(object):
         if key_name not in self.PUBLISH_ATTRIBUTES:
             self.PUBLISH_ATTRIBUTES[key_name] = value
 
-    # def update_information(self, key_name="", value=None):
-    #     """
-    #     updates the publush attributes dictionary
-    #     :param key_name:
-    #     :param value:
-    #     :return:
-    #     """
-    #     self.PUBLISH_ATTRIBUTES[key_name] = value
+    def perform_connections(self):
+        """
+        performs the connections between the modules
+        :return:
+        """
+        # create connections to other nodes in the scene
+        parent_to = self.information['parentTo']
+        constrain_to = self.information['constrainTo']
+
+        # we want to deliberately raise an error when the object is not found
+        if constrain_to:
+            if not object_utils.is_exists(constrain_to):
+                ctrl_obj = control_utils.get_control_name(constrain_to)
+                object_utils.do_parent_constraint(ctrl_obj, self.controller_data['controller'])
+            else:
+                object_utils.do_parent_constraint(constrain_to, self.controller_data['controller'])
+
+        if parent_to:
+            if not object_utils.is_exists(parent_to):
+                ctrl_obj = control_utils.get_control_name(parent_to)
+                object_utils.do_parent(self.controller_data['group_names'][-1], ctrl_obj)
+            else:
+                object_utils.do_parent(self.controller_data['group_names'][-1], parent_to)
+        return True
 
     def update_information(self, dictionary):
         """
@@ -215,3 +234,15 @@ class TemplateModule(object):
         :return:
         """
         pass
+
+    def select_built_objects(self):
+        """
+        select the built objects
+        :return:
+        """
+        pass
+
+    def __del__(self):
+        del self
+        gc.collect()
+

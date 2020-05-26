@@ -7,7 +7,9 @@ from rig_utils import name_utils
 from rig_utils import joint_utils
 from rig_modules import template
 from maya_utils import object_utils
+from pprint import pprint
 
+# define module variables
 # define module variables
 class_name = "Singleton"
 
@@ -16,7 +18,15 @@ class Singleton(template.TemplateModule):
     class_name = class_name
 
     def __init__(self, name="", control_shape="cube", prefix_name="", information=""):
-        super(Singleton, self).__init__(name=name, prefix_name=prefix_name, information=information)
+        # super(Singleton, self).__init__(name=name, prefix_name=prefix_name, information=information)
+        template.TemplateModule.__init__(self, name=name, prefix_name=prefix_name, information=information)
+
+        # updates information
+        # print('Updating the module with information: \n')
+        # pprint(information)
+
+        # for whatever reason this doesn't work
+        self.information = information
         self.update_information(information)
         self.add_new_information('positions')
 
@@ -111,6 +121,8 @@ class Singleton(template.TemplateModule):
         self.finished = False
         self.created = False
 
+        # garbage collection
+
     def create(self):
         """
         creates a joint controlled by one joint.
@@ -136,6 +148,33 @@ class Singleton(template.TemplateModule):
         name = self.prefix_name + self.name
         return control_utils.create_controllers_with_standard_constraints(
             name, objects_array=constraint_object, shape_name=self.control_shape)
+
+    # def perform_connections(self):
+    #     """
+    #     performs the connections between the modules
+    #     :return:
+    #     """
+    #     # create connections to other nodes in the scene
+    #     parent_to = self.information['parentTo']
+    #     constrain_to = self.information['constrainTo']
+    #
+    #     # we want to deliberately raise an error when the object is not found
+    #     if constrain_to:
+    #         if not object_utils.is_exists(constrain_to):
+    #             ctrl_obj = control_utils.get_control_name(constrain_to)
+    #             print("Constraining the target to: {}".format(ctrl_obj))
+    #             object_utils.do_parent_constraint(ctrl_obj, self.controller_data['controller'])
+    #         else:
+    #             object_utils.do_parent_constraint(constrain_to, self.controller_data['controller'])
+    #
+    #     if parent_to:
+    #         if not object_utils.is_exists(parent_to):
+    #             ctrl_obj = control_utils.get_control_name(parent_to)
+    #             print("Parenting the target to: {}".format(ctrl_obj))
+    #             object_utils.do_parent(self.controller_data['group_names'][-1], ctrl_obj)
+    #         else:
+    #             object_utils.do_parent(self.controller_data['group_names'][-1], parent_to)
+    #     return True
 
     def replace_guides(self):
         """
@@ -164,8 +203,26 @@ class Singleton(template.TemplateModule):
         select the guide joints
         :return:
         """
-        if self.guide_joints:
+        if self.if_guides_exist:
             object_utils.select_object(self.guide_joints)
+
+    def select_built_objects(self):
+        """
+        select the built objects
+        :return: <bool> True for success
+        """
+        if self.controller_data:
+            object_utils.select_object(self.controller_data['group_names'][-1])
+
+    # need to investigage why it raises a TypeError()
+    # TypeError: super(type, obj): obj must be an instance or subtype of type
+    # def perform_connections(self):
+    #     """
+    #     perform connections with the information provided in the fields.
+    #     :return: <bool> True for success.
+    #     """
+    #     super(Singleton, self).perform_connections()
+    #     # self.perform_connections()
 
     def finish(self):
         """
@@ -182,15 +239,14 @@ class Singleton(template.TemplateModule):
         self.controller_data = self.create_controller(self.finished_joints)[0]
 
         # create connections to other nodes in the scene
-        parent_to = self.PUBLISH_ATTRIBUTES['parentTo']
-        constrain_to = self.PUBLISH_ATTRIBUTES['constrainTo']
-        if constrain_to and object_utils.is_exists(constrain_to):
-            object_utils.do_parent_constraint(self.controller_data['controller'], constrain_to)
-        if parent_to and object_utils.is_exists(parent_to):
-            object_utils.do_parent(self.controller_data['group_names'][-1], parent_to)
+        self.perform_connections()
 
         # store this
         self.built_groups = self.controller_data['group_names']
         print("[{}] :: finished.".format(self.name))
         self.finished = True
         return True
+
+    def __del__(self):
+        del self
+        del template

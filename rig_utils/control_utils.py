@@ -3,7 +3,6 @@ control_utils.py utility module for manipulating controllers
 """
 # import standard modules
 import re
-from functools import partial
 
 # import local modules
 import read_sides
@@ -27,6 +26,7 @@ CTRL_SUFFIX = 'ctrl'
 LOCATOR_SUFFIX = 'loc'
 CONSTRAINT_GRP = 'cnst'
 re_brackets = re.compile(r'\[|]')
+re_numbers = re.compile('_\d+')
 transform_attrs = attribute_utils.Attributes.DEFAULT_ATTR_VALUES
 side_cls = read_sides.Sides()
 
@@ -396,7 +396,13 @@ def create_control_at_transform(object_name, name='', shape_name="cube", auto_nu
     return ctrl_data
 
 
-def get_control_name(name, idx):
+def get_control_name(name, idx=0):
+    """
+    return the controller name.
+    :param name: <str> the base name
+    :param idx: <int> integer index for iteration.
+    :return: <str> controller name.
+    """
     return '{}_{}_{}'.format(name, idx, CTRL_SUFFIX),
 
 
@@ -461,7 +467,7 @@ def create_controllers_with_standard_constraints(name, objects_array=(), shape_n
     :param objects_array: <tuple> (optional) if not given, the objects will depend on your selection.
     :param shape_name: <str>
     :param maintain_offset: <bool> create constraints with maintain offset.
-    :return: <tuplw>
+    :return: <tuple> controller groups.
     """
     if not objects_array:
         objects_array = object_utils.get_selected_node(single=False)
