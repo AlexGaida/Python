@@ -8,6 +8,9 @@ from rig_utils import joint_utils
 from rig_modules import template
 from maya_utils import object_utils
 
+# reloads
+# reload(template)
+
 # define module variables
 class_name = "FkChain"
 
@@ -15,11 +18,25 @@ class_name = "FkChain"
 class FkChain(template.TemplateModule):
     class_name = class_name
 
+    PUBLISH_ATTRIBUTES = {"constrainTo": "",
+                          "parentTo": "",
+                          "name": "",
+                          "moduleType": "",
+                          "positions": ()
+                          }
+
+    ATTRIBUTE_EDIT_TYPES = {'line-edit': ["name", "parentTo", "constrainTo", "positions", "numberOfBones"],
+                            'label': ["moduleType"]
+                            }
+
     def __init__(self, name="", control_shape="cube", prefix_name="", information=""):
         super(FkChain, self).__init__(name=name, prefix_name=prefix_name, information=information)
 
         self.add_new_information('positions')
         self.add_new_information('numberOfBones', value=3)
+
+        self.information = information
+        self.update_information(information)
 
         self.name = name
         self.prefix_name = prefix_name
@@ -87,6 +104,8 @@ class FkChain(template.TemplateModule):
             name = args[0]
             self.rename(name)
         print('update called.')
+
+        # self.information["numberOfBones"] =
         self.information["positions"] = self.get_guide_positions()
 
     def remove(self):

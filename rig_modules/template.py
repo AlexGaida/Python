@@ -37,7 +37,7 @@ class TemplateModule(object):
                           "positions": ()
                           }
 
-    ATTRIBUTE_EDIT_TYPES = {'line-edit': ["name", "parentTo", "constrainTo"],
+    ATTRIBUTE_EDIT_TYPES = {'line-edit': ["name", "parentTo", "constrainTo", "positions"],
                             'label': ["moduleType"]
                             }
 
@@ -49,10 +49,6 @@ class TemplateModule(object):
 
         # publish attributes
         self.PUBLISH_ATTRIBUTES["moduleType"] = self.class_name
-
-        # update class attributes with incoming information
-        # if information:
-        #     self.PUBLISH_ATTRIBUTES.update(information)
 
     def created_decorator(self, func):
         print('created decorator called.')
@@ -88,7 +84,6 @@ class TemplateModule(object):
         """
         if key_name not in self.ATTRIBUTE_EDIT_TYPES[widget_type]:
             self.ATTRIBUTE_EDIT_TYPES[widget_type].append(key_name)
-
         if key_name not in self.PUBLISH_ATTRIBUTES:
             self.PUBLISH_ATTRIBUTES[key_name] = value
 

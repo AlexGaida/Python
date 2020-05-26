@@ -66,15 +66,17 @@ buttons = {"empty": build_utils.empty_icon,
            "yellow": build_utils.yellow_icon
            }
 
-debug = False
+debug = True
 
 
-def debug_print(pp=False, *args):
-    if debug:
-        if pp:
-            pprint(args)
-        else:
-            print(args)
+def debug_print(*args, **kwargs):
+    if not debug:
+        return 1
+    if 'pp' in kwargs:
+        pprint(args)
+        return 0
+    print(args)
+    return 0
 
 
 def add_module_decorator(func):
@@ -329,16 +331,13 @@ class MainWindow(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         global MODULE_NAMES_LIST
 
         # get the selected widget
-        selected_item = args[0]
-        row_int = selected_item.listWidget().currentRow()
+        row_int = self.get_item_row(args)
         module_widget = MODULES_LIST[row_int]
 
         # get the information about the module
-        data = module_widget.module_data[module_widget.module_name]
-        module_version = module_widget.get_current_version()
-
-        # get build instructions about the module
-        attributes_data = data[module_version].ATTRIBUTE_EDIT_TYPES
+        attributes_data = self.get_attribute_data(module_widget)
+        # attributes_data = self.get_selected_item_attributes()
+        print("data: {}".format(attributes_data))
 
         # construct the information item data inputs
         self.information_form.construct_items(attributes_data)
@@ -346,6 +345,27 @@ class MainWindow(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         # updates the information
         self.information_form.update_information('name', module_widget.name)
         return True
+
+    @staticmethod
+    def get_item_row(args):
+        """
+        returns the currently selected items' row
+        :return: <int>
+        """
+        return args[0].listWidget().currentRow()
+
+    @staticmethod
+    def get_attribute_data(module_widget):
+        """
+        gets the module information.
+        :return: <dict> attribute data
+        """
+        data = module_widget.get_data()
+        module_version = module_widget.get_current_version()
+
+        # get build instructions about the module
+        return data[module_version].ATTRIBUTE_EDIT_TYPES
+        # return data[module_version].information
 
     def get_selected_row(self):
         return self.module_form.list.currentRow()
@@ -808,6 +828,7 @@ class InformationForm(QtWidgets.QFrame):
         build instructions.
         :return: <bool> True for success.
         """
+
         # labels first
         if 'label' in data:
             labels = data['label']
@@ -947,7 +968,7 @@ class ModuleWidget(QtWidgets.QWidget):
     # store the information inside this attributes variable
     module_attributes = {}
 
-    def __init__(self, parent=None, module_name="", list_widget=None, item=None, information={}):
+    def __init__(self, parent=None, module_name="", list_widget=None, item=None, information=None):
         super(ModuleWidget, self).__init__(parent)
         # initialize the module main layout
         self.main_layout = QtWidgets.QHBoxLayout()
@@ -1008,6 +1029,14 @@ class ModuleWidget(QtWidgets.QWidget):
     # -----------------------------------------------
     #  Create widget connections
     # -----------------------------------------------
+
+    def get_data(self):
+        """
+        returns the module data information
+        :return:
+        """
+        return self.module_data[self.module_name]
+
     def update_information(self, key_name, value):
         """
         when the QLabel name gets updated, it also updates the information form.
@@ -1187,8 +1216,6 @@ class ModuleWidget(QtWidgets.QWidget):
         :return:
         """
         self.module.finish()
-        print "finishing >>", self.module.name
-        print "information >> ", self.module.information
         self.change_status(color="green")
         return True
 
@@ -1257,7 +1284,8 @@ class ModuleWidget(QtWidgets.QWidget):
     # -----------------------------------------------
     #  Builds the module widget
     # -----------------------------------------------
-    def find_module_data(self, module_name):
+    @staticmethod
+    def find_module_data(module_name):
         """
         grabs the module class data.
         :param module_name: <str> module name.
@@ -1296,21 +1324,24 @@ class ModuleWidget(QtWidgets.QWidget):
         """
         return QtWidgets.QLabel(name)
 
-    def add_build_button(self):
+    @staticmethod
+    def add_build_button():
         """
         adds a push button.
         :return: <QtWidgets.QPushButton>
         """
         return QtWidgets.QPushButton("Build")
 
-    def add_delete_button(self):
+    @staticmethod
+    def add_delete_button():
         """
         adds a push button.
         :return: <QtWidgets.QPushButton>
         """
         return QtWidgets.QPushButton("Remove")
 
-    def add_icon(self):
+    @staticmethod
+    def add_icon():
         """
         adds an empty 6`x6x icon.
         :return: <QtGui.QPixmap>

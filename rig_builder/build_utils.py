@@ -146,7 +146,7 @@ def add_extension(file_name, ext='py'):
 
 def __update_module_data(key_name, value_name, data_dict={}):
     """
-    update the module data_dict variable.
+    update the module data_dict variable. Inserts the key name to the dictionary if there isn't one.
     :param key_name: <str>
     :param value_name: <valueType>
     :param data_dict: <dict>
@@ -177,6 +177,7 @@ def find_module_data(module_name):
         version = extract_version(mod)
         mod_name = extract_name(mod)
         module_instance = get_rig_module(mod_name, version)
+        # module_data[module_name].update({version: module_instance})
         module_data = __update_module_data(module_name, {version: module_instance}, data_dict=module_data)
     return module_data
 

@@ -7,7 +7,9 @@ from rig_utils import name_utils
 from rig_utils import joint_utils
 from rig_modules import template
 from maya_utils import object_utils
-from pprint import pprint
+
+# reloads
+# reload(template)
 
 # define module variables
 # define module variables
@@ -16,10 +18,21 @@ class_name = "Singleton"
 
 class Singleton(template.TemplateModule):
     class_name = class_name
+    class_name = class_name
+
+    PUBLISH_ATTRIBUTES = {"constrainTo": "",
+                          "parentTo": "",
+                          "name": "",
+                          "moduleType": "",
+                          "positions": ()
+                          }
+
+    ATTRIBUTE_EDIT_TYPES = {'line-edit': ["name", "parentTo", "constrainTo", "positions"],
+                            'label': ["moduleType"]
+                            }
 
     def __init__(self, name="", control_shape="cube", prefix_name="", information=""):
-        # super(Singleton, self).__init__(name=name, prefix_name=prefix_name, information=information)
-        template.TemplateModule.__init__(self, name=name, prefix_name=prefix_name, information=information)
+        super(Singleton, self).__init__(name=name, prefix_name=prefix_name, information=information)
 
         # updates information
         # print('Updating the module with information: \n')
@@ -28,7 +41,7 @@ class Singleton(template.TemplateModule):
         # for whatever reason this doesn't work
         self.information = information
         self.update_information(information)
-        self.add_new_information('positions')
+        # self.add_new_information('positions')
 
         # define template variables
         self.name = name
