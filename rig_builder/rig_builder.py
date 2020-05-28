@@ -295,7 +295,7 @@ class MainWindow(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         """
         self.menu_bar_data["setBlueprintPath"].triggered.connect(self.set_blueprint_path_call)
         self.menu_bar_data["saveNewBlueprint"].triggered.connect(self.save_new_blueprint_call)
-        self.menu_bar_data["saveBlueprint"].triggered.connect(self.save_blueprint_call)
+        # self.menu_bar_data["saveBlueprint"].triggered.connect(self.save_blueprint_call)
         self.menu_bar_data["removeBlueprint"].triggered.connect(self.remove_blueprint_call)
         self.menu_bar_data["openBlueprintDir"].triggered.connect(self.open_blueprint_dir_call)
         self.menu_bar_data["openBlueprintFile"].triggered.connect(self.open_blueprint_file_call)
@@ -336,8 +336,6 @@ class MainWindow(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
 
         # get the information about the module
         attributes_data = self.get_attribute_data(module_widget)
-        # attributes_data = self.get_selected_item_attributes()
-        print("data: {}".format(attributes_data))
 
         # construct the information item data inputs
         self.information_form.construct_items(attributes_data)
@@ -434,7 +432,7 @@ class MainWindow(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
 
         # create blueprint option actions
         menu_data["setBlueprintPath"] = QtWidgets.QAction("S&et Blueprint Path")
-        menu_data["saveBlueprint"] = QtWidgets.QAction("Save &Blueprint")
+        # menu_data["saveBlueprint"] = QtWidgets.QAction("Save &Blueprint")
         menu_data["saveNewBlueprint"] = QtWidgets.QAction("Save &New Blueprint")
         menu_data["removeBlueprint"] = QtWidgets.QAction("&Remove Blueprint")
         menu_data["openBlueprintDir"] = QtWidgets.QAction("&Open Blueprint Dir")
@@ -446,7 +444,7 @@ class MainWindow(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
 
         # blueprint options
         menu_data["blueprintOptions"].addAction(menu_data["setBlueprintPath"])
-        menu_data["blueprintOptions"].addAction(menu_data["saveBlueprint"])
+        # menu_data["blueprintOptions"].addAction(menu_data["saveBlueprint"])
         menu_data["blueprintOptions"].addAction(menu_data["saveNewBlueprint"])
         menu_data["blueprintOptions"].addAction(menu_data["removeBlueprint"])
         menu_data["blueprintOptions"].addAction(menu_data["openBlueprintDir"])

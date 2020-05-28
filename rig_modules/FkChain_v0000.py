@@ -1,6 +1,9 @@
 """
 Singleton method to creating a single joint in the scene.
 """
+# import standard modules
+from pprint import pprint
+
 # import local modules
 from rig_utils import control_utils
 from rig_utils import name_utils
@@ -33,10 +36,10 @@ class FkChain(template.TemplateModule):
         super(FkChain, self).__init__(name=name, prefix_name=prefix_name, information=information)
 
         self.add_new_information('positions')
-        self.add_new_information('numberOfBones', value=3)
-
+        self.number_of_bones = 3
         self.information = information
         self.update_information(information)
+        self.add_new_information('numberOfBones', value=self.number_of_bones)
 
         self.name = name
         self.prefix_name = prefix_name
@@ -52,9 +55,10 @@ class FkChain(template.TemplateModule):
         creates a guide joint object.
         :return: <str> joint object name.
         """
-        jnt_name = joint_utils.create_joint(
-            name=self.name, guide_joint=True, prefix_name=self.prefix_name, as_strings=True)
-        self.guide_joints.append(jnt_name[0])
+        positions = joint_utils.get_joint_positions(self.number_of_bones)
+        self.guide_joints = joint_utils.create_joint(
+            num_joints=self.number_of_bones, name=self.name, guide_joint=True,
+            prefix_name=self.prefix_name, as_strings=True, use_position=positions)
 
     def rename(self, name):
         """
@@ -105,7 +109,6 @@ class FkChain(template.TemplateModule):
             self.rename(name)
         print('update called.')
 
-        # self.information["numberOfBones"] =
         self.information["positions"] = self.get_guide_positions()
 
     def remove(self):
@@ -145,6 +148,10 @@ class FkChain(template.TemplateModule):
         :return: <str> group name.
         """
         name = self.prefix_name + self.name
+        print(name)
+        print(constraint_object)
+        print(self.control_shape)
+
         return control_utils.create_controllers_with_standard_constraints(
             name, objects_array=constraint_object, shape_name=self.control_shape)
 
@@ -153,15 +160,16 @@ class FkChain(template.TemplateModule):
         replaces the guide joints with the actual bound joints.
         :return: <tuple> bound joint array.
         """
-        self.finished_joints = ()
         if self.if_guides_exist():
             positions = self.get_guide_positions()
             object_utils.remove_node(self.guide_joints)
-            for position in positions:
-                self.finished_joints += joint_utils.create_joint(self.name, prefix_name=self.prefix_name,
-                                                                 use_position=position, bound_joint=True,
-                                                                 as_strings=True)[0],
             self.guide_joints = []
+            return joint_utils.create_joint(self.name,
+                                            prefix_name=self.prefix_name,
+                                            num_joints=len(positions),
+                                            use_position=positions,
+                                            bound_joint=True,
+                                            as_strings=True),
 
     def if_guides_exist(self):
         """
@@ -186,19 +194,11 @@ class FkChain(template.TemplateModule):
         if self.finished:
             return False
 
-        # populate the finished joints using the positions of the guide joints
-        self.replace_guides()
-
         # creates the controller object on the bound joint.
-        self.controller_data = self.create_controller(self.finished_joints)[0]
+        self.controller_data = self.create_controller(self.replace_guides()[0])[0]
 
         # create connections to other nodes in the scene
-        parent_to = self.PUBLISH_ATTRIBUTES['parentTo']
-        constrain_to = self.PUBLISH_ATTRIBUTES['constrainTo']
-        if constrain_to and object_utils.is_exists(constrain_to):
-            object_utils.do_parent_constraint(self.controller_data['controller'], constrain_to)
-        if parent_to and object_utils.is_exists(parent_to):
-            object_utils.do_parent(self.controller_data['group_names'][-1], parent_to)
+        self.perform_connections()
 
         # store this
         self.built_groups = self.controller_data['group_names']

@@ -1,6 +1,9 @@
 """
 Singleton method to creating a single joint in the scene.
 """
+# import standard modules
+from pprint import pprint
+
 # import local modules
 from rig_utils import control_utils
 from rig_utils import name_utils
@@ -35,8 +38,8 @@ class Singleton(template.TemplateModule):
         super(Singleton, self).__init__(name=name, prefix_name=prefix_name, information=information)
 
         # updates information
-        # print('Updating the module with information: \n')
-        # pprint(information)
+        print('Updating the module with information: \n')
+        pprint(self.ATTRIBUTE_EDIT_TYPES)
 
         # for whatever reason this doesn't work
         self.information = information
@@ -259,7 +262,3 @@ class Singleton(template.TemplateModule):
         print("[{}] :: finished.".format(self.name))
         self.finished = True
         return True
-
-    def __del__(self):
-        del self
-        del template

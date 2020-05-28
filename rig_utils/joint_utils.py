@@ -305,7 +305,20 @@ def get_joint_names(name,
     return joint_names
 
 
-def create_joint(name, num_joints=1, prefix_name="",
+def get_joint_positions(num=3):
+    """
+    returns the joint positions by the number of joints required to build.
+    :param num:
+    :return:
+    """
+    positions = ()
+    for i in range(num):
+        positions += [0.0, 0.0, float(i)],
+    return positions
+
+
+def create_joint(name, prefix_name="",
+                 num_joints=1,
                  as_strings=False,
                  guide_joint=False,
                  bound_joint=False,
@@ -370,17 +383,31 @@ def create_joint(name, num_joints=1, prefix_name="",
         if use_transform and object_utils.is_exists(new_name):
             object_utils.snap_to_transform(new_name, use_transform, matrix=True)
 
-        # set the translation
-        if use_position and len(use_position) == 3:
-            object_utils.set_object_transform(new_name, t=use_position)
-
-        elif use_position and len(use_position) > 3:
-            object_utils.set_object_transform(new_name, m=use_position)
+        # set the position of the newly created joint
+        if use_position:
+            if isinstance(use_position[0], (int, float)):
+                set_position(new_name, use_position)
+            else:
+                set_position(new_name, use_position[i])
 
     if not as_strings:
         return jnt_objects
     elif as_strings:
         return jnt_names
+
+
+def set_position(obj, positional_array):
+    """
+    sets position of the joint
+    :param obj:
+    :param positional_array:
+    :return:
+    """
+    if positional_array and len(positional_array) == 3:
+        object_utils.set_object_transform(obj, t=positional_array)
+
+    elif positional_array and len(positional_array) > 3:
+        object_utils.set_object_transform(obj, m=positional_array)
 
 
 def get_joint_orientation(joint_name):

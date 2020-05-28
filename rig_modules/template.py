@@ -90,8 +90,11 @@ class TemplateModule(object):
     def perform_connections(self):
         """
         performs the connections between the modules
-        :return:
+        :return: <bool> True for success. <bool> False for failure.
         """
+        if not self.information:
+            return False
+
         # create connections to other nodes in the scene
         parent_to = self.information['parentTo']
         constrain_to = self.information['constrainTo']

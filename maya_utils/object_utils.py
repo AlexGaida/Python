@@ -689,7 +689,12 @@ def remove_node(object_name):
         for i in xrange(array.length()):
             if is_exists(array[i]):
                 m_dag_mod.deleteNode(array[i])
-                m_dag_mod.doIt()
+                try:
+                    m_dag_mod.doIt()
+                except RuntimeError:
+                    # object  already deleted
+                    continue
+
     elif isinstance(object_name, (str, unicode)):
         node = get_m_obj(object_name)
         if is_exists(node):
