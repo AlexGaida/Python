@@ -305,15 +305,17 @@ def get_joint_names(name,
     return joint_names
 
 
-def get_joint_positions(num=3):
+def get_joint_positions(num=3, y=0.0, x=0.0):
     """
     returns the joint positions by the number of joints required to build.
-    :param num:
+    :param num: <int> creates this number of joints in the scene.
+    :param y: <float> sets the initial y value.
+    :param x: <float> sets the initial x value.
     :return:
     """
     positions = ()
     for i in range(num):
-        positions += [0.0, 0.0, float(i)],
+        positions += [x, y, float(i)],
     return positions
 
 

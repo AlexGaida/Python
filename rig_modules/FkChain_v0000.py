@@ -148,9 +148,6 @@ class FkChain(template.TemplateModule):
         :return: <str> group name.
         """
         name = self.prefix_name + self.name
-        print(name)
-        print(constraint_object)
-        print(self.control_shape)
 
         return control_utils.create_controllers_with_standard_constraints(
             name, objects_array=constraint_object, shape_name=self.control_shape)
@@ -186,6 +183,20 @@ class FkChain(template.TemplateModule):
         if self.guide_joints:
             object_utils.select_object(self.guide_joints)
 
+    def perform_parenting(self):
+        """
+        now parent the groups to their controllers.
+        :return: <bool> True for success. <bool> False for failure.
+        """
+        max_len = len(self.controller_data) - 1
+        for idx in xrange(max_len):
+            # data = {'controller': u'FkChain_0_0_ctrl', 'group_names': ('FkChain_0_0_ctrl_grp', 'FkChain_0_0_ctrl_cnst')
+            if idx + 1 <= max_len:
+                c_data = self.controller_data[max_len - idx]
+                next_data = self.controller_data[(max_len - idx) - 1]
+                object_utils.do_parent(c_data["group_names"][0], next_data["controller"])
+        return True
+
     def finish(self):
         """
         finish the construction of this module.
@@ -195,13 +206,17 @@ class FkChain(template.TemplateModule):
             return False
 
         # creates the controller object on the bound joint.
-        self.controller_data = self.create_controller(self.replace_guides()[0])[0]
+        self.controller_data = self.create_controller(self.replace_guides()[0])
 
         # create connections to other nodes in the scene
         self.perform_connections()
 
-        # store this
-        self.built_groups = self.controller_data['group_names']
+        # now parent each group to their respective parent controller
+        self.perform_parenting()
+
+        # store this for deletion
+        self.built_groups = self.controller_data[0]['group_names']
+
         print("[{}] :: finished.".format(self.name))
         self.finished = True
         return True
