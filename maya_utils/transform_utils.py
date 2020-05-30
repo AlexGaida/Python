@@ -12,6 +12,30 @@ from maya import cmds
 import object_utils
 
 
+def match_position_transform(source, target):
+    """
+    match the transform
+    :param source:
+    :param target:
+    :return:
+    """
+    tfm = Transform(target)
+    cmds.xform(source, t=tfm.world_translation)
+    return True
+
+
+def match_matrix_transform(source, target):
+    """
+    match the transform
+    :param source:
+    :param target:
+    :return:
+    """
+    tfm = Transform(target)
+    cmds.xform(source, m=tfm.wmatrix)
+    return True
+
+
 def get_plug_value(in_plug):
     """
     Gets the value of the given plug.
@@ -350,6 +374,10 @@ class Transform(OpenMaya.MFnTransform):
     def print_4x4_world_matrix(self):
         for m in [self.world_matrix[i:i + 4] for i in range(0, len(self.world_matrix), 4)]:
             print m
+
+    @property
+    def wmatrix(self):
+        return self.get_world_matrix()
 
     @property
     def local_matrix(self):

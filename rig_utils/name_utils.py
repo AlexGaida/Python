@@ -93,6 +93,24 @@ def get_bound_name_array(prefix_name="", name="", length=1):
     return bound_names
 
 
+def get_suffix_name_array(prefix_name="", name="", suffix_name="", length=1):
+    """
+    return an array of bound joint names.
+    :param prefix_name: <str> prefix name.
+    :param name: <str> the base name.
+    :param length: <int> length of created names.
+    :param suffix_name: <str> suffix name string.
+    :return: <tuple> joint names array.
+    """
+    bound_names = ()
+    start_name = get_start_name(name, prefix_name=prefix_name)
+    if JNT_SUFFIX_NAME not in suffix_name:
+        suffix_name += '_{}'.format(JNT_SUFFIX_NAME)
+    for index in xrange(length):
+        bound_names += '{name}_{idx}_{suffix}'.format(name=start_name, idx=index, suffix=suffix_name),
+    return bound_names
+
+
 def get_name_array(prefix_name="", name="", length=1):
     """
     gets the names array.

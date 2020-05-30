@@ -8,7 +8,7 @@ from maya import cmds
 
 def build_stretch(start_joint, end_joint):
     """
-    builds the joint as stretchy joint.
+    builds the joint as stretchy joint from the starting joint to the end joint.
     :param start_joint:
     :param end_joint:
     :return:

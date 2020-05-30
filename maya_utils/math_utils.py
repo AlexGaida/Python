@@ -506,7 +506,7 @@ def rotate_object_3d(x, y, z, delta=0.5):
     return True
 
 
-def look_at(source, target, up_vector=(0, -1, 0), as_vector=True):
+def look_at(source, target, up_vector=(0, 1, 0), as_vector=True):
     """
     allows the transform object to look at another target vector object.
     :return: <tuple> rotational vector.
@@ -523,10 +523,12 @@ def look_at(source, target, up_vector=(0, -1, 0), as_vector=True):
     z = MVector(target_world[12] - source_world[12],
                 target_world[13] - source_world[13],
                 target_world[14] - source_world[14])
+    z *= -1
     z.normalize()
 
     # get normalized cross product of the z against the up vector at origin
-    x = z ^ MVector(-up_vector[0], -up_vector[1], -up_vector[2])
+    # x = z ^ MVector(-up_vector[0], -up_vector[1], -up_vector[2])
+    x = z ^ MVector(up_vector[0], up_vector[1], up_vector[2])
     x.normalize()
 
     # get the normalized y vector
@@ -538,7 +540,7 @@ def look_at(source, target, up_vector=(0, -1, 0), as_vector=True):
         x.x, x.y, x.z, 0,
         y.x, y.y, y.z, 0,
         z.x, z.y, z.z, 0,
-        0, 0, 0, 1)
+        0, 0, 0, 1.0)
 
     matrix = object_utils.ScriptUtil(local_matrix_list, matrix_from_list=True).matrix
 

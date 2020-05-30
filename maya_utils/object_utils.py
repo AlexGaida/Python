@@ -695,9 +695,8 @@ def remove_node(object_name):
                     # object  already deleted
                     continue
 
-    elif isinstance(object_name, (str, unicode)):
-        node = get_m_obj(object_name)
-        if is_exists(node):
+    elif isinstance(object_name, (str, unicode)) and is_exists(object_name):
+            node = get_m_obj(object_name)
             m_dag_mod.deleteNode(node)
             m_dag_mod.doIt()
     return True
@@ -1861,16 +1860,22 @@ def attr_connect(attr_src, attr_trg):
     return True
 
 
-def attr_add_float(node_name, attribute_name):
+def attr_add_float(node_name, attribute_name, min_value=None, max_value=None):
     """
     add the new attribute to this node.
     :param node_name: <str> valid node name.
     :param attribute_name: <str> valid attribute name.
+    :param min_value: <float> if given, will edit the attributes's minimum value.
+    :param max_value: <float> if given, will edit the attribute's maximum value.
     :return: <str> new attribute name.
     """
     if not cmds.objExists(attr_name(node_name, attribute_name)):
         cmds.addAttr(node_name, at='float', ln=attribute_name)
         cmds.setAttr(attr_name(node_name, attribute_name), k=1)
+    if not isinstance(min_value, type(None)):
+        cmds.addAttr(attr_name(node_name, attribute_name), edit=True, min=min_value)
+    if not isinstance(max_value, type(None)):
+        cmds.addAttr(attr_name(node_name, attribute_name), edit=True, max=max_value)
     return attr_name(node_name, attribute_name)
 
 
@@ -1953,11 +1958,26 @@ def do_parent_constraint(master_obj, slave_obj, maintain_offset=True):
     return cmds.parentConstraint(master_obj, slave_obj, mo=maintain_offset)[0]
 
 
+def do_point_constraint(master_obj, slave_obj, maintain_offset=True):
+    """
+    perform parent constraint
+    :param master_obj: <str> driver object
+    :param slave_obj: <str> driven object
+    :param maintain_offset: <bool> let the child object maintain its offset when constrained to the master.
+    :return: <str> parent constraint node.
+    """
+    return cmds.pointConstraint(master_obj, slave_obj, mo=maintain_offset)[0]
+
+
 def do_parent(child_obj, parent_obj):
     """
     perform parenting.
-    :param child_obj:
-    :param parent_obj:
-    :return:
+    :param child_obj: <str> child string object.
+    :param parent_obj: <str> parent string object.
+    :return: <bool> False if failure.
     """
-    return cmds.parent(child_obj, parent_obj)
+    try:
+        return cmds.parent(child_obj, parent_obj)
+    except RuntimeError:
+        cmds.warning("[Could not parent: {} -> {}]".format(child_obj, parent_obj))
+        return False

@@ -326,7 +326,10 @@ def create_controller_shape(shape_name):
         # knot = cv_length + degree - 1
         for cv_point in cvs:
             cv_points += cv_point[1:],
-        curves += cmds.curve(p=cv_points, k=knots[:-2], degree=degree),
+        try:
+            curves += cmds.curve(p=cv_points, k=knots[:-2], degree=degree),
+        except RuntimeError:
+            curves += cmds.curve(p=cv_points, k=knots, degree=degree),
     return curves
 
 

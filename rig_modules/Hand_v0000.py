@@ -163,11 +163,11 @@ class Hand(template.TemplateModule):
         if self.guide_joints:
             for jnt_array in self.guide_joints:
                 object_utils.remove_node(jnt_array)
-
+        if self.finished_joints:
+            for jnt_array in self.finished_joints:
+                object_utils.remove_node(jnt_array)
         if self.built_groups:
             object_utils.remove_node(self.built_groups[0])
-        if self.finished_joints:
-            object_utils.remove_node(self.finished_joints)
         self.finished = False
         self.created = False
 
@@ -298,7 +298,9 @@ class Hand(template.TemplateModule):
         self.perform_connections()
 
         # store this information
-        self.built_groups = self.controller_data['group_names']
+        for ctrl_data in self.controller_data:
+            print(ctrl_data[0])
+            self.built_groups.extend(ctrl_data[0]['group_names'])
         print("[{}] :: finished.".format(self.name))
         self.finished = True
         return True

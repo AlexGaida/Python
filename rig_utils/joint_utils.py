@@ -274,7 +274,8 @@ def get_joint_names(name,
                     num_joints=1,
                     use_name=False,
                     guide_joint=False,
-                    bound_joint=False):
+                    bound_joint=False,
+                    suffix_name=""):
     """
     returns an array of joint names.
     :param name: <str> (mandatory) base name of the joint to use at creation.
@@ -284,13 +285,19 @@ def get_joint_names(name,
     :param use_name: <str> use the name that is coming in as-is.
     :param guide_joint: <bool> returns guide joint names.
     :param bound_joint: <bool> returns bound joint names.
+    :param suffix_name: <str> custom suffix joint name.
     :return:
     """
     if use_name:
         joint_names = [name]
 
     else:
-        if guide_joint:
+        if suffix_name:
+            joint_names = name_utils.get_suffix_name_array(prefix_name=prefix_name,
+                                                           name=name,
+                                                           length=num_joints,
+                                                           suffix_name=suffix_name)
+        elif guide_joint:
             joint_names = name_utils.get_guide_name_array(prefix_name=prefix_name,
                                                           name=name,
                                                           length=num_joints)
@@ -305,17 +312,19 @@ def get_joint_names(name,
     return joint_names
 
 
-def get_joint_positions(num=3, y=0.0, x=0.0):
+def get_joint_positions(num=3, y=0.0, x=0.0, direction='z'):
     """
     returns the joint positions by the number of joints required to build.
     :param num: <int> creates this number of joints in the scene.
     :param y: <float> sets the initial y value.
     :param x: <float> sets the initial x value.
-    :return:
+    :param direction: <str> the direction of the axis to create joint towards.
+    :return: <tuple> positions
     """
     positions = ()
     for i in range(num):
-        positions += [x, y, float(i)],
+        if direction == 'z':
+            positions += [x, y, float(i)],
     return positions
 
 
@@ -324,6 +333,7 @@ def create_joint(name, prefix_name="",
                  as_strings=False,
                  guide_joint=False,
                  bound_joint=False,
+                 suffix_name="",
                  use_name=False,
                  use_transform="",
                  use_position=()):
@@ -338,6 +348,7 @@ def create_joint(name, prefix_name="",
     :param use_name: <str> use the name that is coming in.
     :param use_transform: <str> use this object's transform co-ordinates.
     :param use_position: <tuple, list> array of floats to use as transform or matrix.
+    :param suffix_name: <str> uses a custom suffix name string.
     :return: <tuple> array of created joint objects.
     """
     if not name:
@@ -354,7 +365,8 @@ def create_joint(name, prefix_name="",
                                   num_joints=num_joints,
                                   use_name=use_name,
                                   guide_joint=guide_joint,
-                                  bound_joint=bound_joint)
+                                  bound_joint=bound_joint,
+                                  suffix_name=suffix_name)
 
     for i in xrange(0, num_joints):
         # only create new if the objects's names do not exist
@@ -467,20 +479,19 @@ def zero_joint_orient(object_name, x=True, y=True, z=True):
     :return: <bool>
     """
     if x:
-        cmds.setAttr(object_name + '.jointOrientX')
+        cmds.setAttr(object_name + '.jointOrientX', 0.0)
     if y:
-        cmds.setAttr(object_name + '.jointOrientY')
+        cmds.setAttr(object_name + '.jointOrientY', 0.0)
     if z:
-        cmds.setAttr(object_name + '.jointOrientZ')
+        cmds.setAttr(object_name + '.jointOrientZ', 0.0)
     return True
 
 
-def orient_joints(joint_array, primary_axis='x', secondary_world_axis='y'):
+def orient_joints(joint_array, primary_axis='x'):
     """
     orients the joints.
     :param joint_array: <tuple> array of joints.
     :param primary_axis: <str> the axis to orient joints towards.
-    :param secondary_world_axis: <str> the secondary axis to orient joints towards.
     :return:
     """
     for jnt_name in joint_array:
@@ -495,3 +506,4 @@ def orient_joints(joint_array, primary_axis='x', secondary_world_axis='y'):
         if primary_axis == 'z':
             return cmds.joint(jnt_name, e=True, oj='zxy', secondaryAxisOrient='yup', ch=True, zso=True)
     raise ValueError("[OrientJoints] :: You must specify the axis of orientation: x, y or z.")
+

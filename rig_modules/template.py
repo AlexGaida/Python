@@ -86,6 +86,8 @@ class TemplateModule(object):
             self.ATTRIBUTE_EDIT_TYPES[widget_type].append(key_name)
         if key_name not in self.PUBLISH_ATTRIBUTES:
             self.PUBLISH_ATTRIBUTES[key_name] = value
+        if key_name not in self.information:
+            self.information[key_name] = value
 
     def perform_connections(self):
         """
