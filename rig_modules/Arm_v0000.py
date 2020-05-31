@@ -7,6 +7,7 @@ from pprint import pprint
 # import local modules
 from rig_utils import control_utils
 from maya_utils import transform_utils
+from maya_utils import attribute_utils
 from rig_utils import joint_utils
 from rig_modules import template
 from maya_utils import object_utils
@@ -272,7 +273,8 @@ class Arm(template.TemplateModule):
         if self.controller_data:
             object_utils.select_object(self.controller_data['group_names'][-1])
 
-    def perform_parenting(self, controller_data):
+    @staticmethod
+    def perform_parenting(controller_data):
         """
         now parent the groups to their controllers.
         :return: <bool> True for success. <bool> False for failure.
@@ -283,13 +285,48 @@ class Arm(template.TemplateModule):
             if idx + 1 <= max_len:
                 c_data = controller_data[max_len - idx]
                 next_data = controller_data[(max_len - idx) - 1]
-                object_utils.do_parent(c_data["group_names"][0], next_data["controller"])
+                object_utils.do_parent(c_data[0]["group_names"], next_data[0]["controller"])
         return True
 
-    def create_blend_node(self):
-        blend_node = object_utils.create_node(node_type='blendNode', node_name=self.name + "_blend")
+    @staticmethod
+    def get_control_top_group(control_dict):
+        """
+        utility function to get the top group from controller dictionary variable.
+        :param control_dict:
+        :return: <str> top group name
+        """
+        if isinstance(control_dict, (list, tuple)):
+            try:
+                return control_dict[0]['group_names'][0]
+            except TypeError:
+                return control_dict[0][0]['group_names'][0]
+        return control_dict['group_names'][0]
 
-    def create_ik_fk_system(self, bind_joints, fk_joints, ik_joints):
+    @staticmethod
+    def get_ikfk_attrs(object_name):
+        """
+        get the custom attributes
+        :param object_name:
+        :return:
+        """
+        attrs_list = attribute_utils.get_custom_attributes(object_name, full_name=True)
+        attributes = {'ik': '',
+                      'fk': ''}
+        for a in attrs_list:
+            if "_ik_" in a.lower():
+                attributes['ik'] = a
+            if "_fk_" in a.lower():
+                attributes['fk'] = a
+        return attributes
+
+    def make_arm_stretchy(self):
+        """
+        creates additional utility nodes to make a stretchy arm.
+        :return: <bool> True for success.
+        """
+        return True
+
+    def create_arm_system(self, bind_joints, fk_joints, ik_joints):
         """
         creates the ik fk blending system.
         :param bind_joints:
@@ -298,33 +335,85 @@ class Arm(template.TemplateModule):
         :return:
         """
         controller_data = {}
-        # creates the parent constraints
-        for bnd_jnt, fk_jnt, ik_jnt in zip(bind_joints, fk_joints, ik_joints):
-            parent_cnst = object_utils.do_parent_constraint((ik_jnt, fk_jnt), bnd_jnt)
 
         # creates the ik system for the ik joints
         ik_handle = joint_utils.create_ik_handle(ik_joints, name=self.name + '_ik')
 
         # create the controller to manage the ik_fk switching
         ik_fk_ctrl = control_utils.create_control(shape_name='locator', name=self.name + '_ikfk')
-        object_utils.attr_add_float(ik_fk_ctrl['controller'], 'ikfk', min_value=0.0, max_value=1.0)
-        transform_utils.match_position_transform(ik_fk_ctrl['group_names'][0], ik_joints[-1])
+        ik_fk_ctrl_attr = object_utils.attr_add_float(ik_fk_ctrl['controller'], 'ikfk', min_value=0.0, max_value=1.0)
+        transform_utils.match_position_transform(self.get_control_top_group(ik_fk_ctrl), ik_joints[-1])
+
+        blend_node = object_utils.create_node(node_type='blendColors', node_name=self.name + "_blend")
+        object_utils.do_connections(ik_fk_ctrl_attr, blend_node + '.blender')
+        object_utils.do_set_attr(blend_node + '.color2R', 0.0)
+        object_utils.do_set_attr(blend_node + '.color1R', 1.0)
+        object_utils.do_set_attr(blend_node + '.color1G', 0.0)
+        object_utils.do_set_attr(blend_node + '.color2G', 1.0)
         controller_data["ikfk_controller"] = ik_fk_ctrl
 
+        # creates the parent constraints and setup the switching system
+        for bnd_jnt, fk_jnt, ik_jnt in zip(bind_joints, fk_joints, ik_joints):
+            # connect the blend color controller to the constraint group
+            parent_cnst = object_utils.do_parent_constraint((ik_jnt, fk_jnt), bnd_jnt)
+            attrs = self.get_ikfk_attrs(parent_cnst)
+            status = object_utils.do_connections(blend_node + '.outputR', attrs["ik"])
+            if not status:
+                raise RuntimeError("[Arm] :: Connection failure: {}.".format(blend_node))
+            status = object_utils.do_connections(blend_node + '.outputG', attrs["fk"])
+            if not status:
+                raise RuntimeError("[Arm] :: Connection failure: {}.".format(blend_node))
+
+        # constrain the control node, the ik and fk joints are stored as the last ones in list
+        control_cnst = object_utils.do_parent_constraint((ik_jnt, fk_jnt), ik_fk_ctrl["group_names"][0])
+        attrs = self.get_ikfk_attrs(control_cnst)
+        status = object_utils.do_connections(blend_node + '.outputR', attrs["ik"])
+        if not status:
+            raise RuntimeError("[Arm] :: Connection failure: {}.".format(blend_node))
+        status = object_utils.do_connections(blend_node + '.outputG', attrs["fk"])
+        if not status:
+            raise RuntimeError("[Arm] :: Connection failure: {}.".format(blend_node))
+
         # create the controllers for the Ik system
-        wrist_ik_ctrl = control_utils.create_control(shape_name='sphere', name=self.name + 'wrist_ik')
-        transform_utils.match_position_transform(wrist_ik_ctrl['group_names'][0], ik_handle[0])
+        wrist_ik_ctrl = control_utils.create_control(shape_name='sphere', name=self.name + '_wrist_ik')
+        transform_utils.match_position_transform(self.get_control_top_group(wrist_ik_ctrl), ik_handle[0])
         object_utils.do_point_constraint(wrist_ik_ctrl['controller'], ik_handle[0])
         controller_data["ik_wrist_controller"] = wrist_ik_ctrl
 
-        upper_ik_ctrl = control_utils.create_control(shape_name='sphere', name=self.name + 'upper_ik')
-        transform_utils.match_position_transform(upper_ik_ctrl['group_names'][0], ik_joints[0])
+        upper_ik_ctrl = control_utils.create_control(shape_name='sphere', name=self.name + '_upper_ik')
+        transform_utils.match_position_transform(self.get_control_top_group(upper_ik_ctrl), ik_joints[0])
         object_utils.do_point_constraint(upper_ik_ctrl['controller'], ik_joints[0])
         controller_data["ik_upper_controller"] = upper_ik_ctrl
 
         # create the controllers for the Fk system
         controller_data["fk_controller"] = self.create_controllers(fk_joints)
-        return controller_data
+
+        # organize the control systems
+        control_grp = object_utils.create_node('transform', node_name=self.name + '_controllers_grp')
+        for k_name in controller_data:
+            top_grp = self.get_control_top_group(controller_data[k_name])
+            object_utils.do_parent(top_grp, control_grp)
+
+        # organize the systems nodes
+        systems_grp = object_utils.create_node('transform', node_name=self.name + '_systems_grp')
+        object_utils.do_parent(ik_handle[0], systems_grp)
+        object_utils.do_parent(bind_joints[0], systems_grp)
+        object_utils.do_parent(fk_joints[0], systems_grp)
+        object_utils.do_parent(ik_joints[0], systems_grp)
+
+        # now create a master controller for this arm system
+        master_ctrl = control_utils.create_control(shape_name='locator', name=self.name + '_plug')
+        object_utils.do_parent_constraint(master_ctrl["controller"], systems_grp, maintain_offset=True)
+        object_utils.do_scale_constraint(master_ctrl["controller"], systems_grp, maintain_offset=True)
+        object_utils.do_parent_constraint(master_ctrl["controller"], control_grp, maintain_offset=True)
+        object_utils.do_scale_constraint(master_ctrl["controller"], control_grp, maintain_offset=True)
+
+        # now make the arm stretchy
+        self.make_arm_stretchy()
+
+        # store the master controller as part of the main controller data
+        self.controller_data = master_ctrl
+        return True
 
     def finish(self):
         """
@@ -337,15 +426,14 @@ class Arm(template.TemplateModule):
         # populate the finished joints using the positions of the guide joints
         bind_joints, fk_joints, ik_joints = self.replace_guides()
 
-        self.built_groups = self.create_ik_fk_system(bind_joints, fk_joints, ik_joints)
+        # create the arm system
+        self.create_arm_system(bind_joints, fk_joints, ik_joints)
 
         # create connections to other nodes in the scene
         self.perform_connections()
 
         # store this information
-        for ctrl_data in self.controller_data:
-            print(ctrl_data[0])
-            self.built_groups.extend(ctrl_data[0]['group_names'])
+        self.built_groups.extend(self.controller_data['group_names'])
         print("[{}] :: finished.".format(self.name))
         self.finished = True
         return True

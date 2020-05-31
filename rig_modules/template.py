@@ -97,26 +97,30 @@ class TemplateModule(object):
         if not self.information:
             return False
 
-        # create connections to other nodes in the scene
-        parent_to = self.information['parentTo']
-        constrain_to = self.information['constrainTo']
-
-        control_data = self.controller_data[0]
+        # make relationships by connecting to other nodes in the scene
+        if isinstance(self.controller_data, (list, tuple)):
+            control_data = self.controller_data[0]
+        if isinstance(self.controller_data, dict):
+            control_data = self.controller_data
 
         # we want to deliberately raise an error when the object is not found
-        if constrain_to:
-            if not object_utils.is_exists(constrain_to):
-                ctrl_obj = control_utils.get_control_name(constrain_to)
-                object_utils.do_parent_constraint(ctrl_obj, control_data['controller'])
-            else:
-                object_utils.do_parent_constraint(constrain_to, control_data['controller'])
+        if "constrainTo" in self.information:
+            constrain_to = self.information['constrainTo']
+            if constrain_to:
+                if not object_utils.is_exists(constrain_to):
+                    ctrl_obj = control_utils.get_control_name(constrain_to)
+                    object_utils.do_parent_constraint(ctrl_obj, control_data['controller'])
+                else:
+                    object_utils.do_parent_constraint(constrain_to, control_data['controller'])
 
-        if parent_to:
-            if not object_utils.is_exists(parent_to):
-                ctrl_obj = control_utils.get_control_name(parent_to)
-                object_utils.do_parent(control_data['group_names'][-1], ctrl_obj)
-            else:
-                object_utils.do_parent(control_data['group_names'][-1], parent_to)
+        if "parentTo" in self.information:
+            parent_to = self.information['parentTo']
+            if parent_to:
+                if not object_utils.is_exists(parent_to):
+                    ctrl_obj = control_utils.get_control_name(parent_to)
+                    object_utils.do_parent(control_data['group_names'][-1], ctrl_obj)
+                else:
+                    object_utils.do_parent(control_data['group_names'][-1], parent_to)
         return True
 
     def update_information(self, dictionary):

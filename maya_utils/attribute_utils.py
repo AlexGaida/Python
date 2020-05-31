@@ -11,14 +11,18 @@ import object_utils
 import transform_utils
 
 
-def get_custom_attributes(object_name=""):
+def get_custom_attributes(object_name="", full_name=False):
     """
     return an array of custom attributes.
-    :param object_name: <str> object name to pass throguh.
+    :param object_name: <str> object name to pass through.
+    :param full_name: <bool> returns the full name of the attribute.
     :return: <list> custom attributes found for this object.
     """
     cnst_attr = Attributes(object_name, custom=True)
-    return cnst_attr.custom.keys()
+    if not full_name:
+        return cnst_attr.custom.keys()
+    else:
+        return map(lambda x: "{}.{}".format(object_name, x), cnst_attr.custom.keys())
 
 
 def get_keyable_attributes(object_name=""):

@@ -1958,13 +1958,24 @@ def do_parent_constraint(master_obj, slave_obj, maintain_offset=True):
     return cmds.parentConstraint(master_obj, slave_obj, mo=maintain_offset)[0]
 
 
-def do_point_constraint(master_obj, slave_obj, maintain_offset=True):
+def do_scale_constraint(master_obj, slave_obj, maintain_offset=True):
     """
-    perform parent constraint
+    perform scale constraint
     :param master_obj: <str> driver object
     :param slave_obj: <str> driven object
     :param maintain_offset: <bool> let the child object maintain its offset when constrained to the master.
-    :return: <str> parent constraint node.
+    :return: <str> scale constraint node.
+    """
+    return cmds.scaleConstraint(master_obj, slave_obj, mo=maintain_offset)[0]
+
+
+def do_point_constraint(master_obj, slave_obj, maintain_offset=True):
+    """
+    perform point constraint
+    :param master_obj: <str> driver object
+    :param slave_obj: <str> driven object
+    :param maintain_offset: <bool> let the child object maintain its offset when constrained to the master.
+    :return: <str> point constraint node.
     """
     return cmds.pointConstraint(master_obj, slave_obj, mo=maintain_offset)[0]
 
@@ -1981,3 +1992,36 @@ def do_parent(child_obj, parent_obj):
     except RuntimeError:
         cmds.warning("[Could not parent: {} -> {}]".format(child_obj, parent_obj))
         return False
+
+
+def do_connections(source_obj_attr, target_obj_attr):
+    """
+    perform connections from the source object attribute to the target object attribute
+    :param source_obj_attr: <str> the source object.
+    :param target_obj_attr: <str> the target object.
+    :return: <bool> True for success. <bool> False for failure.
+    """
+    try:
+        cmds.connectAttr(source_obj_attr, target_obj_attr, force=True)
+    except RuntimeError:
+        return False
+    return True
+
+
+def do_set_attr(source_node_attr, value):
+    """
+    set the attribute to the source node.
+    :param source_node_attr: <str>
+    :param value: <inputValue> the value to set on the attribute.
+    :return: <bool> True for success. <bool> False for failure.
+    """
+    if isinstance(value, (int, float)):
+        cmds.setAttr(source_node_attr, value)
+        return True
+    if isinstance(value, (list, tuple)):
+        cmds.setAttr(source_node_attr, value, type="double3")
+        return True
+    if isinstance(value, (str, unicode)):
+        cmds.setAttr(source_node_attr, value, type="string")
+        return True
+    return False
