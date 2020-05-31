@@ -34,7 +34,7 @@ class Hand(template.TemplateModule):
                             'label': ["moduleType"]
                             }
 
-    def __init__(self, name="", control_shape="cube", prefix_name="", information=""):
+    def __init__(self, name="", control_shape="cube", prefix_name="", information={}):
         super(Hand, self).__init__(name=name, prefix_name=prefix_name, information=information)
 
         # for whatever reason this doesn't work
@@ -78,19 +78,23 @@ class Hand(template.TemplateModule):
         self.guide_joints = ()
 
         # get the positions for the middle joint
-        mid_positions = joint_utils.get_joint_positions(self.number_of_joints)
-        indx_positions = joint_utils.get_joint_positions(self.number_of_joints, x=1.0)
-        thumb_positions = joint_utils.get_joint_positions(self.number_of_joints, x=2.0)
-        ring_positions = joint_utils.get_joint_positions(self.number_of_joints, x=-1.0)
-        pinky_positions = joint_utils.get_joint_positions(self.number_of_joints, x=-2.0)
+        hand_position = joint_utils.get_joint_positions(self.number_of_joints)
+        mid_positions = joint_utils.get_joint_positions(self.number_of_joints, z=1.0)
+        indx_positions = joint_utils.get_joint_positions(self.number_of_joints, x=1.0, z=1.0)
+        thumb_positions = joint_utils.get_joint_positions(self.number_of_joints, x=2.0, z=1.0)
+        ring_positions = joint_utils.get_joint_positions(self.number_of_joints, x=-1.0, z=1.0)
+        pinky_positions = joint_utils.get_joint_positions(self.number_of_joints, x=-2.0, z=1.0)
 
-        positions = (mid_positions, mid_positions, indx_positions, thumb_positions, ring_positions, pinky_positions)
+        positions = (hand_position, mid_positions, indx_positions, thumb_positions, ring_positions, pinky_positions)
 
         # create the hand joint
         for name, jnt_num, pos in zip(self.names, self.joints_num, positions):
             self.guide_joints += joint_utils.create_joint(
                 num_joints=jnt_num, name=name, guide_joint=True,
                 prefix_name=self.prefix_name, as_strings=True, use_position=pos),
+
+        for idx in xrange(1, len(self.guide_joints)):
+            object_utils.do_parent(self.guide_joints[idx][0], self.guide_joints[0][0])
 
     def rename(self, name):
         """
@@ -200,6 +204,9 @@ class Hand(template.TemplateModule):
             data = control_utils.create_controllers_with_standard_constraints(
                 name, objects_array=obj_array, shape_name=self.control_shape)
 
+            if "_" not in name:
+                self.controller_data = data
+
             # parent everything else to the hand controller
             if name == self.name:
                 par_obj = data[0]["controller"]
@@ -221,12 +228,6 @@ class Hand(template.TemplateModule):
         if self.if_guides_exist():
             positions = self.get_guide_positions()
             self.finished_joints = ()
-
-            # create the hand joint
-            for name, jnt_num, pos in zip(self.names, self.joints_num, positions):
-                self.guide_joints += joint_utils.create_joint(
-                    num_joints=jnt_num, name=name, guide_joint=True,
-                    prefix_name=self.prefix_name, as_strings=True, use_position=pos),
 
             # remove the existing guides
             for name, jnt_array, pos_array in zip(self.names, self.guide_joints, positions):
@@ -292,14 +293,13 @@ class Hand(template.TemplateModule):
         self.replace_guides()
 
         # creates the controller object on the bound joint and do necessary parenting.
-        self.controller_data = self.create_controllers()
+        controllers = self.create_controllers()
 
         # create connections to other nodes in the scene
         self.perform_connections()
 
         # store this information
-        for ctrl_data in self.controller_data:
-            print(ctrl_data[0])
+        for ctrl_data in controllers:
             self.built_groups.extend(ctrl_data[0]['group_names'])
         print("[{}] :: finished.".format(self.name))
         self.finished = True

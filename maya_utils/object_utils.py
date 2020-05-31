@@ -633,7 +633,8 @@ def get_m_obj_array(objects=()):
     """
     m_array = OpenMaya.MObjectArray()
     for idx, obj in enumerate(objects):
-        m_array.insert(get_m_obj(obj), idx)
+        if is_exists(obj):
+            m_array.insert(get_m_obj(obj), idx)
     return m_array
 
 
@@ -687,13 +688,12 @@ def remove_node(object_name):
     if isinstance(object_name, (list, tuple)):
         array = get_m_obj_array(object_name)
         for i in xrange(array.length()):
-            if is_exists(array[i]):
-                m_dag_mod.deleteNode(array[i])
-                try:
-                    m_dag_mod.doIt()
-                except RuntimeError:
-                    # object  already deleted
-                    continue
+            m_dag_mod.deleteNode(array[i])
+            try:
+                m_dag_mod.doIt()
+            except RuntimeError:
+                # object  already deleted
+                continue
 
     elif isinstance(object_name, (str, unicode)) and is_exists(object_name):
             node = get_m_obj(object_name)
