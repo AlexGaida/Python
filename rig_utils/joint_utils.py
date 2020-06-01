@@ -459,14 +459,17 @@ def create_joints_from_arrays(positions, names, parented=False):
     return joints
 
 
-def create_ik_handle(joint_array, name=''):
+def create_ik_handle(joint_array, name='', sticky="off", solver="ikRPsolver", priority=2):
     """
     creates the ik handle from the joints array provided.
     :param joint_array: <tuple>, <list> the joint array to use.
     :param name: <str> create an IkHandle with this name.
+    :param solver: <str>  ikRPsolver, ikSCsolver and ikSplineSolver.
     :return: <str> ikHandle created.
     """
-    return cmds.ikHandle(startJoint=joint_array[0], endEffector=joint_array[-1], name=name)
+    return cmds.ikHandle(
+        startJoint=joint_array[0], endEffector=joint_array[-1],
+        name=name, sticky=sticky, solver=solver, priority=priority)
 
 
 def freeze_transformations(object_name, translate=True, rotate=True, scale=True):

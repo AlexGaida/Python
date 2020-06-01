@@ -1975,6 +1975,16 @@ def do_parent_constraint(master_obj, slave_obj, maintain_offset=True):
     return cmds.parentConstraint(master_obj, slave_obj, mo=maintain_offset)[0]
 
 
+def do_pole_vector_constraint(master_obj, slave_obj):
+    """
+    perform parent constraint
+    :param master_obj: <str> driver object
+    :param slave_obj: <str> driven object
+    :return: <str> parent constraint node.
+    """
+    return cmds.poleVectorConstraint(master_obj, slave_obj)[0]
+
+
 def do_scale_constraint(master_obj, slave_obj, maintain_offset=True):
     """
     perform scale constraint

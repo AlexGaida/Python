@@ -227,8 +227,10 @@ class IkFkHinge(template.TemplateModule):
                 # parent the guide joints
                 object_utils.do_parent(bind_joints[idx], bind_joints[idx - 1])
 
-            if len(positions) - 1 == idx:
-                joint_utils.zero_joint_orient(bind_joints[-1])
+            # we must freeze the rotational transformations for the ik handle to work properly.
+            joint_utils.freeze_transformations(bind_joints[idx], rotate=True, translate=False, scale=False)
+            # if len(positions) - 1 == idx:
+            #     joint_utils.zero_joint_orient(bind_joints[-1])
             idx += 1
         return bind_joints
 
@@ -303,7 +305,7 @@ class IkFkHinge(template.TemplateModule):
         """
         utility function to get the top group from controller dictionary variable.
         :param control_dict:
-        :return: <str> top group name
+        :return: <str> top group name.
         """
         if isinstance(control_dict, (list, tuple)):
             try:
@@ -311,6 +313,20 @@ class IkFkHinge(template.TemplateModule):
             except TypeError:
                 return control_dict[0][0]['group_names'][0]
         return control_dict['group_names'][0]
+
+    @staticmethod
+    def get_controller_name(control_dict):
+        """
+        utility function to get the controller dictionary.
+        :param control_dict: <dict>
+        :return: <str> controller name.
+        """
+        if isinstance(control_dict, (list, tuple)):
+            try:
+                return control_dict[0]['controller']
+            except TypeError:
+                return control_dict['controller']
+        return control_dict['controller']
 
     @staticmethod
     def get_ikfk_attrs(object_name):
@@ -340,11 +356,14 @@ class IkFkHinge(template.TemplateModule):
         """
         creates a pole vector for the Ik Handle
         :param ik_joints:
+        :param ik_handle:
         :return:
         """
-        ik_fk_ctrl = control_utils.create_control(shape_name='sphere', name=self.name + '_ik_pole_vector_ctrl')
-        math_utils.get_pole_vector_position(*ik_joints)
-        transform_utils.match_position_transform(self.get_control_top_group(ik_fk_ctrl), ik_joints[-1])
+        ik_pole_vector = control_utils.create_control(shape_name='sphere', name=self.name + '_ik_pole_vector_ctrl')
+        position = math_utils.get_pole_vector_position(*ik_joints)
+        transform_utils.match_position_transform(self.get_control_top_group(ik_pole_vector), position)
+        object_utils.do_pole_vector_constraint(self.get_controller_name(ik_pole_vector), ik_handle)
+        return ik_pole_vector
 
     def create_arm_system(self, bind_joints, fk_joints, ik_joints):
         """
@@ -357,10 +376,11 @@ class IkFkHinge(template.TemplateModule):
         controller_data = {}
 
         # creates the ik system for the ik joints
+        # print ik_joints
         ik_handle = joint_utils.create_ik_handle(ik_joints, name=self.name + '_ik')
         self.built_groups.append(ik_handle[0])
 
-        self.create_pole_vector_controller(ik_joints, ik_handle)
+        controller_data['pole_vector_ctrl'] = self.create_pole_vector_controller(ik_joints, ik_handle[0])
 
         # create the controller to manage the ik_fk switching
         ik_fk_ctrl = control_utils.create_control(shape_name='locator', name=self.name + '_ikfk')
@@ -389,7 +409,9 @@ class IkFkHinge(template.TemplateModule):
                 raise RuntimeError("[Arm] :: Connection failure: {}.".format(blend_node))
 
         # constrain the control node, the ik and fk joints are stored as the last ones in list
-        control_cnst = object_utils.do_parent_constraint((ik_jnt, fk_jnt), ik_fk_ctrl["group_names"][0])
+        control_cnst = object_utils.do_parent_constraint((ik_jnt, fk_jnt),
+                                                         ik_fk_ctrl["group_names"][0],
+                                                         maintain_offset=False)
         attrs = self.get_ikfk_attrs(control_cnst)
         status = object_utils.do_connections(blend_node + '.outputR', attrs["ik"])
         if not status:
@@ -400,12 +422,12 @@ class IkFkHinge(template.TemplateModule):
 
         # create the controllers for the Ik system
         wrist_ik_ctrl = control_utils.create_control(shape_name='sphere', name=self.name + '_wrist_ik')
-        transform_utils.match_position_transform(self.get_control_top_group(wrist_ik_ctrl), ik_handle[0])
+        transform_utils.match_matrix_transform(self.get_control_top_group(wrist_ik_ctrl), ik_joints[-1])
         object_utils.do_point_constraint(wrist_ik_ctrl['controller'], ik_handle[0])
         controller_data["ik_wrist_controller"] = wrist_ik_ctrl
 
         upper_ik_ctrl = control_utils.create_control(shape_name='sphere', name=self.name + '_upper_ik')
-        transform_utils.match_position_transform(self.get_control_top_group(upper_ik_ctrl), ik_joints[0])
+        transform_utils.match_matrix_transform(self.get_control_top_group(upper_ik_ctrl), ik_joints[0])
         object_utils.do_point_constraint(upper_ik_ctrl['controller'], ik_joints[0])
         controller_data["ik_upper_controller"] = upper_ik_ctrl
 

@@ -5,7 +5,7 @@ Standard math functions and manipulating vector operations.
 from collections import Iterable
 
 # import maya modules
-from maya.OpenMaya import MVector, MMatrix, MPoint, MTransformationMatrix
+from maya.OpenMaya import MVector, MMatrix, MPoint, MPlane, MTransformationMatrix
 from maya import cmds
 
 # import local modules
@@ -311,7 +311,6 @@ class Vector(MVector):
     RESULT = ()
 
     def __init__(self, *args):
-        print args[0]
         if isinstance(args[0], (str, unicode)):
             super(Vector, self).__init__(*get_object_transform(args[0]))
         elif isinstance(args[0], float):
@@ -404,8 +403,8 @@ class OldVector:
             self.magnitude = abs(mag)
 
         else:
-            print("Wrong number of arguments used!\r\n\
-                    You must have either one or two lists of vectors: head, tail or head")
+            cmds.warning("Wrong number of arguments used!\r\n\
+                         You must have either one or two lists of vectors: head, tail or head")
 
         # get the vector data by subtracting from the head by the tail.
         if "tail" in dir():
@@ -833,4 +832,113 @@ def get_pole_vector_position(st_joint, mid_joint, en_joint, distance_from_elbow=
     v += v1
     va = v3 - v
     v += va * distance_from_elbow
-    return v
+    return Vector(v).position
+
+
+class Plane(MPlane):
+    def __init__(self):
+        super(Plane, self).__init__()
+        self.magnitude = 0.0
+
+    def get_3_point_normal(self, point0, point1, point2):
+        """
+        Returns a normal vector for a plane that would be formed from 3 points
+        """
+        if not point0 or not point1 or not point2:
+            return None
+        if isinstance(point0, (str, unicode, tuple, list)):
+            point0 = Vector(point0)
+        if isinstance(point1, (str, unicode, tuple, list)):
+            point1 = Vector(point1)
+        if isinstance(point2, (str, unicode, tuple, list)):
+            point2 = Vector(point2)
+        vector = ((point2 - point1) ^ (point1 - point0))
+        vector.normalize()
+        self.magnitude = self.get_magnitude(point0, point2)
+        return vector
+
+    def get_2_point_normal(self, point0, point1, normal):
+        """
+        Returns a plane that would be formed from 2 points and an additional normal vector
+        """
+        if not point0 or not point1 or not normal:
+            return None
+        if isinstance(point0, (str, unicode, tuple, list)):
+            point0 = Vector(point0)
+        if isinstance(point1, (str, unicode, tuple, list)):
+            point1 = Vector(point1)
+        if isinstance(normal, (str, unicode, tuple, list)):
+            normal = Vector(normal)
+        line_vec = point1 - point0
+
+        # find the normal between the line formed by 2 points and the passed in normal
+        first_norm = (normal ^ line_vec).normalize()
+        self.magnitude = self.get_magnitude(point0, point1)
+        # now the cross between the line and firstNorm is the result
+        return (first_norm ^ line_vec).normalize()
+
+    def get_3_point_plane(self, point0, point1, point2):
+        """
+        Gets a plane from 3 points in space
+        """
+        if not point0 or not point1 or not point2:
+            return None
+        if isinstance(point0, (str, unicode, tuple, list)):
+            point0 = Vector(point0)
+        if isinstance(point1, (str, unicode, tuple, list)):
+            point1 = Vector(point1)
+        if isinstance(point2, (str, unicode, tuple, list)):
+            point2 = Vector(point2)
+        self.magnitude = self.get_magnitude(point0, point2)
+        self.setPlane(self.get_3_point_normal(point0, point1, point2), 0)
+        return self.set_plane_world_position(self, point0)
+
+    @staticmethod
+    def get_magnitude(start, end):
+        return (Vector(end) - Vector(start)).length()
+
+    @staticmethod
+    def closest_point_on_plane(point, plane):
+        """
+        Gets the closest point on a plane to some other point in space.
+        AKA projecting a point onto a plane
+        """
+        if point is None or plane is None:
+            return None
+        return point - (plane.normal() * plane.distanceToPoint(point, signed=True))
+
+    @staticmethod
+    def set_plane_world_position(plane, position):
+        """
+        Takes an existing plane with a normal and puts it at some world position
+        """
+        if plane is None or position is None:
+            return None
+        plane.setPlane(plane.normal(), -plane.normal() * position)
+        return plane
+
+    def visualize_plane(self, name='visualiserPlane', position=None):
+        """
+        visualizes this plane
+        :param name: <str>
+        :param position: <tuple>
+        :return:
+        """
+        visualizer_plane = cmds.polyPlane(name=name, width=self.magnitude, height=self.magnitude,
+                                          axis=[self.normal().x, self.normal().y, self.normal().z],
+                                          constructionHistory=False)
+        # cmds.toggle(visualizer_plane, state=True, template=True)
+        if not position:
+            if self.normal().x != 0:
+                # automatically compute a position where we find x for if y and z were 0
+                position = Vector(-self.distance() / self.normal().x, 0, 0)
+            elif self.normal().y != 0:
+                # automatically compute a position where we find y for if x and z were 0
+                position = Vector(0, -self.distance() / self.normal().y, 0)
+            elif self.normal().z != 0:
+                # automatically compute a position where we find z for if x and y were 0
+                position = Vector(0, 0, -self.distance() / self.normal().z)
+            else:
+                cmds.warning("Invalid plane normal, all components are 0")
+        transform_utils.match_position_transform(visualizer_plane, position.position)
+        return visualizer_plane

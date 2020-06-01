@@ -24,25 +24,31 @@ def get_world_position(object_name):
 
 def match_position_transform(source, target):
     """
-    match the transform
-    :param source:
-    :param target:
-    :return:
+    match the transform.
+    :param source: <str> source object to snap to target.
+    :param target: <str>, <tuple> target object, or position array.
+    :return: <bool> True for success. <bool> False for failure.
     """
-    tfm = Transform(target)
-    cmds.xform(source, t=tfm.world_translation)
+    if isinstance(target, (tuple, list)):
+        cmds.xform(source, t=target)
+    else:
+        tfm = Transform(target)
+        cmds.xform(source, t=tfm.world_translation)
     return True
 
 
 def match_matrix_transform(source, target):
     """
     match the transform
-    :param source:
-    :param target:
-    :return:
+    :param source: <str> source object to snap to target.
+    :param target: <str>, <tuple> target object, or matrix array.
+    :return: <bool> True for success. <bool> False for failure.
     """
-    tfm = Transform(target)
-    cmds.xform(source, m=tfm.wmatrix)
+    if isinstance(target, (tuple, list)):
+        cmds.xform(source, m=target)
+    else:
+        tfm = Transform(target)
+        cmds.xform(source, m=tfm.wmatrix)
     return True
 
 
