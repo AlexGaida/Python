@@ -32,7 +32,7 @@ class PreBuild(template.TemplateModule):
         """
         cmds.file(new=True, f=1)
         # clears the script editor history
-        cmds.scriptEditorInfo(clearHistory=1)
+        # cmds.scriptEditorInfo(clearHistory=1)
         # set the boolean variable
         self.created = True
 

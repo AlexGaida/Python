@@ -109,7 +109,8 @@ class TemplateModule(object):
             if constrain_to:
                 if not object_utils.is_exists(constrain_to):
                     ctrl_obj = control_utils.get_control_name(constrain_to)
-                    object_utils.do_parent_constraint(ctrl_obj, control_data['controller'])
+                    if object_utils.is_exists(ctrl_obj):
+                        object_utils.do_parent_constraint(ctrl_obj, control_data['controller'])
                 else:
                     object_utils.do_parent_constraint(constrain_to, control_data['controller'])
 
@@ -118,7 +119,8 @@ class TemplateModule(object):
             if parent_to:
                 if not object_utils.is_exists(parent_to):
                     ctrl_obj = control_utils.get_control_name(parent_to)
-                    object_utils.do_parent(control_data['group_names'][-1], ctrl_obj)
+                    if object_utils.is_exists(ctrl_obj):
+                        object_utils.do_parent(control_data['group_names'][-1], ctrl_obj)
                 else:
                     object_utils.do_parent(control_data['group_names'][-1], parent_to)
         return True

@@ -89,9 +89,12 @@ def get_proper_modules():
     """
     mod_data = ()
     for mod in get_available_modules():
+        if "PreBuild" in mod:
+            prebuild_name = mod.split('_v')[0]
+            continue
         if "_v" in mod:
-            mod_name = mod.split('_v')[0]
-            mod_data += mod_name,
+            mod_data += mod.split('_v')[0],
+    mod_data += prebuild_name,
     return mod_data
 
 

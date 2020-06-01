@@ -8,6 +8,7 @@ from pprint import pprint
 from rig_utils import control_utils
 from maya_utils import transform_utils
 from maya_utils import attribute_utils
+from maya_utils import math_utils
 from rig_utils import joint_utils
 from rig_modules import template
 from maya_utils import object_utils
@@ -17,10 +18,10 @@ from maya_utils import object_utils
 
 # define module variables
 # define module variables
-class_name = "Arm"
+class_name = "IkFkHinge"
 
 
-class Arm(template.TemplateModule):
+class IkFkHinge(template.TemplateModule):
     class_name = class_name
     class_name = class_name
 
@@ -36,16 +37,16 @@ class Arm(template.TemplateModule):
                             }
 
     def __init__(self, name="", control_shape="cube", prefix_name="", information={}):
-        super(Arm, self).__init__(name=name, prefix_name=prefix_name, information=information)
+        super(IkFkHinge, self).__init__(name=name, prefix_name=prefix_name, information=information)
 
         # for whatever reason this doesn't work
         self.information = information
         self.update_information(information)
         self.guide_positions = ()
 
-        self.names = (self.name + '_upper',
-                      self.name + '_elbow',
-                      self.name + '_wrist')
+        self.names = (name + '_upper',
+                      name + '_elbow',
+                      name + '_wrist')
 
         self.add_new_information('forwardAxis', value='x')
 
@@ -86,11 +87,9 @@ class Arm(template.TemplateModule):
             if len(self.guide_joints) > 1:
                 # parent the guide joints
                 object_utils.do_parent(self.guide_joints[idx], self.guide_joints[idx - 1])
-
-            if len(positions) - 1 == idx:
-                joint_utils.zero_joint_orient(self.guide_joints[-1])
             idx += 1
         joint_utils.orient_joints(self.guide_joints, primary_axis=self.forward_axis)
+        joint_utils.zero_joint_orient(self.guide_joints[-1])
 
     def rename(self, name):
         """
@@ -99,11 +98,13 @@ class Arm(template.TemplateModule):
         """
 
         # rename the joints
+        new_joints = ()
         for idx, guide_jnt in enumerate(self.guide_joints):
             # new_name = name_utils.get_guide_name("", name, self.suffix_name)
             new_name = guide_jnt.replace(self.name, name)
             object_utils.rename_node(guide_jnt, new_name)
-            self.guide_joints[idx] = new_name
+            new_joints += new_name,
+        self.guide_joints = new_joints
         self.name = name
         return True
 
@@ -161,7 +162,16 @@ class Arm(template.TemplateModule):
                 object_utils.remove_node(jnt)
         if self.built_groups:
             for k in self.built_groups:
-                object_utils.remove_node(self.built_groups[k]['group_names'][0])
+                print(k)
+                if isinstance(k, dict):
+                    object_utils.remove_node(k['group_names'][0])
+                elif isinstance(k, (str, unicode)):
+                    object_utils.remove_node(k)
+                elif isinstance(k, (list, tuple)):
+                    object_utils.remove_node(k)
+                else:
+                    object_utils.remove_node(k)
+
         self.finished = False
         self.created = False
 
@@ -326,18 +336,31 @@ class Arm(template.TemplateModule):
         """
         return True
 
+    def create_pole_vector_controller(self, ik_joints, ik_handle):
+        """
+        creates a pole vector for the Ik Handle
+        :param ik_joints:
+        :return:
+        """
+        ik_fk_ctrl = control_utils.create_control(shape_name='sphere', name=self.name + '_ik_pole_vector_ctrl')
+        math_utils.get_pole_vector_position(*ik_joints)
+        transform_utils.match_position_transform(self.get_control_top_group(ik_fk_ctrl), ik_joints[-1])
+
     def create_arm_system(self, bind_joints, fk_joints, ik_joints):
         """
         creates the ik fk blending system.
-        :param bind_joints:
-        :param fk_joints:
-        :param ik_joints:
-        :return:
+        :param bind_joints: <tuple> bind joints array.
+        :param fk_joints: <tuple> fk joints array.
+        :param ik_joints: <tuple> ik joints array.
+        :return: <dict> controller date information.
         """
         controller_data = {}
 
         # creates the ik system for the ik joints
         ik_handle = joint_utils.create_ik_handle(ik_joints, name=self.name + '_ik')
+        self.built_groups.append(ik_handle[0])
+
+        self.create_pole_vector_controller(ik_joints, ik_handle)
 
         # create the controller to manage the ik_fk switching
         ik_fk_ctrl = control_utils.create_control(shape_name='locator', name=self.name + '_ikfk')
@@ -345,6 +368,7 @@ class Arm(template.TemplateModule):
         transform_utils.match_position_transform(self.get_control_top_group(ik_fk_ctrl), ik_joints[-1])
 
         blend_node = object_utils.create_node(node_type='blendColors', node_name=self.name + "_blend")
+        self.built_groups.append(blend_node)
         object_utils.do_connections(ik_fk_ctrl_attr, blend_node + '.blender')
         object_utils.do_set_attr(blend_node + '.color2R', 0.0)
         object_utils.do_set_attr(blend_node + '.color1R', 1.0)
@@ -413,7 +437,8 @@ class Arm(template.TemplateModule):
 
         # store the master controller as part of the main controller data
         self.controller_data = master_ctrl
-        return True
+        self.built_groups.append(controller_data)
+        return controller_data
 
     def finish(self):
         """
@@ -430,6 +455,7 @@ class Arm(template.TemplateModule):
         self.create_arm_system(bind_joints, fk_joints, ik_joints)
 
         # create connections to other nodes in the scene
+        print('connections: ', self.controller_data)
         self.perform_connections()
 
         # store this information

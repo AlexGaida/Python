@@ -12,6 +12,16 @@ from maya import cmds
 import object_utils
 
 
+def get_world_position(object_name):
+    """
+    returns the translate position in world space.
+    :param object_name:
+    :return:
+    """
+    tfm = Transform(object_name)
+    return tfm.get_world_translation_list()
+
+
 def match_position_transform(source, target):
     """
     match the transform

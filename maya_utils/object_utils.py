@@ -1220,7 +1220,8 @@ def get_transform_relatives(object_name='', find_parent='', find_child=False, wi
 
 def get_connected_nodes(object_name="", find_node_type='animCurve',
                         as_strings=False, find_attr="", down_stream=True,
-                        up_stream=False, with_shape=None, search_name=""):
+                        up_stream=False, with_shape=None, search_name="",
+                        breadth=False, plug_level=True, node_level=False, depth=False):
     """
     get connected nodes from node provided.
     :param object_name: <str> string object to use for searching frOpenMaya.
@@ -1230,13 +1231,23 @@ def get_connected_nodes(object_name="", find_node_type='animCurve',
     :param down_stream: <bool> find nodes down stream.
     :param with_shape: <str> shape name.
     :param up_stream: <bool> find nodes up stream.
-    :param search_name: <str> search for this name.
+    :param breadth: <bool> find adjacent nodes.
+    :param search_name: <str> search for this name. ** Not Implemented!
     """
     direction = None
     if up_stream:
         direction = OpenMaya.MItDependencyGraph.kUpstream
     if down_stream:
         direction = OpenMaya.MItDependencyGraph.kDownstream
+    if breadth:
+        direction = OpenMaya.MItDependencyGraph.kBreadthFirst
+    if depth:
+        direction = OpenMaya.MItDependencyGraph.kDepthFirst
+
+    if plug_level:
+        level = OpenMaya.MItDependencyGraph.kPlugLevel
+    if node_level:
+        level = OpenMaya.MItDependencyGraph.kNodeLevel
 
     if isinstance(object_name, (list, tuple)):
         node = object_name[0]
@@ -1247,14 +1258,21 @@ def get_connected_nodes(object_name="", find_node_type='animCurve',
     elif isinstance(object_name, OpenMaya.MFnMesh):
         node = object_name.node()
 
-    if isinstance(find_node_type, str):
+    # find the node type associated with the string
+    if find_node_type and isinstance(find_node_type, str):
         find_node_type = node_types[find_node_type]
 
-    dag_iter = OpenMaya.MItDependencyGraph(
-        node,
-        find_node_type,
-        direction,
-        OpenMaya.MItDependencyGraph.kPlugLevel)
+    if find_node_type:
+        dag_iter = OpenMaya.MItDependencyGraph(
+            node,
+            find_node_type,
+            direction,
+            level)
+    else:
+        dag_iter = OpenMaya.MItDependencyGraph(
+            node,
+            direction,
+            level)
     dag_iter.reset()
 
     # iterate the dependency graph to find what we want.
@@ -1263,7 +1281,6 @@ def get_connected_nodes(object_name="", find_node_type='animCurve',
         cur_item = dag_iter.currentItem()
         cur_fn = OpenMaya.MFnDependencyNode(cur_item)
         cur_name = cur_fn.name()
-
         if find_attr:
             attrs = attribute_utils.Attributes(cur_name, custom=1)
             if attrs:

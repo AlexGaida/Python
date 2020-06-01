@@ -406,7 +406,7 @@ def get_control_name(name, idx=0):
     :param idx: <int> integer index for iteration.
     :return: <str> controller name.
     """
-    return '{}_{}_{}'.format(name, idx, CTRL_SUFFIX),
+    return '{}_{}_{}'.format(name, idx, CTRL_SUFFIX)
 
 
 def rename_controls(ctrl_grp, new_name=""):

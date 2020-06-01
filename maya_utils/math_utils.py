@@ -311,8 +311,11 @@ class Vector(MVector):
     RESULT = ()
 
     def __init__(self, *args):
-        if isinstance(args[0], str):
+        print args[0]
+        if isinstance(args[0], (str, unicode)):
             super(Vector, self).__init__(*get_object_transform(args[0]))
+        elif isinstance(args[0], float):
+            super(Vector, self).__init__(*args)
         else:
             super(Vector, self).__init__(*args)
 
@@ -810,3 +813,24 @@ def reflection_vector(object_name, as_array=True):
         return vector
     else:
         return vector.x, vector.y, vector.z
+
+
+def get_pole_vector_position(st_joint, mid_joint, en_joint, distance_from_elbow=4):
+    """
+    from 3 objects provided, get the pole vector position.
+    :param st_joint: <str> start joint.
+    :param en_joint: <str> end joint.
+    :param mid_joint: <str> mid joint.
+    :param distance_from_elbow: <int> distance from the elbow the pole vector to be created.
+    :return:
+    """
+    v1 = Vector(st_joint)
+    v2 = Vector(en_joint)
+    v3 = Vector(mid_joint)
+
+    v = Vector(v2 - v1)
+    v *= 0.5
+    v += v1
+    va = v3 - v
+    v += va * distance_from_elbow
+    return v
