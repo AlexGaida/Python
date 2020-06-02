@@ -53,7 +53,7 @@ All of the utilities I wrote are to support a variety of available tools:
 
 * agRigBuilder -- Creation of rig modules.
 
-![Rig Builder](agRigBuillder.PNG)
+![Rig Builder](./ui_tools/agRigBuillder.PNG)
 * agBlendConnect -- Connection of available blendshapes using attributes.
 
-![Blend Shape Connector](agBlendConnect.PNG)
+![Blend Shape Connector](./ui_tools/agBlendConnect.PNG)

@@ -30,7 +30,7 @@ class Hand(template.TemplateModule):
                           "positions": ()
                           }
 
-    ATTRIBUTE_EDIT_TYPES = {'line-edit': ["name", "parentTo", "constrainTo", "positions", "numberOfJoints"],
+    ATTRIBUTE_EDIT_TYPES = {'line-edit': ["name", "parentTo", "constrainTo", "positions"],
                             'label': ["moduleType"]
                             }
 
@@ -40,23 +40,11 @@ class Hand(template.TemplateModule):
         # for whatever reason this doesn't work
         self.information = information
         self.update_information(information)
-        self.number_of_joints = 4
 
-        self.names = (self.name,
-                      self.name + '_middle',
-                      self.name + '_index',
-                      self.name + '_thumb',
-                      self.name + '_ring',
-                      self.name + '_pinky')
-
-        self.joints_num = (1,
-                           self.number_of_joints,
-                           self.number_of_joints,
-                           self.number_of_joints - 1,
-                           self.number_of_joints,
-                           self.number_of_joints)
-
-        self.add_new_information('numberOfJoints', value=self.number_of_joints)
+        # define module variables
+        self.names = (name + '_ankle',
+                      name + '_ball',
+                      name + '_toe')
 
         # define template variables
         self.name = name
@@ -76,16 +64,10 @@ class Hand(template.TemplateModule):
         :return: <str> joint object name.
         """
         self.guide_joints = ()
+        self.guide_locators = ()
 
         # get the positions for the middle joint
-        hand_position = joint_utils.get_joint_positions(self.number_of_joints)
-        mid_positions = joint_utils.get_joint_positions(self.number_of_joints, z=1.0)
-        indx_positions = joint_utils.get_joint_positions(self.number_of_joints, x=1.0, z=1.0)
-        thumb_positions = joint_utils.get_joint_positions(self.number_of_joints, x=2.0, z=1.0)
-        ring_positions = joint_utils.get_joint_positions(self.number_of_joints, x=-1.0, z=1.0)
-        pinky_positions = joint_utils.get_joint_positions(self.number_of_joints, x=-2.0, z=1.0)
-
-        positions = (hand_position, mid_positions, indx_positions, thumb_positions, ring_positions, pinky_positions)
+        positions = ([0.0, 1.0, 0.0], [0.0, 0.0, 2.0], [0.0, 0.0, 3.0])
 
         # create the hand joint
         for name, jnt_num, pos in zip(self.names, self.joints_num, positions):
