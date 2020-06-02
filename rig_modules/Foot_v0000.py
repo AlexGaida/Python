@@ -30,7 +30,7 @@ class Hand(template.TemplateModule):
                           "positions": ()
                           }
 
-    ATTRIBUTE_EDIT_TYPES = {'line-edit': ["name", "parentTo", "constrainTo", "positions"],
+    ATTRIBUTE_EDIT_TYPES = {'line-edit': ["name", "parentTo", "constrainTo", "positions", "forwardAxis"],
                             'label': ["moduleType"]
                             }
 
@@ -45,6 +45,12 @@ class Hand(template.TemplateModule):
         self.names = (name + '_ankle',
                       name + '_ball',
                       name + '_toe')
+
+        self.add_new_information('forwardAxis', value='x')
+
+        self.forward_axis = self.information['forwardAxis']
+        if not self.forward_axis:
+            self.forward_axis = 'x'
 
         # define template variables
         self.name = name
@@ -70,13 +76,13 @@ class Hand(template.TemplateModule):
         positions = ([0.0, 1.0, 0.0], [0.0, 0.0, 2.0], [0.0, 0.0, 3.0])
 
         # create the hand joint
-        for name, jnt_num, pos in zip(self.names, self.joints_num, positions):
+        for name, pos in zip(self.names, positions):
             self.guide_joints += joint_utils.create_joint(
-                num_joints=jnt_num, name=name, guide_joint=True,
+                num_joints=1, name=name, guide_joint=True,
                 prefix_name=self.prefix_name, as_strings=True, use_position=pos),
 
         for idx in xrange(1, len(self.guide_joints)):
-            object_utils.do_parent(self.guide_joints[idx][0], self.guide_joints[0][0])
+            object_utils.do_parent(self.guide_joints[idx], self.guide_joints[idx - 1])
 
     def rename(self, name):
         """
@@ -186,14 +192,11 @@ class Hand(template.TemplateModule):
             data = control_utils.create_controllers_with_standard_constraints(
                 name, objects_array=obj_array, shape_name=self.control_shape)
 
-            if "_" not in name:
+            if not ctrl_data:
                 self.controller_data = data
 
             # parent everything else to the hand controller
-            if name == self.name:
-                par_obj = data[0]["controller"]
-            else:
-                object_utils.do_parent(data[0]["group_names"][0], par_obj)
+            # object_utils.do_parent(data[0]["group_names"][0], ctrl_data[-1][0]["controller"])
 
             # perform the FK parenting
             self.perform_parenting(data)

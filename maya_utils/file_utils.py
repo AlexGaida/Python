@@ -30,6 +30,22 @@ def remove_file(file_name):
     return True
 
 
+def make_py_file(dir_name, file_name):
+    """
+    create python file.
+    :param dir_name:
+    :param file_name:
+    :return:
+    """
+    if ".py" not in file_name:
+        file_name += ".py"
+    file_path = concatenate_path(dir_name, file_name)
+    if not is_file(file_path):
+        f_ptr = open(file_path, 'w')
+        f_ptr.close()
+    return file_path
+
+
 def remove_directory(dir_name):
     """
     removes directory from path.

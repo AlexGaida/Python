@@ -66,7 +66,7 @@ buttons = {"empty": build_utils.empty_icon,
            "yellow": build_utils.yellow_icon
            }
 
-debug = True
+debug = False
 
 
 def debug_print(*args, **kwargs):
@@ -116,7 +116,8 @@ class MainWindow(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
 
         # add the widgets to the layouts.
         self.main_widget = QtWidgets.QWidget(self)
-        self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        self.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
+                           QtWidgets.QSizePolicy.Expanding)
         self.main_layout = QtWidgets.QHBoxLayout(self)
 
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose, True)
@@ -165,7 +166,6 @@ class MainWindow(MayaQWidgetBaseMixin, QtWidgets.QMainWindow):
         """
         blueprint array add
         """
-        print "-->\n", blueprint_array
         for module_data in blueprint_array:
             module_data = module_data.values()[0]
             module_type = module_data["moduleType"]
@@ -994,10 +994,14 @@ class ModuleWidget(QtWidgets.QWidget):
         self.module_data = self.find_module_data(module_name)
         self.module_index = get_module_count(module_name)
 
-        # set name of the module
+        # set the information data dictionary of the module to pass data down to modules
         if information:
             if "name" in information:
                 self.name = information["name"]
+            if "creature" not in information:
+                information["creature"] = parent.module_form.get_selected_blueprint()
+            if "creature_directory" not in information:
+                information["creature_directory"] = blueprint_utils.build_dir(information["creature"])
         else:
             self.name = '{}_{}'.format(module_name, self.module_index)
 

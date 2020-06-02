@@ -37,10 +37,6 @@ class Singleton(template.TemplateModule):
     def __init__(self, name="", control_shape="cube", prefix_name="", information=""):
         super(Singleton, self).__init__(name=name, prefix_name=prefix_name, information=information)
 
-        # updates information
-        print('Updating the module with information: \n')
-        pprint(self.ATTRIBUTE_EDIT_TYPES)
-
         # for whatever reason this doesn't work
         self.information = information
         self.update_information(information)
