@@ -1,3 +1,8 @@
+"""
+ikspline: set up the ik spline system between the start and end joint of the hierarchy.
+
+"""
+
 from maya import cmds
 from rig_utils import control_utils
 from maya_utils import object_utils
@@ -9,7 +14,6 @@ ik_spline_handle_attrs = {
     "dTwistValueType": 1.00,
     "dWorldUpVectorY": 0.00,
     "dWorldUpVectorEndY": 0.00,
-    "dTwistValueType": 1,
     "dTwistEnd": 1}
 
 
@@ -28,6 +32,7 @@ def get_middle_joints(start_joint):
 def build_ik_spline(name="", start_joint="", end_joint="", number_of_spans=4):
     """
     creates the ik spline with the joints provided.
+    This is old code.
     :param start_joint: <str> start joint name.
     :param end_joint: <str> end joint name.
     :param name: <str> name to use to create nodes with.

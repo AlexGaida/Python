@@ -11,15 +11,11 @@ from rig_utils import joint_utils
 from rig_modules import template
 from maya_utils import object_utils
 
-# reloads
-# reload(template)
-
 # define module variables
-# define module variables
-class_name = "Hand"
+class_name = "Foot"
 
 
-class Hand(template.TemplateModule):
+class Foot(template.TemplateModule):
     class_name = class_name
     class_name = class_name
 
@@ -27,15 +23,18 @@ class Hand(template.TemplateModule):
                           "parentTo": "",
                           "name": "",
                           "moduleType": "",
-                          "positions": ()
+                          "positions": (),
+                          "pivot_positions": ()
                           }
 
-    ATTRIBUTE_EDIT_TYPES = {'line-edit': ["name", "parentTo", "constrainTo", "positions", "forwardAxis"],
+    ATTRIBUTE_EDIT_TYPES = {'line-edit': ["name", "parentTo",
+                                          "constrainTo", "positions",
+                                          "forwardAxis", "pivot_positions"],
                             'label': ["moduleType"]
                             }
 
     def __init__(self, name="", control_shape="cube", prefix_name="", information={}):
-        super(Hand, self).__init__(name=name, prefix_name=prefix_name, information=information)
+        super(Foot, self).__init__(name=name, prefix_name=prefix_name, information=information)
 
         # for whatever reason this doesn't work
         self.information = information
@@ -46,7 +45,47 @@ class Hand(template.TemplateModule):
                       name + '_ball',
                       name + '_toe')
 
+        self.pivot_names = (self.name + '_back_step',
+                            self.name + '_ball',
+                            self.name + '_right_step',
+                            self.name + '_left_step',
+                            self.name + '_front_step')
+
+        self.pivot_names = map(name_utils.get_pivot_name, self.pivot_names)
+        self.controller_names = map(name_utils.get_control_name, self.names)
+
+        # initial pivot positions
+        self.pivot_positions = ([0.0, 0.0, 0.0],
+                                [0.0, 0.0, 2.0],
+                                [1.0, 0.0, 2.0],
+                                [-1.0, 0.0, 2.0],
+                                [0.0, 0.0, 3.0])
+
+        ankle_ik = name_utils.get_ik_handle_name(self.name + '_ankle')
+        toe_ik = name_utils.get_ik_handle_name(self.name + '_toe')
+
+        ankle_grp = name_utils.get_group_name(self.names[0])
+        ball_grp = name_utils.get_group_name(self.names[1])
+        toe_grp = name_utils.get_group_name(self.names[2])
+
+        self.ik_handles_structure = {
+            ankle_ik: (self.get_bound_joint_name(self.names[0]), self.get_bound_joint_name(self.names[1])),
+            toe_ik: (self.get_bound_joint_name(self.names[1]), self.get_bound_joint_name(self.names[2]))
+        }
+
+        # the parenting structure
+        # parent_key : (parent_children)
+        self.parent_structure = (
+            (self.pivot_names[0], ankle_grp),
+            (self.controller_names[0], (ankle_ik, ball_grp)),
+            (self.pivot_names[1], (self.pivot_names[2], toe_ik)),
+            (self.controller_names[1], (toe_ik, toe_grp)),
+            (self.pivot_names[2], self.pivot_names[3]),
+            (self.pivot_names[3], self.pivot_names[4])
+        )
+
         self.add_new_information('forwardAxis', value='x')
+        self.add_new_information('pivot_positions', value=self.pivot_positions)
 
         self.forward_axis = self.information['forwardAxis']
         if not self.forward_axis:
@@ -63,6 +102,19 @@ class Hand(template.TemplateModule):
         self.guide_joints = []
         self.controller_data = {}
         self.built_groups = []
+        self.ik_handles = ()
+        self.pivot_locators = ()
+
+    def create_locators_pivots(self):
+        """
+        create locator positions for the foot pivoting system.
+        :return: <bool> True for success.
+        """
+        # create the pivot locators
+        self.pivot_locators = ()
+        for name, pivot in zip(self.pivot_names, self.pivot_positions):
+            self.pivot_locators += object_utils.create_locator(name, position=pivot),
+        return True
 
     def create_guides(self):
         """
@@ -70,7 +122,6 @@ class Hand(template.TemplateModule):
         :return: <str> joint object name.
         """
         self.guide_joints = ()
-        self.guide_locators = ()
 
         # get the positions for the middle joint
         positions = ([0.0, 1.0, 0.0], [0.0, 0.0, 2.0], [0.0, 0.0, 3.0])
@@ -103,6 +154,18 @@ class Hand(template.TemplateModule):
         #     control_utils.rename_controls(self.built_groups[0], new_name=name)
         return True
 
+    def set_locator_pivot_positions(self):
+        """
+        sets the positions
+        :return: <bool> True for success.
+        """
+        if self.pivot_locators and "pivot_positions" in self.information:
+            if self.information["pivot_positions"]:
+                for jnt, pos in zip(self.guide_joints, self.information["pivot_positions"]):
+                    object_utils.set_object_transform(jnt, m=pos, ws=True)
+                return True
+        return False
+
     def set_guide_positions(self):
         """
         sets the positions
@@ -129,6 +192,18 @@ class Hand(template.TemplateModule):
             return transforms
         return ()
 
+    def get_pivot_positions(self):
+        """
+        gets the current pivot locator positions.
+        :return:
+        """
+        if self.pivot_locators:
+            transforms = ()
+            for piv_loc in self.pivot_locators:
+                transforms += object_utils.get_object_transform(piv_loc, t=True),
+            return transforms
+        return ()
+
     def update(self, *args):
         """
         updates the module.
@@ -141,6 +216,7 @@ class Hand(template.TemplateModule):
 
         # updates the module information
         self.information["positions"] = self.get_guide_positions()
+        self.information["pivot_positions"] = self.get_pivot_positions()
         self.information["name"] = self.name
 
         # updates the relationship information
@@ -160,6 +236,9 @@ class Hand(template.TemplateModule):
                 object_utils.remove_node(jnt_array)
         if self.built_groups:
             object_utils.remove_node(self.built_groups[0])
+        if self.pivot_locators:
+            for loc in self.pivot_locators:
+                object_utils.remove_node(loc)
         self.finished = False
         self.created = False
 
@@ -179,6 +258,9 @@ class Hand(template.TemplateModule):
         # set the guide joint positions as directed from the stored JSON dictionary file.
         self.set_guide_positions()
 
+        # create the locators
+        self.create_locators_pivots()
+
         self.created = True
         return True
 
@@ -188,21 +270,12 @@ class Hand(template.TemplateModule):
         :return: <str> group name.
         """
         ctrl_data = ()
-        for name, obj_array in zip(self.names, self.finished_joints):
-            data = control_utils.create_controllers_with_standard_constraints(
-                name, objects_array=obj_array, shape_name=self.control_shape)
-
-            if not ctrl_data:
-                self.controller_data = data
-
-            # parent everything else to the hand controller
-            # object_utils.do_parent(data[0]["group_names"][0], ctrl_data[-1][0]["controller"])
-
-            # perform the FK parenting
-            self.perform_parenting(data)
+        for name, joint_name in zip(self.names, self.finished_joints):
+            data = control_utils.create_controls(joint_name, name, shape_name=self.control_shape)
 
             # return data
             ctrl_data += data,
+        self.controller_data = ctrl_data
         return ctrl_data
 
     def replace_guides(self):
@@ -214,16 +287,30 @@ class Hand(template.TemplateModule):
             positions = self.get_guide_positions()
             self.finished_joints = ()
 
-            # remove the existing guides
             for name, jnt_array, pos_array in zip(self.names, self.guide_joints, positions):
+                # remove the existing guides
                 object_utils.remove_node(jnt_array)
+
                 # set the positions gathered from the guide joints
                 self.finished_joints += joint_utils.create_joint(
                     name, num_joints=len(pos_array), prefix_name=self.prefix_name,
                     use_position=pos_array, bound_joint=True, as_strings=True),
 
+                # parent the replaced joints
+                if len(self.finished_joints) > 1:
+                    object_utils.do_parent(self.finished_joints[-1], self.finished_joints[-2])
+
             # set the guide joints to zero
             self.guide_joints = []
+
+    def get_bound_joint_name(self, name, num=1):
+        """
+        gets the bound joint name.
+        :param name: <str>
+        :param num: <int>
+        :return: <str> bound joint name.
+        """
+        return joint_utils.get_joint_names(name, prefix_name=self.prefix_name, num_joints=num, bound_joint=True)[0]
 
     def if_guides_exist(self):
         """
@@ -252,18 +339,36 @@ class Hand(template.TemplateModule):
         if self.controller_data:
             object_utils.select_object(self.controller_data['group_names'][-1])
 
-    def perform_parenting(self, controller_data):
+    def perform_parenting(self):
         """
         now parent the groups to their controllers.
         :return: <bool> True for success. <bool> False for failure.
         """
-        max_len = len(controller_data) - 1
-        for idx in xrange(max_len):
-            if idx + 1 <= max_len:
-                c_data = controller_data[max_len - idx]
-                next_data = controller_data[(max_len - idx) - 1]
-                object_utils.do_parent(c_data["group_names"][0], next_data["controller"])
+        for parent_name, children in self.parent_structure.items():
+            object_utils.do_parent(children, parent_name)
         return True
+
+    def create_pivots(self):
+        """
+        gets the pivot positions.
+        :return: <bool> True for success.
+        """
+        positions = self.get_pivot_positions()
+        for pivot_name, position in zip(self.names, positions):
+            # sets the position array to this pivot node.
+            object_utils.create_group(pivot_name, position=position)
+        return True
+
+    def create_ik(self):
+        """
+        creates the ik system for the foot pivots
+        :return: <tuple> ik handles
+        """
+        ik_handles = ()
+        for ik_name, bone_array in self.ik_handles_structure.items():
+            ik_handles += joint_utils.create_ik_handle(
+                bone_array, name=ik_name, sticky="sticky", solver="ikSCsolver")
+        return ik_handles
 
     def finish(self):
         """
@@ -276,15 +381,27 @@ class Hand(template.TemplateModule):
         # populate the finished joints using the positions of the guide joints
         self.replace_guides()
 
+        # reorient joints
+        joint_utils.orient_joints(self.finished_joints, primary_axis=self.information["forwardAxis"])
+
+        # create the ik handles
+        self.create_ik()
+
         # creates the controller object on the bound joint and do necessary parenting.
-        controllers = self.create_controllers()
+        self.create_controllers()
+
+        # create the pivot setup
+        self.create_pivots()
+
+        # create parenting structure
+        self.perform_parenting()
 
         # create connections to other nodes in the scene
         self.perform_connections()
 
         # store this information
-        for ctrl_data in controllers:
-            self.built_groups.extend(ctrl_data[0]['group_names'])
+        # for ctrl_data in controllers:
+        #     self.built_groups.extend(ctrl_data[0]['group_names'])
         print("[{}] :: finished.".format(self.name))
         self.finished = True
         return True

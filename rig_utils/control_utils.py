@@ -9,6 +9,7 @@ import read_sides
 import constraint_utils
 import name_utils
 
+# import custom modules
 from maya_utils import file_utils
 from maya_utils import object_utils
 from maya_utils import attribute_utils
@@ -22,9 +23,10 @@ from maya import cmds
 __control_folder_dir__ = file_utils.controller_data_dir()
 
 # define local variables
-CTRL_SUFFIX = 'ctrl'
-LOCATOR_SUFFIX = 'loc'
-CONSTRAINT_GRP = 'cnst'
+CTRL_SUFFIX = name_utils.CTRL_SUFFIX
+LOCATOR_SUFFIX = name_utils.LOCATOR_SUFFIX
+CONSTRAINT_GRP = name_utils.CONSTRAINT_GRP
+GROUP_NAME = name_utils.GROUP_NAME
 re_brackets = re.compile(r'\[|]')
 re_numbers = re.compile('_\d+')
 transform_attrs = attribute_utils.Attributes.DEFAULT_ATTR_VALUES
@@ -250,7 +252,7 @@ def save_controller_shape(controller_name):
     controller_data_file_name = get_controller_path(controller_name)
     json_cls = file_utils.JSONSerializer(file_name=controller_data_file_name)
     json_cls.write(data=curve_data)
-    print("[ControllerShapeFile] :: {}".format(json_cls.file_name))
+    # print("[ControllerShapeFile] :: {}".format(json_cls.file_name))
     return controller_data_file_name
 
 
@@ -333,6 +335,15 @@ def create_controller_shape(shape_name):
     return curves
 
 
+def get_curve_shape_name(name=""):
+    """
+    return the name of the curves.
+    :param name: <str> base name.
+    :return: <str> curve shape name.
+    """
+    return '{}Shape'.format(name)
+
+
 def get_curve_shapes_in_array(curve_names):
     """
     get the curve shape names in the array given.
@@ -370,6 +381,8 @@ def create_control(shape_name='cube', name='', groups=('grp', CONSTRAINT_GRP)):
     return_data = {}
     curve_names = create_controller_shape(shape_name)
     curve_name = parent_curve_shapes(curve_names)
+
+    # renames the default curve name into specified name string
     if name:
         curve_name = cmds.rename(curve_name, name)
     else:
@@ -425,7 +438,7 @@ def rename_controls(ctrl_grp, new_name=""):
     return new_children
 
 
-def create_controls(objects_array, name, shape_name="cube", apply_constraints=None, maintain_offset=False):
+def create_controls(objects_array, name='', shape_name="cube", apply_constraints=None, maintain_offset=False):
     """
     creates controllers at this transform object name.
     :param name: <str> create curves with this object name.
@@ -442,11 +455,13 @@ def create_controls(objects_array, name, shape_name="cube", apply_constraints=No
     for idx in range(len(objects_array)):
         if not name:
             name = objects_array[idx]
-        names += '{}_{}_{}'.format(name, idx, CTRL_SUFFIX),
+        names += name_utils.get_control_name(name, idx),
 
+    # if a string was given to the apply_constraints parameter, convert it to an array
     apply_constraints = object_utils.convert_str_to_list(apply_constraints)
 
     groups = ()
+    # create controllers at the transform provided
     for trfm_name, obj_name in zip(objects_array, names):
         data = create_control_at_transform(trfm_name, obj_name, shape_name)
 

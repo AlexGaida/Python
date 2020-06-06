@@ -464,21 +464,27 @@ def create_ik_handle(joint_array, name='', sticky="off", solver="ikRPsolver", pr
     creates the ik handle from the joints array provided.
     :param joint_array: <tuple>, <list> the joint array to use.
     :param name: <str> create an IkHandle with this name.
-    :param solver: <str>  ikRPsolver, ikSCsolver and ikSplineSolver.
-    :return: <str> ikHandle created.
+    :param sticky: <str> 'on' or 'off' if we want sticky on the ik end points.
+    :param priority: <int> the processing priority number for this ikHandle.
+    :param solver: <str> ikRPsolver, ikSCsolver and ikSplineSolver.
+    :return: <tuple> ikHandle, ikEffector created.
     """
-    return cmds.ikHandle(
-        startJoint=joint_array[0], endEffector=joint_array[-1],
-        name=name, sticky=sticky, solver=solver, priority=priority)
+    ik_name = name_utils.get_ik_handle_name(name)
+    return tuple(cmds.ikHandle(startJoint=joint_array[0], endEffector=joint_array[-1],
+                               name=ik_name, sticky=sticky, solver=solver, priority=priority))
 
 
 def freeze_transformations(object_name, translate=True, rotate=True, scale=True):
     """
     freezes the transformations.
     :param object_name: <str> the object to freeze transforms to.
-    :return: <bool>
+    :param translate: <bool> freeze the translations on this transform.
+    :param rotate: <bool> freeze the rotations on this transform.
+    :param scale: <bool> freeze the scale on this transform.
+    :return: <bool> True for success.
     """
-    return cmds.makeIdentity(object_name, apply=1, t=translate, r=rotate, s=scale, n=0, pn=1)
+    cmds.makeIdentity(object_name, apply=1, t=translate, r=rotate, s=scale, n=0, pn=1)
+    return True
 
 
 def zero_joint_orient(object_name, x=True, y=True, z=True):

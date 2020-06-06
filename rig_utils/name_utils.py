@@ -20,6 +20,80 @@ BND_JNT_SUFFIX_NAME = 'bnd_{}'.format(JNT_SUFFIX_NAME)
 IK_JNT_SUFFIX_NAME = 'ik_{}'.format(JNT_SUFFIX_NAME)
 FK_JNT_SUFFIX_NAME = 'fk_{}'.format(JNT_SUFFIX_NAME)
 GROUP_SUFFIX_NAME = 'grp'
+IK_HANDLE_SUFFIX_NAME = 'ik'
+LOCATOR_SUFFIX_NAME = 'loc'
+PIVOT_SUFFIX_NAME = 'piv'
+CTRL_SUFFIX = 'ctrl'
+LOCATOR_SUFFIX = 'loc'
+CONSTRAINT_GRP = 'cnst'
+GROUP_NAME = 'grp'
+
+
+def get_name(name='', index=0, suffix_name=''):
+    """
+    generic name return.
+    :param name: <str> base name
+    :param suffix_name: <str> the suffix name to append to the base name.
+    :param index: <int> the index to use for the name.
+    :return: <str> return the modified name.
+    """
+    index_name = '_{}'.format(index)
+    suffix_name = '_{}'.format(suffix_name)
+    if index_name not in name:
+        name += index_name
+    if not name.endswith(suffix_name):
+        name += suffix_name
+    return name
+
+
+def get_group_name(name='', index=0):
+    """
+    return the name of the group.
+    :param name: <str>
+    :param index: <int> the index to use for the name.
+    :return: <str> the name of the group.
+    """
+    return get_name(name, index, GROUP_SUFFIX_NAME)
+
+
+def get_locator_name(name='', index=0):
+    """
+    return the locator name.
+    :param name: <str> the base name.
+    :param index: <int> the index to use for the name.
+    :return: <str> the name of the locator.
+    """
+    return get_name(name, index, LOCATOR_SUFFIX_NAME)
+
+
+def get_ik_handle_name(name='', index=0):
+    """
+    returns the ik handle name.
+    :param name: <str> pass through the name string.
+    :param index: <int> the index to use for the name.
+    :return: <str> the name of the ik handle.
+    """
+    return get_name(name, index, IK_HANDLE_SUFFIX_NAME)
+
+
+def get_pivot_name(name='', index=0):
+    """
+    return the name of the pivot.
+    :param name: <str> the base name.
+    :param index: <int> the index to use for the name.
+    :return: <str> the pivot name.
+    """
+    return get_name(name, index, PIVOT_SUFFIX_NAME)
+
+
+def get_control_name(name='', index=0):
+    """
+    returns the controller name.
+    :param name: <str> the name to use for the controller.
+    :param index: <int> the index to use for the name.
+    :return: <str> controller name.
+    """
+    return get_name(name, index, CTRL_SUFFIX),
 
 
 def get_name_count(name, suffix_name=""):

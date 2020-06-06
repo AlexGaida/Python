@@ -35,6 +35,7 @@ from maya import OpenMayaAnim as OpenMayaAnim
 
 # import local modules
 import attribute_utils
+import name_utils
 
 # define local variables
 node_types = {
@@ -1633,7 +1634,9 @@ def get_driver_object(object_name="", plugs=False):
     :param plugs: <bool> find plugs from the object name.
     :return: <str>, <tuple> based on arguments given.
     """
-    m_obj = get_connected_nodes(object_name, find_node_type=OpenMaya.MFn.kTransform, up_stream=True,
+    m_obj = get_connected_nodes(object_name,
+                                find_node_type=OpenMaya.MFn.kTransform,
+                                up_stream=True,
                                 down_stream=False)
     m_object = m_obj[0]
     cur_fn = OpenMaya.MFnDependencyNode(m_object)
@@ -1962,6 +1965,40 @@ def create_node(node_type, node_name=""):
     if not cmds.objExists(node_name):
         return cmds.createNode(node_type, name=node_name)
     return node_name
+
+
+def create_locator(name="", position=()):
+    """
+    creates the locator node.
+    :param name: <str> name to use when creating a locator.
+    :param position: <tuple> the position to set the transform node to.
+    :return: <str> node.
+    """
+    node = create_node("locator", name+"Shape")
+    # returns as locator shape, so we need to get the transform node.
+    if has_fn(node, 'locator'):
+        node = get_transform_relatives(node, find_parent=True, as_strings=True)[0]
+    if position and len(position) == 3:
+        set_object_transform(node, t=position)
+    elif position and len(position) > 3:
+        set_object_transform(node, m=position)
+    return node
+
+
+def create_group(name="", position=()):
+    """
+    creates an empty transform group.
+    :param name: <str> name to use when creating a group.
+    :param position: <tuple> the position to set the transform node to.
+    :return: <str> transform node.
+    """
+    node = create_node("transform", name)
+    if position and len(position) == 3:
+        set_object_transform(node, t=position)
+    elif position and len(position) > 3:
+        set_object_transform(node, m=position)
+    else:
+        return node
 
 
 def do_parent_constraint(master_obj, slave_obj, maintain_offset=True):

@@ -30,7 +30,10 @@ def match_position_transform(source, target):
     :return: <bool> True for success. <bool> False for failure.
     """
     if isinstance(target, (tuple, list)):
-        cmds.xform(source, t=target)
+        if len(target) == 3:
+            cmds.xform(source, t=target)
+        else:
+            cmds.xform(source, m=target)
     else:
         tfm = Transform(target)
         cmds.xform(source, t=tfm.world_translation)

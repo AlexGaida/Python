@@ -903,7 +903,7 @@ class Plane(MPlane):
         Gets the closest point on a plane to some other point in space.
         AKA projecting a point onto a plane
         """
-        if point is None or plane is None:
+        if not point or not plane:
             return None
         return point - (plane.normal() * plane.distanceToPoint(point, signed=True))
 
@@ -912,7 +912,7 @@ class Plane(MPlane):
         """
         Takes an existing plane with a normal and puts it at some world position
         """
-        if plane is None or position is None:
+        if not plane or not position:
             return None
         plane.setPlane(plane.normal(), -plane.normal() * position)
         return plane
