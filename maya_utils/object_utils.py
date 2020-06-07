@@ -35,7 +35,6 @@ from maya import OpenMayaAnim as OpenMayaAnim
 
 # import local modules
 import attribute_utils
-import name_utils
 
 # define local variables
 node_types = {

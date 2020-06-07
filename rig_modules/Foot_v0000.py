@@ -51,9 +51,6 @@ class Foot(template.TemplateModule):
                             self.name + '_left_step',
                             self.name + '_front_step')
 
-        self.pivot_names = map(name_utils.get_pivot_name, self.pivot_names)
-        self.controller_names = map(name_utils.get_control_name, self.names)
-
         # initial pivot positions
         self.pivot_positions = ([0.0, 0.0, 0.0],
                                 [0.0, 0.0, 2.0],
@@ -61,27 +58,34 @@ class Foot(template.TemplateModule):
                                 [-1.0, 0.0, 2.0],
                                 [0.0, 0.0, 3.0])
 
+        self.locator_pivot_guide_names = map(name_utils.get_locator_name, self.pivot_names)
+        self.pivot_names = map(name_utils.get_pivot_name, self.pivot_names)
+        self.controller_names = map(name_utils.get_control_name, self.names)
+
         ankle_ik = name_utils.get_ik_handle_name(self.name + '_ankle')
         toe_ik = name_utils.get_ik_handle_name(self.name + '_toe')
 
-        ankle_grp = name_utils.get_group_name(self.names[0])
-        ball_grp = name_utils.get_group_name(self.names[1])
-        toe_grp = name_utils.get_group_name(self.names[2])
+        self.ik_handles = ankle_ik, toe_ik,
+
+        ankle_grp = name_utils.get_ctrl_group_name(self.names[0])
+        ball_grp = name_utils.get_ctrl_group_name(self.names[1])
+        toe_grp = name_utils.get_ctrl_group_name(self.names[2])
 
         self.ik_handles_structure = {
             ankle_ik: (self.get_bound_joint_name(self.names[0]), self.get_bound_joint_name(self.names[1])),
             toe_ik: (self.get_bound_joint_name(self.names[1]), self.get_bound_joint_name(self.names[2]))
         }
 
-        # the parenting structure
-        # parent_key : (parent_children)
+        # set the parenting structure
+        # parent_name, (children)
         self.parent_structure = (
+            (self.pivot_names[3], self.pivot_names[4]),
+            (self.pivot_names[4], self.pivot_names[0]),
             (self.pivot_names[0], ankle_grp),
-            (self.controller_names[0], (ankle_ik, ball_grp)),
-            (self.pivot_names[1], (self.pivot_names[2], toe_ik)),
-            (self.controller_names[1], (toe_ik, toe_grp)),
-            (self.pivot_names[2], self.pivot_names[3]),
-            (self.pivot_names[3], self.pivot_names[4])
+            (self.pivot_names[2], self.controller_names[1]),
+            (self.controller_names[0], (ball_grp,  self.pivot_names[1])),
+            (self.pivot_names[1], self.pivot_names[2]),
+            (self.controller_names[1], toe_grp),
         )
 
         self.add_new_information('forwardAxis', value='x')
@@ -105,14 +109,14 @@ class Foot(template.TemplateModule):
         self.ik_handles = ()
         self.pivot_locators = ()
 
-    def create_locators_pivots(self):
+    def create_locators_pivot_guides(self):
         """
         create locator positions for the foot pivoting system.
         :return: <bool> True for success.
         """
         # create the pivot locators
         self.pivot_locators = ()
-        for name, pivot in zip(self.pivot_names, self.pivot_positions):
+        for name, pivot in zip(self.locator_pivot_guide_names, self.pivot_positions):
             self.pivot_locators += object_utils.create_locator(name, position=pivot),
         return True
 
@@ -259,7 +263,7 @@ class Foot(template.TemplateModule):
         self.set_guide_positions()
 
         # create the locators
-        self.create_locators_pivots()
+        self.create_locators_pivot_guides()
 
         self.created = True
         return True
@@ -270,11 +274,15 @@ class Foot(template.TemplateModule):
         :return: <str> group name.
         """
         ctrl_data = ()
-        for name, joint_name in zip(self.names, self.finished_joints):
+        for joint_name, name in zip(self.finished_joints, self.names):
             data = control_utils.create_controls(joint_name, name, shape_name=self.control_shape)
 
             # return data
             ctrl_data += data,
+
+        object_utils.do_point_constraint(self.controller_names[-1], self.ik_handles[-1])
+        object_utils.do_point_constraint(self.controller_names[:-2], self.ik_handles[:-2])
+
         self.controller_data = ctrl_data
         return ctrl_data
 
@@ -344,8 +352,8 @@ class Foot(template.TemplateModule):
         now parent the groups to their controllers.
         :return: <bool> True for success. <bool> False for failure.
         """
-        for parent_name, children in self.parent_structure.items():
-            object_utils.do_parent(children, parent_name)
+        for structure in self.parent_structure:
+            object_utils.do_parent(structure[1], structure[0])
         return True
 
     def create_pivots(self):
@@ -354,9 +362,15 @@ class Foot(template.TemplateModule):
         :return: <bool> True for success.
         """
         positions = self.get_pivot_positions()
-        for pivot_name, position in zip(self.names, positions):
+        for pivot_name, position in zip(self.pivot_names, positions):
             # sets the position array to this pivot node.
             object_utils.create_group(pivot_name, position=position)
+
+        # remove the guide pivots
+        if self.pivot_locators:
+            for piv_loc in self.pivot_locators:
+                object_utils.remove_node(piv_loc)
+            self.pivot_locators = ()
         return True
 
     def create_ik(self):

@@ -56,6 +56,16 @@ def get_group_name(name='', index=0):
     return get_name(name, index, GROUP_SUFFIX_NAME)
 
 
+def get_ctrl_group_name(name=''):
+    """
+    returns the control group name.
+    :return: <str> the name of the control group.
+    """
+    ctrl_name = get_control_name(name)
+    if not ctrl_name.endswith(GROUP_SUFFIX_NAME):
+        return get_group_name(ctrl_name)
+
+
 def get_locator_name(name='', index=0):
     """
     return the locator name.
@@ -93,7 +103,7 @@ def get_control_name(name='', index=0):
     :param index: <int> the index to use for the name.
     :return: <str> controller name.
     """
-    return get_name(name, index, CTRL_SUFFIX),
+    return get_name(name, index, CTRL_SUFFIX)
 
 
 def get_name_count(name, suffix_name=""):

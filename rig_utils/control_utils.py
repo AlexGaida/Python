@@ -463,7 +463,7 @@ def create_controls(objects_array, name='', shape_name="cube", apply_constraints
     groups = ()
     # create controllers at the transform provided
     for trfm_name, obj_name in zip(objects_array, names):
-        data = create_control_at_transform(trfm_name, obj_name, shape_name)
+        data = create_control_at_transform(trfm_name, obj_name, shape_name, auto_num=False)
 
         if apply_constraints:
             if 'parent' in apply_constraints:

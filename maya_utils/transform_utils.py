@@ -16,10 +16,18 @@ def get_world_position(object_name):
     """
     returns the translate position in world space.
     :param object_name:
-    :return:
+    :return: <tuple> position transform array
     """
-    tfm = Transform(object_name)
-    return tfm.get_world_translation_list()
+    return Transform(object_name).get_world_translation_list()
+
+
+def get_world_matrix(object_name):
+    """
+    returns the world matrix
+    :param object_name: <str> the object to get world matrix from.
+    :return: <tuple> world matris array.
+    """
+    return Transform(object_name).wmatrix
 
 
 def match_position_transform(source, target):
@@ -35,8 +43,7 @@ def match_position_transform(source, target):
         else:
             cmds.xform(source, m=target)
     else:
-        tfm = Transform(target)
-        cmds.xform(source, t=tfm.world_translation)
+        cmds.xform(source, t=get_world_position(target))
     return True
 
 
@@ -47,11 +54,10 @@ def match_matrix_transform(source, target):
     :param target: <str>, <tuple> target object, or matrix array.
     :return: <bool> True for success. <bool> False for failure.
     """
-    if isinstance(target, (tuple, list)):
+    if isinstance(target, (tuple, list)) and len(target) == 16:
         cmds.xform(source, m=target)
     else:
-        tfm = Transform(target)
-        cmds.xform(source, m=tfm.wmatrix)
+        cmds.xform(source, m=get_world_matrix(target))
     return True
 
 
