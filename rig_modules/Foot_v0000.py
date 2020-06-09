@@ -106,7 +106,6 @@ class Foot(template.TemplateModule):
         self.guide_joints = []
         self.controller_data = {}
         self.built_groups = []
-        self.ik_handles = ()
         self.pivot_locators = ()
 
     def create_locators_pivot_guides(self):
@@ -274,14 +273,28 @@ class Foot(template.TemplateModule):
         :return: <str> group name.
         """
         ctrl_data = ()
+
+        # create the ankle point
+        ankle_point_ctrl = name_utils.get_control_name(self.name + '_ankle_point')
+        ctrl_data += control_utils.create_controls(self.finished_joints[0], ankle_point_ctrl, shape_name='locator')
+
+        foot_ctrl = name_utils.get_control_name(self.name)
+        ctrl_data += control_utils.create_controls(self.finished_joints[0], foot_ctrl, shape_name='foot')
+
         for joint_name, name in zip(self.finished_joints, self.names):
             data = control_utils.create_controls(joint_name, name, shape_name=self.control_shape)
 
             # return data
             ctrl_data += data,
 
+        # constrain the ik handles
         object_utils.do_point_constraint(self.controller_names[-1], self.ik_handles[-1])
-        object_utils.do_point_constraint(self.controller_names[:-2], self.ik_handles[:-2])
+        object_utils.do_point_constraint(self.controller_names[-2], self.ik_handles[-2])
+
+        group_node = object_utils.create_group(name=name_utils.get_group_name(self.name + '_ik_systems'),
+                                               objects=self.ik_handles)
+
+        object_utils.do_parent_constraint(self.controller_names[0], group_node)
 
         self.controller_data = ctrl_data
         return ctrl_data

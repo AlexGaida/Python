@@ -1984,11 +1984,12 @@ def create_locator(name="", position=()):
     return node
 
 
-def create_group(name="", position=()):
+def create_group(name="", position=(), objects=()):
     """
     creates an empty transform group.
     :param name: <str> name to use when creating a group.
     :param position: <tuple> the position to set the transform node to.
+    :param objects: <tuple> the objects to add to the empty group.
     :return: <str> transform node.
     """
     node = create_node("transform", name)
@@ -1996,8 +1997,9 @@ def create_group(name="", position=()):
         set_object_transform(node, t=position)
     elif position and len(position) > 3:
         set_object_transform(node, m=position)
-    else:
-        return node
+    if objects:
+        do_parent(objects, node)
+    return node
 
 
 def do_parent_constraint(master_obj, slave_obj, maintain_offset=True):

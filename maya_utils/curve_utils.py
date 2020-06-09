@@ -160,9 +160,9 @@ def get_nurb_obj_curve_form(curve_obj=None):
 
 def get_nurb_obj_edit_points(curve_obj=None):
     """
-
-    :param curve_obj:
-    :return:
+    gets the data on nurbs objects' edit points.
+    :param curve_obj: <OpenMaya.MObject>
+    :return: <tuple> edit point data.
     """
     curve_fn = object_utils.get_fn(curve_obj)
     knots = get_nurb_obj_knot_data(curve_obj)
@@ -170,8 +170,11 @@ def get_nurb_obj_edit_points(curve_obj=None):
     edit_pts_data = ()
     edit_pnt = OpenMaya.MPoint()
     for u in knots:
-        curve_fn.getPointAtParam(u, edit_pnt, OpenMaya.MFn.kWorld)
-        edit_pts_data += (edit_pnt.x, edit_pnt.y, edit_pnt.z),
+        try:
+            curve_fn.getPointAtParam(u, edit_pnt, OpenMaya.MFn.kWorld)
+            edit_pts_data += (edit_pnt.x, edit_pnt.y, edit_pnt.z),
+        except RuntimeError:
+            continue
     return edit_pts_data
 
 
