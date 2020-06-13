@@ -521,3 +521,16 @@ def orient_joints(joint_array, primary_axis='x'):
             return cmds.joint(jnt_name, e=True, oj='zxy', secondaryAxisOrient='yup', ch=True, zso=True)
     raise ValueError("[OrientJoints] :: You must specify the axis of orientation: x, y or z.")
 
+
+def unlock_joints(jnt_suffix=''):
+    """
+    unlocks the joints bound to the skin clusters in scene.
+    :return: <bool> True for success.
+    """
+    if jnt_suffix:
+        joints = cmds.ls('*_{}'.format(jnt_suffix))
+    if not jnt_suffix:
+        joints = get_bnd_joints()
+    for jnt in joints:
+        cmds.setAttr('%s.liw' % jnt, 0)
+    return True

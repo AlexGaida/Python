@@ -383,6 +383,16 @@ def is_attr_connected(object_node, attr_str):
     return get_plug(object_node, attr_str).isConnected()
 
 
+def is_attr_source(object_node, attr_str):
+    """
+    check if attribute is source of connections.
+    :param object_node: <str> object node name.
+    :param attr_str: <str> attribute name.
+    :return: <bool> True for yes, <bool> False for no.
+    """
+    return get_plug(object_node, attr_str).isSource()
+
+
 def attr_info(object_node, attr_str):
     """
     get plug info
@@ -1621,7 +1631,7 @@ def zero_transforms(object_name=""):
     """
     if not object_name:
         return ValueError("[ZeroTransforms] :: Please provide object_name parameter.")
-    keyable_attrs = attribute_utils.Attributes(object_name, keyable=1)
+    keyable_attrs = attribute_utils.Attributes(object_name, keyable=1, custom=0)
     keyable_attrs.zero_attributes()
     return True
 

@@ -171,6 +171,18 @@ def copy_skincluster(source_mesh="", target_mesh=""):
     return True
 
 
+def skin_as():
+    """
+    selection based skin transfer.
+    :return: <bool> True for success.
+    """
+    source_object_name = cmds.ls(sl=1)[0]
+    destination_objects = cmds.ls(sl=1)[1:]
+    for dest_obj in destination_objects:
+        copy_skincluster(source_object_name, dest_obj)
+    return True
+
+
 def get_skin_fn(skin_name=""):
     """
     Get the <MFnSkinCluster> class type from name prov_ided.
@@ -257,6 +269,9 @@ def get_skin_data(mesh_obj=None):
     weights = {}
     skin_fn, skin_name = get_skin_cluster(mesh_obj)
 
+    if not all((skin_fn, skin_name)):
+        return False
+
     # get the MDagPath for all influence
     inf_dag_arr = OpenMaya.MDagPathArray()
     skin_fn.influenceObjects(inf_dag_arr)
@@ -308,14 +323,23 @@ def get_skin_data(mesh_obj=None):
     return weights
 
 
-def normalize_weights(skin_name="", mesh_name="", influences=()):
+def normalize_weights(skin_name):
+    """
+    normalizes skin weights.
+    :param skin_name:
+    :return:
+    """
+    return cmds.skinCluster(skin_name, e=True, fnw=True)
+
+
+def prune_weights(skin_name="", mesh_name="", influences=()):
     """
     Normalizes the weights.
     :return: <bool> True for success. <bool> False for failure.
     """
     # unlock influences used by skincluster
     for inf in influences:
-        cmds.setAttr('%s.liw' % inf)
+        cmds.setAttr('%s.liw' % inf, 0)
 
     # normalize needs turned off for the prune to work
     skinNorm = cmds.getAttr('%s.normalizeWeights' % skin_name)
@@ -328,28 +352,30 @@ def normalize_weights(skin_name="", mesh_name="", influences=()):
         cmds.setAttr('%s.normalizeWeights' % skin_name, skinNorm)
 
 
-def save_to_file(mesh_obj):
+def save_to_file(mesh_obj=''):
     """
     writes the skinCluster data into a JSON file type.
     :param mesh_obj: <str> the mesh object to query the skinCluster data from.
     :return: <str> the written skinCluster JSON file.
     """
+    if not mesh_obj:
+        mesh_obj = object_utils.get_selected_node()
     data = get_skin_data(mesh_obj)
-    skin_file = file_utils.get_path(file_utils.get_maya_workspace_dir(), mesh_obj)
+    skin_file = file_utils.get_path(file_utils.get_maya_workspace_data_dir(), mesh_obj)
     ft = file_utils.JSONSerializer(skin_file, data)
     ft.write()
+    print("Weights saved: {}\n".format(ft.FILE_NAME))
     return skin_file
 
 
 def read_from_file(mesh_obj):
     """
-    reads the skinCluster data into a JSON file type.
+    reads the skinCluster data and applies it to mesh.
     :param mesh_obj: <str> the mesh object to find the file from the workspace directory.
     :return: <dict> the skinCluster information data.
     """
-    data = get_skin_data(mesh_obj)
     skin_file = file_utils.get_path(file_utils.get_maya_workspace_dir(), mesh_obj)
-    ft = file_utils.JSONSerializer(skin_file, data)
+    ft = file_utils.JSONSerializer(skin_file)
     return ft.read()
 
 
@@ -363,7 +389,7 @@ def set_skin_data(mesh_obj=None, weights={}):
     skin_fn, skin_name = get_skin_cluster(mesh_obj)
     if not skin_fn:
         skin_name = create_skin_cluster(mesh_obj, weights['influences'])[0]
-    normalize_weights(skin_name, mesh_obj, weights['influences'])
+    prune_weights(skin_name, mesh_obj, weights['influences'])
 
     for vert_id, weightData in weights['weights'].items():
         weight_attr_plug = '%s.weightList[%s]' % (skin_name, vert_id)
@@ -372,3 +398,17 @@ def set_skin_data(mesh_obj=None, weights={}):
             cmds.setAttr(weight_attr_plug + weight_attr, infValue)
     print("Weights set on: {}".format(skin_name))
     return True
+
+
+def set_skin_file_data(mesh_obj=''):
+    """
+    sets the skin data from file.
+    :param mesh_obj:
+    :return:
+    """
+    if not mesh_obj:
+        mesh_obj = object_utils.get_selected_node()
+    skin_data = read_from_file(mesh_obj)
+    set_skin_data(mesh_obj, skin_data)
+    return True
+

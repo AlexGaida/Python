@@ -21,6 +21,9 @@ from PySide2.QtGui import QStandardItem
 from PySide2.QtGui import QPixmap
 from PySide2.QtCore import Qt
 
+# import local modules
+import object_utils
+
 
 class MessageBox(QtWidgets.QDialog):
     def __init__(self, message=None, **kwargs):
@@ -135,3 +138,13 @@ class WidgetHierarchyTree(MayaQWidgetBaseMixin, QtWidgets.QTreeView):
         # Recurse children and perform the same action
         for childWidget in widget.children():
             self.populateModel_recurseChildren(items[0], childWidget)
+
+
+def open_skin_paint_tool():
+    """
+    ArtPaintSkinWeightsToolOptions; changeSelectMode -object; select -add dress_M_geo;
+    :return:
+    """
+    node = object_utils.get_selected_node()
+    object_utils.is_shape_mesh(node)
+    mel.eval("ArtPaintSkinWeightsToolOptions; changeSelectMode -object; select -add {};".format(node))

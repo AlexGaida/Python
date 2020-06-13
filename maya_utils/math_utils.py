@@ -26,6 +26,17 @@ attr_name = object_utils.attr_name
 attr_set = object_utils.attr_set
 
 
+def get_bounding_box_center(object_name):
+    """
+    returns the center of the boundingBox from the object given.
+    :param object_name: <str> object name to get bounding box from.
+    :return: <tuple> center transform object information.
+    """
+    bb_min = cmds.getAttr('{}.boundingBoxMin'.format(object_name))[0]
+    bb_max = cmds.getAttr('{}.boundingBoxMax'.format(object_name))[0]
+    return bb_max[0]/2 + bb_min[0] / 2,  bb_max[1]/2 + bb_min[1] / 2, bb_max[2] / 2 + bb_min[2] / 2,
+
+
 def barycentric(vector1, vector2, vector3, u, v, w):
     """
     barycentric coordinates are normalized.

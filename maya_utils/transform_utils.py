@@ -12,6 +12,18 @@ from maya import cmds
 import object_utils
 
 
+def set_to_object_center(object_name, target_name):
+    """
+    set the object to the center of the other object.
+    :param object_name: <str> the object name to position to the target.
+    :param target_name: <str> the target name to get the center of the transform from.
+    :return: <bool> True for success.
+    """
+    center_t = Transform(target_name).get_bounding_box_center()
+    match_position_transform(object_name, center_t)
+    return True
+
+
 def get_world_position(object_name):
     """
     returns the translate position in world space.
@@ -32,7 +44,7 @@ def get_world_matrix(object_name):
 
 def match_position_transform(source, target):
     """
-    match the transform.
+    match the transform from the target to the source.
     :param source: <str> source object to snap to target.
     :param target: <str>, <tuple> target object, or position array.
     :return: <bool> True for success. <bool> False for failure.
@@ -720,6 +732,15 @@ class Transform(OpenMaya.MFnTransform):
         :return: <OpenMaya.MStatus>
         """
         return self.rotateByQuaternion(quat.x, quat.y, quat.z, quat.w, OpenMaya.MSpace.kPreTransform)
+
+    def get_bounding_box_center(self):
+        """
+        returns the center of the boundingBox from the object given.
+        :return: <tuple> center transform object information.
+        """
+        bb_min = cmds.getAttr('{}.boundingBoxMin'.format(self.MAYA_STR_OBJECT))[0]
+        bb_max = cmds.getAttr('{}.boundingBoxMax'.format(self.MAYA_STR_OBJECT))[0]
+        return bb_max[0] / 2 + bb_min[0] / 2, bb_max[1] / 2 + bb_min[1] / 2, bb_max[2] / 2 + bb_min[2] / 2,
 
 
 def mirror_object(control_name="", mirror_obj_name="", invert_rotate=False, keep_rotation=False):

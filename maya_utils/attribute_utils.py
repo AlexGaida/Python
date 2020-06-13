@@ -203,11 +203,16 @@ class Attributes:
         :param open_maya: <bool> set the attribute using open maya.
         :return: <bool> True for success. <bool> False for failure.
         """
-        if self.is_attr_connected(attribute_name) or self.is_attr_locked(attribute_name):
+        if self.is_attr_locked(attribute_name):
             return False
 
         if not open_maya:
-            cmds.setAttr('{}.{}'.format(self.MAYA_STR_OBJECT, attribute_name), attribute_value)
+            try:
+                cmds.setAttr('{}.{}'.format(self.MAYA_STR_OBJECT, attribute_name), attribute_value)
+            except RuntimeError:
+                # RuntimeError: setAttr: 'ankleFk_lf_ctrl.rig_info' is not a simple numeric attribute.
+                # Its values must be set with a -type flag. #
+                pass
 
         if open_maya:
             # allow the error to happen when the plug has not been found.
@@ -257,6 +262,22 @@ class Attributes:
         """
         o_plug = self.MAYA_MFN_OBJECT.findPlug(attr_str)
         return o_plug.isLocked()
+
+    def is_attr_source(self, attr_str):
+        """
+        check if attribute is source of connections.
+        :return:
+        """
+        o_plug = self.MAYA_MFN_OBJECT.findPlug(attr_str)
+        return o_plug.isSource()
+
+    def get_source(self, attr_str):
+        """
+        check if attribute is source of connections.
+        :return:
+        """
+        o_plug = self.MAYA_MFN_OBJECT.findPlug(attr_str)
+        return o_plug.source().name()
 
     def is_attr_connected(self, attr_str):
         """
@@ -322,6 +343,9 @@ class Attributes:
                 if attr_name not in self.DEFAULT_ATTRS:
                     attrib = attr_name
                 else:
+                    continue
+            elif not custom:
+                if attr_name not in self.DEFAULT_ATTR_VALUES:
                     continue
 
             if all_attrs:
@@ -489,7 +513,9 @@ class Attributes:
             default_value = self.get_default_attr(attr)
             if self.is_attr_locked(attr):
                 continue
-            if self.is_attr_connected(attr):
+            # if self.is_attr_connected(attr):
+            #     continue
+            if self.get_source(attr):
                 continue
             self.set_attributes(attr, default_value)
         return True

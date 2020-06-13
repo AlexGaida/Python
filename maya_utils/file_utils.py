@@ -111,6 +111,18 @@ def get_maya_workspace_dir():
     return cmds.workspace(dir=True, q=1)
 
 
+def get_maya_workspace_data_dir():
+    """
+    returns the data directory in the workspace directory.
+    :return: <str> data workspace directory.
+    """
+    data_dir = get_maya_workspace_dir()
+    if 'data' not in data_dir:
+        data_dir = concatenate_path(get_maya_workspace_dir(), 'data')
+    build_dir(data_dir)
+    return data_dir
+
+
 def has_ext(file_name, ext_name=""):
     """
     check if the file name string has the extension name.
