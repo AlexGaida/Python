@@ -606,6 +606,14 @@ def get_selected_node(single=True):
     return tuple(cmds.ls(os=1, fl=1))
 
 
+def get_selected_components():
+    """
+    return the selected components
+    :return: <tuple> array of components.
+    """
+    return tuple(cmds.ls(sl=1, flatten=True))
+
+
 def connect_attr(src_attribute="", dst_attribute=""):
     """
     perform connection
@@ -1245,10 +1253,10 @@ def get_connected_nodes(object_name="", find_node_type='animCurve',
     :param search_name: <str> search for this name. ** Not Implemented!
     """
     direction = None
-    if up_stream:
-        direction = OpenMaya.MItDependencyGraph.kUpstream
     if down_stream:
         direction = OpenMaya.MItDependencyGraph.kDownstream
+    if up_stream:
+        direction = OpenMaya.MItDependencyGraph.kUpstream
     if breadth:
         direction = OpenMaya.MItDependencyGraph.kBreadthFirst
     if depth:
@@ -2100,3 +2108,11 @@ def do_set_attr(source_node_attr, value):
         cmds.setAttr(source_node_attr, value, type="string")
         return True
     return False
+
+
+def unlock_attribute(source_attr):
+    return cmds.setAttr(source_attr, l=False)
+
+
+def lock_attribute(source_attr):
+    return cmds.setAttr(source_attr, l=True)

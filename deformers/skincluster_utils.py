@@ -219,6 +219,23 @@ def get_skin_cluster(source_obj=None):
     :param source_obj: <OpenMaya.MObject> start iteration from this source node.
     :return: <str> skin cluster node name. <False> for failure.
     """
+    mesh_shapes = object_utils.get_shape_obj(source_obj)
+    for mesh_shape in mesh_shapes:
+        skin_obj = object_utils.get_connected_nodes(mesh_shape,
+                                                    find_node_type='skinCluster',
+                                                    up_stream=True, depth=True)
+        print object_utils.get_m_object_name(mesh_shape), skin_obj
+        if skin_obj:
+            return OpenMayaAnim.MFnSkinCluster(skin_obj[0]), OpenMaya.MFnDependencyNode(skin_obj[0]).name()
+    return False, False
+
+
+def get_skin_cluster_old(source_obj=None):
+    """
+    Grabs the  skin cluster from the node specified.
+    :param source_obj: <OpenMaya.MObject> start iteration from this source node.
+    :return: <str> skin cluster node name. <False> for failure.
+    """
     m_it_graph = OpenMaya.MItDependencyGraph(object_utils.get_shape_obj(source_obj)[0],
                                              OpenMaya.MItDependencyGraph.kUpstream,
                                              OpenMaya.MItDependencyGraph.kPlugLevel)
@@ -260,10 +277,11 @@ def connect(source_obj, source_plug_name, destination_obj, destination_plug_name
     mg_mod.doIt()
 
 
-def get_skin_data(mesh_obj=None):
+def get_skin_data(mesh_obj=None, full_names=True):
     """
     Returns a dictionary of skinCluster influences and weights.
     :param mesh_obj: <OpenMaya.MObject> the mesh shape name.
+    :param full_names: <bool> write the file with full path names.
     :return: <dict> skinCluster values. <bool> False for failure.
     """
     weights = {}
@@ -282,7 +300,10 @@ def get_skin_data(mesh_obj=None):
     influences = []
     weights["influences"] = []
     for x in xrange(inf_dag_arr.length()):
-        inf_path = inf_dag_arr[x].fullPathName()
+        if full_names:
+            inf_path = inf_dag_arr[x].fullPathName()
+        else:
+            inf_path = inf_dag_arr[x].partialPathName()
         inf_id = int(skin_fn.indexForInfluenceObject(inf_dag_arr[x]))
         inf_ids[inf_id] = x
         influences.append(inf_path)
@@ -352,6 +373,28 @@ def prune_weights(skin_name="", mesh_name="", influences=()):
         cmds.setAttr('%s.normalizeWeights' % skin_name, skinNorm)
 
 
+def check_namespace(name=""):
+    """
+    replaces the colon with a hyphen
+    :param name:
+    :return: <str> name.
+    """
+    if ':' in name:
+        return '-'.join(name.split(':'))
+    return name
+
+
+def check_hyphen(name=""):
+    """
+    replaces the hyphen with a colon.
+    :param name:
+    :return: <str> name.
+    """
+    if '-' in name:
+        return ':'.join(name.split(':'))
+    return name
+
+
 def save_to_file(mesh_obj=''):
     """
     writes the skinCluster data into a JSON file type.
@@ -361,11 +404,33 @@ def save_to_file(mesh_obj=''):
     if not mesh_obj:
         mesh_obj = object_utils.get_selected_node()
     data = get_skin_data(mesh_obj)
-    skin_file = file_utils.get_path(file_utils.get_maya_workspace_data_dir(), mesh_obj)
+    file_name = check_namespace(mesh_obj)
+    skin_file = file_utils.get_path(file_utils.get_maya_workspace_data_dir(), file_name)
     ft = file_utils.JSONSerializer(skin_file, data)
     ft.write()
     print("Weights saved: {}\n".format(ft.FILE_NAME))
     return skin_file
+
+
+def save_selected_objects_to_file():
+    """
+    save the mesh objects' skins to directory.
+    :return:
+    """
+    for node in object_utils.get_selected_node(single=False):
+        save_to_file(node)
+    return True
+
+
+def load_selected_objects_from_file():
+    """
+    save the mesh objects' skins to directory.
+    :return:
+    """
+    for node in object_utils.get_selected_node(single=False):
+        data = read_from_file(node)
+        set_skin_data(node, data)
+    return True
 
 
 def read_from_file(mesh_obj):
@@ -374,7 +439,8 @@ def read_from_file(mesh_obj):
     :param mesh_obj: <str> the mesh object to find the file from the workspace directory.
     :return: <dict> the skinCluster information data.
     """
-    skin_file = file_utils.get_path(file_utils.get_maya_workspace_dir(), mesh_obj)
+    file_name = check_namespace(mesh_obj)
+    skin_file = file_utils.get_path(file_utils.get_maya_workspace_data_dir(), file_name)
     ft = file_utils.JSONSerializer(skin_file)
     return ft.read()
 
@@ -408,6 +474,7 @@ def set_skin_file_data(mesh_obj=''):
     """
     if not mesh_obj:
         mesh_obj = object_utils.get_selected_node()
+    print(mesh_obj)
     skin_data = read_from_file(mesh_obj)
     set_skin_data(mesh_obj, skin_data)
     return True

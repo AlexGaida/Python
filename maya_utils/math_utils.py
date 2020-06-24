@@ -26,6 +26,14 @@ attr_name = object_utils.attr_name
 attr_set = object_utils.attr_set
 
 
+def variable_point_constraint_division(point_a, point_b):
+    pass
+
+
+def get_selection_center():
+    object_utils.get_selected_components()
+
+
 def get_bounding_box_center(object_name):
     """
     returns the center of the boundingBox from the object given.
