@@ -16,7 +16,6 @@ connect_attr = object_utils.connect_attr
 create_node = object_utils.create_node
 attr_name = object_utils.attr_name
 attr_set = object_utils.attr_set
-
 world_transform = lambda x: transform_utils.Transform(x).get_world_translation_list()
 
 
@@ -456,7 +455,6 @@ def create_curve_from_transforms(transform_array, degree=2, curve_name="", equal
     points_array = ()
     for tfm_name in transform_array:
         points_array += world_transform(tfm_name),
-    print points_array
     return create_curve_from_points(points_array, degree=degree,
                                     curve_name=curve_name, equal_cv_positions=equal_cv_positions)
 
@@ -475,3 +473,91 @@ def create_curve_from_selection(degree=2, curve_name="", equal_cv_positions=Fals
     print(m_list)
     return create_curve_from_transforms(m_list, degree=degree,
                                         curve_name=curve_name, equal_cv_positions=equal_cv_positions)
+
+
+def get_curve_shapes_fn(object_name):
+    """the shape fn object from the string object provided.
+
+    Args:
+        object_name: (str) the object to get curve shapes from.
+
+    Returns:
+        tuple: array of curve MFnNurbsCurve Object belonging to this shape.
+
+    """
+    m_shapes = object_utils.get_m_curve_shapes(object_utils.get_m_dag(object_name))
+    shape_array = ()
+    for shape_m_obj in m_shapes:
+        if object_utils.is_shape_intermediate(shape_m_obj):
+            continue
+        shape_array += OpenMaya.MFnNurbsCurve(shape_m_obj),
+    return shape_array
+
+
+def get_param_u_from_point(curve_name, point):
+    """Returns a parameterU value from a translation point provided.
+
+    Args:
+        point: (tuple, list) x, y, z position
+        curve_name: (str) the curve name to get parameterU from
+
+    Returns:
+        float: parameterU float value.
+
+    """
+    return _get_param_u(point=point, curve_name=curve_name)
+
+
+def get_param_u_from_transform(curve_name, transform):
+    """Returns a parameterU value from a translation object provided.
+
+    Args:
+        transform: (str) transform object name.
+        curve_name: (str) the curve name to get parameterU from
+
+    Returns:
+        float: parameterU float value.
+
+    """
+    return _get_param_u(transform_obj=transform, curve_name=curve_name)
+
+
+def get_curve_length(curve_name):
+    """Get the curve length
+
+    Args:
+        curve_name (str): curve name to get the arc length.
+
+    Returns:
+        float: 0.0 for failure, (float) > 0.0 for success.
+
+    """
+    curve_fn = get_curve_shapes_fn(curve_name)[0]
+    return curve_fn.length(0.001)
+
+
+def _get_param_u(curve_name, transform_obj=None, point=None):
+    """retrieves the parameter (dimension) U value from the curve specified from a point in space.
+
+    Args:
+        transform_obj (str, unicode): the transform_object to get translation point location data from.
+        point (tuple, list): array of X, Y, Z point coordinates.
+        curve_name (str, unicode): the name of the curve to be used.
+
+    Returns:
+        float: parameter double attribute value.
+
+    """
+    if transform_obj:
+        point = cmds.xform(transform_obj, t=1, q=1, ws=1)
+    point = OpenMaya.MPoint(*point)
+    curve_fn = get_curve_shapes_fn(curve_name)[0]
+    double_ptr = object_utils.ScriptUtils(as_double_ptr=True)
+    is_point_on_curve = curve_fn.isPointOnCurve(point)
+    if is_point_on_curve:
+        curve_fn.getParamAtPoint(point, double_ptr, 0.001, OpenMaya.MSpace.kObject)
+    else:
+        # MFnNurbsCurve::closestPoint(MPoint const &,double *,double,MSpace::Space,MStatus *) const
+        point = curve_fn.closestPoint(point, double_ptr.ptr, 0.001, OpenMaya.MSpace.kObject)
+        curve_fn.getParamAtPoint(point, double_ptr.ptr, 0.001, OpenMaya.MSpace.kObject)
+    return double_ptr.get_double()

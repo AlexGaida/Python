@@ -46,6 +46,10 @@ def make_py_file(dir_name, file_name):
     return file_path
 
 
+def copy_file(src_file, dst_file):
+    return shutil.copyfile(src_file, dst_file)
+
+
 def remove_directory(dir_name):
     """
     removes directory from path.
@@ -91,6 +95,19 @@ def build_dir(dir_name):
         return False
     if not is_dir(dir_name):
         os.mkdir(dir_name)
+    return dir_name
+
+
+def build_directory(dir_name):
+    """
+    build an entire directory.
+    :param dir_name:
+    :return:
+    """
+    if is_file(dir_name):
+        return False
+    if not is_dir(dir_name):
+        os.makedirs(dir_name)
     return dir_name
 
 
@@ -167,12 +184,31 @@ def is_dir(file_name):
     return os.path.isdir(file_name)
 
 
+def current_file():
+    """
+    get the current file.
+    :return:
+    """
+    return cmds.file(q=1, loc=1)
+
+
+def current_file_parent(level=1):
+    """
+    get the directory parent path from level.
+    :return: <str> get the file path string.
+    :param level: <int> the path level to return.
+    """
+    if level == 0:
+        raise IOError("[GetThisDirectoryParent] :: This cannot equal to zero.")
+    return '/'.join(get_file_splits(current_file())[:_parent_level(level)])
+
+
 def open_current_file():
     """
     Opens the current maya scene file.
     :return: <bool> True for success.
     """
-    cmds.file(cmds.file(q=1, loc=1), o=1, f=1)
+    cmds.file(current_file(), o=1, f=1)
     return True
 
 
@@ -191,7 +227,7 @@ def split_file_name(file_name):
     :param file_name:
     :return:
     """
-    return os.path.splitext(file_name)[0]
+    return os.path.split(file_name)[1]
 
 
 def get_file_splits(file_name):

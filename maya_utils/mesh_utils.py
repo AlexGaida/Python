@@ -494,6 +494,16 @@ def select_changed_vertices(mesh1, mesh2, round_deviation=6, mirror_x=False):
     select_indices(mesh2, indices)
 
 
+def get_index_name(mesh_name, mesh_index):
+    """
+    gets the mesh vertex name from the parameters given.
+    :param mesh_name:
+    :param mesh_index:
+    :return:
+    """
+    return mesh_name + '.vtx[%d]' % mesh_index
+
+
 def select_indices(mesh_obj, index_array):
     """
     selects index array on the mesh object.
@@ -504,8 +514,7 @@ def select_indices(mesh_obj, index_array):
     cmds.select(d=True)
     vertices = ()
     for idx in index_array:
-        vertices += mesh_obj + '.vtx[%d]' % idx,
-    print vertices
+        vertices += get_index_name(mesh_obj, idx),
     cmds.select(vertices)
 
 
@@ -519,3 +528,44 @@ def copy_mesh_positions(mesh_1, mesh_2, mirror_x=False):
     for idx, vertex in indices.items():
         set_index_position(mesh_2, idx, vertex)
     return True
+
+
+def get_closest_point(mesh_name="", transform_point=""):
+    """
+    gets the closest point on mesh from the mesh and transform provided.
+    :param mesh_name:
+    :param transform_point:
+    :return:
+    """
+    mesh_fn = object_utils.get_shape_fn(mesh_name)[0]
+    t = cmds.xform(transform_point, ws=1, t=1, q=1)
+    to_this_point = OpenMaya.MPoint(*t)
+    result_point = OpenMaya.MPoint()
+
+    util = OpenMaya.MScriptUtil()
+    util.createFromInt(0)
+    id_pointer = util.asIntPtr()
+    mesh_fn.getClosestPoint(to_this_point, result_point, OpenMaya.MSpace.kTransform, id_pointer)
+    return (result_point.x, result_point.y, result_point.z), OpenMaya.MScriptUtil(id_pointer).asInt()
+
+
+def get_edge_loop_points_at_axis(mesh_name='', axis='z', rounded_to=4, half_loops=True):
+    """
+    function to get the edge loops of the sphere.
+    :param mesh_name: <str> mesh name to get data from.
+    :param axis: <str> the axis to get the vertices from.
+    :param rounded_to: <int> the rounding digit.
+    :return: <dict> axis integers with points.
+    """
+    data = get_component_data([mesh_name], position=False, world_space=True, object_space=False)
+    axes = ('x', 'y', 'z')
+    axis_index = axes.index(axis)
+    axis_data = {}
+    for vtx_id in data:
+        position = cmds.xform(mesh_name + '.vtx[{}]'.format(vtx_id), q=1, t=1)
+        position_value = round(position[axis_index], rounded_to)
+        if position[axis_index] >= 0.0:
+            if position_value not in axis_data:
+                axis_data[position_value] = ()
+            axis_data[position_value] += vtx_id,
+    return axis_data

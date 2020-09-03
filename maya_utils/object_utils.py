@@ -67,6 +67,7 @@ node_types = {
     'sculpt':               OpenMaya.MFn.kSculpt,
     'wrap':                 OpenMaya.MFn.kWrapFilter,
     'shrinkWrap':           OpenMaya.MFn.kShrinkWrapFilter,
+    'lambert':              OpenMaya.MFn.kLambert
     }
 
 # define private variables
@@ -165,6 +166,16 @@ def get_selection_iter():
     for model in cmds.ls(transforms=True):
         models.add(model)
     return OpenMaya.MItSelectionList(models)
+
+
+def array_to_mit_selection(array):
+    """
+    returns an OpenMaya MItSelectionList from the array objects provided.
+    """
+    mit_sel = OpenMaya.MSelectionList()
+    for obj in array:
+        mit_sel.add(obj)
+    return OpenMaya.MItSelectionList(mit_sel)
 
 
 def get_m_selection(objects_array=(), as_strings=False):
@@ -471,37 +482,61 @@ def space_k_transform():
 
 class ScriptUtil(OpenMaya.MScriptUtil):
     ptr = None
-    MATRIX = OpenMaya.MMatrix()
+    matrix_om = OpenMaya.MMatrix()
 
-    def __init__(self, *a, **kw):
-        super(ScriptUtil, self).__init__(*a)
-        if 'as_double_ptr' in kw:
-            self.createFromDouble(*a)
+    def __init__(self,
+                 as_double_ptr=False,
+                 as_float_ptr=False,
+                 as_float2_ptr=False,
+                 as_double2_ptr=False,
+                 as_double3_ptr=False,
+                 as_float3_ptr=False,
+                 as_int_ptr=False,
+                 as_uint_ptr=False,
+                 matrix_from_list=()):
+        """Use this class for setting and retrieving variables from a memory address.
+
+        Args:
+            as_double_ptr: (bool)
+            as_float_ptr: (bool)
+            as_float2_ptr: (bool)
+            as_double2_ptr: (bool)
+            as_double3_ptr: (bool)
+            as_float3_ptr: (bool)
+            as_int_ptr: (bool)
+            as_uint_ptr: (bool)
+            matrix_from_list: (bool)
+        Usage:
+            double_util = object_utils.ScriptUtil(0.0, as_double_ptr=True)
+            curve_fn.getParamAtPoint(point, double_util.ptr, 0.001, OpenMaya.MSpace.kObject)
+            return double_util.get_double()
+
+        """
+        super(ScriptUtil, self).__init__()
+        if as_double_ptr:
+            self.createFromDouble(0.0)
             self.ptr = self.asDoublePtr()
-        if 'as_float_ptr' in kw:
-            self.createFromDouble(*a)
+        if as_float_ptr:
+            self.createFromDouble(0.0)
             self.ptr = self.asFloatPtr()
-        if 'as_float2_ptr' in kw:
+        if as_float2_ptr:
             # self.createFromDouble(*a)
             self.ptr = self.asFloat2Ptr()
-        if 'as_double2_ptr' in kw:
+        if as_double2_ptr:
             self.createFromList([0.0, 0.0], 2)
             self.ptr = self.asDouble2Ptr()
-        if 'as_double3_ptr' in kw:
+        if as_double3_ptr:
             self.createFromList([0.0, 0.0, 0.0], 3)
             self.ptr = self.asDouble3Ptr()
-        if 'as_float3_ptr' in kw:
+        if as_float3_ptr:
             self.createFromList([0.0, 0.0, 0.0], 3)
             self.ptr = self.asFloat3Ptr()
-        if 'as_int_ptr' in kw:
+        if as_int_ptr:
             self.ptr = self.asIntPtr()
-        if 'as_uint_ptr' in kw:
+        if as_uint_ptr:
             self.ptr = self.asUintPtr()
-        if 'matrix_from_list' in kw:
-            self.matrix_from_list(*a)
-        if 'function' in kw:
-            if callable(kw['function'][0]):
-                self.execute(kw['function'])
+        if matrix_from_list:
+            self.matrix_from_list(*matrix_from_list)
 
     def execute(self, function=()):
         function[0](*[self.ptr] + list(function[1:]))
@@ -543,11 +578,11 @@ class ScriptUtil(OpenMaya.MScriptUtil):
         return self.getFloatArrayItem(self.ptr, idx)
 
     def matrix_from_list(self, matrix_list=()):
-        self.createMatrixFromList(matrix_list, self.MATRIX)
+        self.createMatrixFromList(matrix_list, self.matrix_om)
 
     @property
-    def matrix(self):
-        return self.MATRIX
+    def as_matrix(self):
+        return self.matrix_om
 
 
 def get_unsigned_int_ptr(int_num=None):
@@ -949,6 +984,8 @@ def get_fn(m_object):
         return OpenMayaAnim.MFnIkJoint(m_object)
     elif type_str(m_object) == 'ikHandle':
         return OpenMayaAnim.MFnIkEffector(m_object)
+    elif type_str(m_object) == 'lambert':
+        return OpenMaya.MFnLambertShader(m_object)
     else:
         return OpenMaya.MFnDependencyNode(m_object)
 
@@ -1696,6 +1733,7 @@ def get_plugs(o_node=None, source=True, ignore_nodes=(), ignore_attrs=(), attr_n
         if ignore_attrs:
             if [a for a in ignore_attrs if a in m_plug_name]:
                 continue
+        print(m_plug_name, "isArray: ", m_plug.isArray(), "isCompound", m_plug.isCompound())
         m_plug_array = OpenMaya.MPlugArray()
         m_plug.connectedTo(m_plug_array, source, not source)
         plug_array_len = m_plug_array.length()

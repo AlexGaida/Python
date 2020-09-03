@@ -30,7 +30,7 @@ def save_deformer_skin_weights(skin_name="", directory_path_name=""):
     :param directory_path_name: <str> The directory path to save the skin weights to.
     :return: <bool> True for success.
     """
-    cmds.deformerWeights(skin_name + '.skinWeights', path=directory_path_name, ex=1, deformer=skin_name)
+    cmds.deformerWeights(skin_name + '_skinWeights', path=directory_path_name, ex=1, deformer=skin_name)
     return True
 
 

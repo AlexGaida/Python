@@ -80,6 +80,15 @@ def get_scene_blendshapes(as_strings=False):
     return blendshapes
 
 
+def get_blendshape_weights(object_name=""):
+    """
+    get the blend shape weight attributes on node.
+    :param object_name: <str> object name of the blend shape deformer node.
+    :return: <list> blend shape weights.
+    """
+    return cmds.listAttr('{}.w'.format(object_name), m=True)
+
+
 def get_deformer_fn(object_name=""):
     """
     get a blendshape deformer fn

@@ -1,5 +1,6 @@
 # import maya modules
 from maya import cmds
+from maya import OpenMaya
 
 
 def check_components(components=()):
