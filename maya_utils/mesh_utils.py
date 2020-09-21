@@ -9,7 +9,7 @@ from maya import OpenMaya
 from maya import cmds
 
 # import local modules
-import object_utils
+from . import object_utils
 from maya_utils import transform_utils
 from maya_utils import math_utils
 
@@ -549,7 +549,7 @@ def get_closest_point(mesh_name="", transform_point=""):
     return (result_point.x, result_point.y, result_point.z), OpenMaya.MScriptUtil(id_pointer).asInt()
 
 
-def get_edge_loop_points_at_axis(mesh_name='', axis='z', rounded_to=4, half_loops=True):
+def get_edge_loop_points_at_axis(mesh_name='', axis='z', rounded_to=4):
     """
     function to get the edge loops of the sphere.
     :param mesh_name: <str> mesh name to get data from.

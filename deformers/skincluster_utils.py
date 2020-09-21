@@ -467,7 +467,7 @@ def check_hyphen(name=""):
     return name
 
 
-def save_to_file(mesh_obj=''):
+def save_to_file(mesh_obj='', file_dir=""):
     """
     writes the skinCluster data into a JSON file type.
     :param mesh_obj: <str> the mesh object to query the skinCluster data from.
@@ -477,7 +477,9 @@ def save_to_file(mesh_obj=''):
         mesh_obj = object_utils.get_selected_node()
     data = get_skin_data(mesh_obj)
     file_name = check_namespace(mesh_obj)
-    skin_file = file_utils.get_path(file_utils.get_maya_workspace_data_dir(), file_name)
+    if file_dir:
+        file_dir = file_utils.get_maya_workspace_data_dir()
+    skin_file = file_utils.get_path(file_dir, file_name)
     ft = file_utils.JSONSerializer(skin_file, data)
     ft.write()
     print("Weights saved: {}\n".format(ft.FILE_NAME))
@@ -505,14 +507,17 @@ def load_selected_objects_from_file():
     return True
 
 
-def read_from_file(mesh_obj):
+def read_from_file(mesh_obj, file_dir=""):
     """
     reads the skinCluster data and applies it to mesh.
     :param mesh_obj: <str> the mesh object to find the file from the workspace directory.
+    :param file_dir: <str> use a different path directory if the workspace directory proves invalid.
     :return: <dict> the skinCluster information data.
     """
+    if not file_dir:
+        file_dir = file_utils.get_maya_workspace_data_dir()
     file_name = check_namespace(mesh_obj)
-    skin_file = file_utils.get_path(file_utils.get_maya_workspace_data_dir(), file_name)
+    skin_file = file_utils.get_path(file_dir, file_name)
     ft = file_utils.JSONSerializer(skin_file)
     return ft.read()
 
@@ -538,7 +543,7 @@ def set_skin_data(mesh_obj=None, weights={}):
     return True
 
 
-def set_skin_file_data(mesh_obj=''):
+def set_skin_file_data(mesh_obj='', file_dir=""):
     """
     sets the skin data from file.
     :param mesh_obj:
@@ -546,7 +551,7 @@ def set_skin_file_data(mesh_obj=''):
     """
     if not mesh_obj:
         mesh_obj = object_utils.get_selected_node()
-    skin_data = read_from_file(mesh_obj)
+    skin_data = read_from_file(mesh_obj, file_dir=file_dir)
     set_skin_data(mesh_obj, skin_data)
     return True
 
