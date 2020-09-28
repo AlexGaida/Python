@@ -4,7 +4,7 @@ Querying, getting and setting skincluster information.
 # import standard modules
 import time
 import threading
-import Queue
+from Queue import Queue
 
 # import maya modules
 from maya import cmds
@@ -371,7 +371,7 @@ def get_skin_data(mesh_obj=None, full_names=True):
     inf_ids = {}
     influences = []
     weights["influences"] = []
-    for x in xrange(inf_dag_arr.length()):
+    for x in range(inf_dag_arr.length()):
         if full_names:
             inf_path = inf_dag_arr[x].fullPathName()
         else:
@@ -392,7 +392,7 @@ def get_skin_data(mesh_obj=None, full_names=True):
     # the value is another dictionary whose key is the influence id and
     # value is the weight for that influence
     weights["weights"] = {}
-    for v_id in xrange(weight_list_plug.numElements()):
+    for v_id in range(weight_list_plug.numElements()):
         weight_values = {}
         # tell the weights attribute which vertex id it represents
         weights_plug.selectAncestorLogicalIndex(v_id, weight_list_attr_plug)
@@ -782,10 +782,6 @@ def __set_transfer_weights(skin_name, index, current_weights, source_index, dest
     return transfer_weights
 
 
-def __set_transfer_weights_in_main_thread(skin_name, index, current_weights, source_index, destination_index, transfer_weights):
-    return utils.executeInMainThreadWithResult(__set_transfer_weights, skin_name, index, current_weights, source_index, destination_index, transfer_weights)
-
-
 def get_weight_list_length(skin_name=""):
     """
     returns the length of the skincluster weights list
@@ -795,6 +791,17 @@ def get_weight_list_length(skin_name=""):
     num_influences = get_influence_count(skin_name)
     num_vertices = get_num_vertices(skin_name)
     return num_influences * num_vertices
+
+
+def get_num_threads(skin_name="", max_threads=20):
+    """
+    returns the number of threads relative to the length of the skinning weight list
+    :param skin_name:
+    :return:
+    """
+    num_influences = get_influence_count(skin_name)
+    num_vertices = get_num_vertices(skin_name)
+    num_of_work_per_thread = num_vertices / max_threads
 
 
 def set_skinweight_value_at_components(skin_name="", joint_name="", component_ids=(), skin_value=1.0):
@@ -914,3 +921,12 @@ def transfer_skin_weights_from_joint_to_joint(skin_name="", from_jnt_name="", to
     set_weights(skin_name, array_weights=transfer_weights, undo_weights=current_weights, normalize=True)
     # en = time.time()
     # print('set weights :: {}'.format(en-st))
+
+
+def perform_threaded_transfer():
+    """
+    perform the threaded transfer by calculating the number of threads to use.
+    :return:
+    """
+    max_threads = 20
+    get_worker_percentage = get_weight_list_length() /
