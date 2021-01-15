@@ -2,7 +2,6 @@
 joint_utils.py manipulating and retrieving information from joints.
 """
 # import standard modules
-import re
 
 # import maya modules
 from maya import cmds
@@ -10,6 +9,7 @@ from maya import OpenMaya
 
 # import local modules
 import name_utils
+import node_utils
 from maya_utils import object_utils
 from maya_utils import transform_utils
 from maya_utils import curve_utils
@@ -243,16 +243,15 @@ def get_joint_hierarchy_positions(base_joint_name=""):
 def create_dynamic_chain(base_joint_name="", name="", curve_degree=2):
     """
     creates a dynamic chain from the joint chain provided.
-    :return:
+    :return: <str> curve_name
     """
     joint_hierarchy = get_joint_hierarchy(base_joint_name)
     points_array = get_joint_hierarchy_positions(base_joint_name)
-    print points_array
+    print(points_array)
     curve_name = curve_utils.create_curve_from_points(points_array, degree=curve_degree, curve_name=name)
     # cmds.select(curve_name)
     # make the curve name dynamic
     # mel.eval('makeCurvesDynamic 2 { "1", "0", "1", "1", "0"};')
-
     # now make the spline Ik Handle
     # return curve_name
 
@@ -359,11 +358,9 @@ def create_joint(name, prefix_name="",
     if not name:
         name = 'joint'
     dag_mod = OpenMaya.MDagModifier()
-
     # create the joint MObjects we will be manipulating.
     jnt_objects = ()
     jnt_names = ()
-
     # grabs the joint names
     joint_names = get_joint_names(prefix_name=prefix_name,
                                   name=name,
@@ -372,11 +369,9 @@ def create_joint(name, prefix_name="",
                                   guide_joint=guide_joint,
                                   bound_joint=bound_joint,
                                   suffix_name=suffix_name)
-
-    for i in xrange(0, num_joints):
+    for i in range(0, num_joints):
         # only create new if the objects's names do not exist
         new_name = joint_names[i]
-
         # create only when the name does not exist
         if name and not object_utils.is_exists(new_name):
             jnt_names += new_name,
@@ -386,29 +381,23 @@ def create_joint(name, prefix_name="",
             else:
                 # Assign the new joint as a child to the previous joint.
                 jnt_obj = dag_mod.createNode('joint', jnt_objects[i - 1])
-
             # rename the joint using OpenMaya
             dag_mod.renameNode(jnt_obj, new_name)
             dag_mod.doIt()
-
             # keep track of all the joints created.
             jnt_objects += jnt_obj,
-
         elif name and object_utils.is_exists(new_name):
             jnt_names += new_name,
             jnt_objects += object_utils.get_m_obj(new_name),
-
         # snap the joint to the transform
         if use_transform and object_utils.is_exists(new_name):
             object_utils.snap_to_transform(new_name, use_transform, matrix=True)
-
         # set the position of the newly created joint
         if use_position:
             if isinstance(use_position[0], (int, float)):
                 set_position(new_name, use_position)
             else:
                 set_position(new_name, use_position[i])
-
     if not as_strings:
         return jnt_objects
     elif as_strings:
@@ -424,7 +413,6 @@ def set_position(obj, positional_array):
     """
     if positional_array and len(positional_array) == 3:
         object_utils.set_object_transform(obj, t=positional_array)
-
     elif positional_array and len(positional_array) > 3:
         object_utils.set_object_transform(obj, m=positional_array)
 
@@ -511,7 +499,6 @@ def orient_joints(joint_array, primary_axis='x'):
     for jnt_name in joint_array:
         # freezes all transform values on this joint
         freeze_transformations(jnt_name)
-
         # reorient joint
         if primary_axis == 'x':
             return cmds.joint(jnt_name, e=True, oj='xyz', secondaryAxisOrient='yup', ch=True, zso=True)
@@ -534,3 +521,34 @@ def unlock_joints(jnt_suffix=''):
     for jnt in joints:
         cmds.setAttr('%s.liw' % jnt, 0)
     return True
+
+
+class Joint(node_utils.Node):
+    def __init__(self, **kwargs):
+        super(Joint, self).__init__(**kwargs)
+
+    def unlock(self):
+        """
+        lock the joint from weight paint
+        """
+        self.setAttr(self.node + '.liw', 0)
+
+    def lock(self):
+        """
+        un-lock the joint from weight paint
+        """
+        self.setAttr(self.node + '.liw', 1)
+
+    def orient_axis(self, axis='x'):
+        """
+        :param axis: <str> joint orient axis
+        """
+        if axis == 'x':
+            cmds.joint(self.node, e=True, oj='xyz', secondaryAxisOrient='yup', ch=True, zso=True)
+        if axis == 'y':
+            cmds.joint(self.node, e=True, oj='yzx', secondaryAxisOrient='yup', ch=True, zso=True)
+        if axis == 'z':
+            cmds.joint(self.node, e=True, oj='zxy', secondaryAxisOrient='yup', ch=True, zso=True)
+
+# ______________________________________________________________________________________________________________________
+# joint_utils.py

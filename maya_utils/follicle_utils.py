@@ -9,8 +9,8 @@ from maya import OpenMaya
 import object_utils
 import transform_utils
 import mesh_utils
-import math_utils
-from rig_utils import name_utils
+import attribute_utils
+import name_utils
 
 # define local variables
 FOLLICLE_SUFFIX = 'foll'
@@ -18,13 +18,13 @@ CLOSEST_POINT_ON_MESH_SUFFIX = 'cpom'
 CLOSEST_POINT_ON_SURFACE_SUFFIX = 'cpos'
 CLOSEST_POINT_ON_CURVE_SUFFIX = 'cpoc'
 
-attr_connect = object_utils.attr_connect
-attr_add_float = object_utils.attr_add_float
-attr_name = object_utils.attr_name
-attr_set = object_utils.attr_set
+attr_connect = attribute_utils.attr_connect
+attr_add_float = attribute_utils.attr_add_float
+attr_name = attribute_utils.attr_name
+attr_set = attribute_utils.attr_set
 create_node = object_utils.create_node
-attr_get_value = object_utils.attr_get_value
-attr_split = object_utils.attr_split
+attr_get_value = attribute_utils.attr_get_value
+attr_split = attribute_utils.attr_split
 
 
 def find_all_follicles():

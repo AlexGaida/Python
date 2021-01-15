@@ -99,6 +99,7 @@ def aim_nodes(forward, up, driven_obj, number=1):
     return (driven_vector_node, up_vector_node, forward_vector_node, forward_vector_avg_node, up_vector_avg_node,
             z_up_cross_vector_node, four_by_four_matrix_node, decompose_node)
 
+
 def get_joint_hierarchy(start_joint):
     joints = cmds.listRelatives(start_joint, c=True, ad=True, type='joint') + [start_joint]
     joints.reverse()

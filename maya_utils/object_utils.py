@@ -710,10 +710,10 @@ def convert_obj_array_to_string_array(object_array):
     """
     objects = ()
     try:
-        for i in xrange(len(object_array)):
+        for i in range(len(object_array)):
             objects += get_m_object_name(object_array[i]),
     except TypeError:
-        for i in xrange(object_array.length()):
+        for i in range(object_array.length()):
             objects += get_m_object_name(object_array[i]),
     return objects
 
@@ -1048,7 +1048,7 @@ def get_shapes_len(m_object=None):
     ch_shapes = ()
     ch_count = fn_item.childCount()
     if ch_count:
-        for i in xrange(ch_count):
+        for i in range(ch_count):
             ch_item = fn_item.child(i)
             if has_fn(ch_item, 'transform'):
                 continue
@@ -1068,7 +1068,7 @@ def get_m_shape(m_object=None, shape_type="", as_strings=False):
     fn_item = OpenMaya.MFnDagNode(m_object)
     ch_count = fn_item.childCount()
     if ch_count:
-        for i in xrange(ch_count):
+        for i in range(ch_count):
             ch_item = fn_item.child(i)
             if shape_type and not has_fn(ch_item, shape_type):
                 continue
@@ -1101,7 +1101,7 @@ def get_m_parent(m_object=None, find_parent='', with_shape='', as_strings=False)
             o_arr = OpenMaya.MDagPathArray()
             fn_object.getAllPaths(o_arr)
             length = o_arr.length()
-            for i in xrange(length):
+            for i in range(length):
                 m_path = o_arr[i]
                 p_node_ls = m_path.fullPathName().split('|')
                 found = filter(lambda x: find_parent in x.rpartition(':')[-1], p_node_ls)
@@ -1808,7 +1808,7 @@ class Item(OpenMaya.MObject):
         :return: <tuple> plug arrays.
         """
         plugs = ()
-        for a_i in xrange(self.attr_count):
+        for a_i in range(self.attr_count):
             a_obj = self.node.attribute(a_i)
             a_plug = OpenMaya.MPlug(self, a_obj)
             if name and name in a_plug.name():
@@ -1831,7 +1831,7 @@ class Item(OpenMaya.MObject):
         :return: <tuple> plug arrays.
         """
         plugs = ()
-        for a_i in xrange(self.attr_count):
+        for a_i in range(self.attr_count):
             a_obj = self.node.attribute(a_i)
             if full_name:
                 plugs += OpenMaya.MPlug(self, a_obj).name(),
@@ -1921,93 +1921,6 @@ class Item(OpenMaya.MObject):
         :return: <bool> True for good match. <bool> False for no match.
         """
         return compare_objects(self, m_obj, fn=True)
-
-
-def attr_connect(attr_src, attr_trg):
-    """
-    connect the attributes from the source attribute to the target attribute.
-    :param attr_src: <str> source attribute.
-    :param attr_trg: <str> target attribute.
-    :return: <bool> True for success. <bool> False for failure.
-    """
-    if not cmds.isConnected(attr_src, attr_trg):
-        cmds.connectAttr(attr_src, attr_trg)
-    return True
-
-
-def attr_add_float(node_name, attribute_name, min_value=None, max_value=None):
-    """
-    add the new attribute to this node.
-    :param node_name: <str> valid node name.
-    :param attribute_name: <str> valid attribute name.
-    :param min_value: <float> if given, will edit the attributes's minimum value.
-    :param max_value: <float> if given, will edit the attribute's maximum value.
-    :return: <str> new attribute name.
-    """
-    if not cmds.objExists(attr_name(node_name, attribute_name)):
-        cmds.addAttr(node_name, at='float', ln=attribute_name)
-        cmds.setAttr(attr_name(node_name, attribute_name), k=1)
-    if not isinstance(min_value, type(None)):
-        cmds.addAttr(attr_name(node_name, attribute_name), edit=True, min=min_value)
-    if not isinstance(max_value, type(None)):
-        cmds.addAttr(attr_name(node_name, attribute_name), edit=True, max=max_value)
-    return attr_name(node_name, attribute_name)
-
-
-def attr_set_min_max(node_name, attribute_name, min=0.0, max=1.0):
-    """
-    sets the minimum and maximum limits on the attribute.
-    :param node_name: <str> valid node name.
-    :param attribute_name: <str> valid attribute name.
-    :param min: <float> sets the minimum value of this attribute.
-    :param max: <float> sets the maximum value of this attribute.
-    :return: <bool> True for success. <bool> False for failure.
-    """
-    return cmds.addAttr(attr_name(node_name, attribute_name), min=min, max=max, edit=True)
-
-
-def attr_get_value(node_name, attribute_name):
-    """
-    add the new attribute to this node.
-    :param node_name: <str> valid node name
-    :param attribute_name: <str> valid attribute name.
-    :return: <str> new attribute name.
-    """
-    return cmds.getAttr(attr_name(node_name, attribute_name))
-
-
-def attr_name(object_name, attribute_name, check=False):
-    """
-    concatenate strings to make an attribute name.
-    checks to see if the attribute is valid.
-    :return: <str> attribute name.
-    """
-    attr_str = '{}.{}'.format(object_name, attribute_name)
-    if check and not cmds.objExists(attr_str):
-        raise ValueError('[AttrNameError] :: attribute name does not exit: {}]'.format(attr_str))
-    return attr_str
-
-
-def attr_set(object_name, value, attribute_name=""):
-    """
-    set the values to this attribute name.
-    :param object_name: <str> the object node to set attributes to.
-    :param attribute_name: <str> the attribute name to set value to.
-    :param value: <int>, <float>, <str> the value to set to the attribute name.
-    :return: <bool> True for success.
-    """
-    if '.' in object_name:
-        return cmds.setAttr(object_name, value)
-    return cmds.setAttr(attr_name(object_name, attribute_name), value)
-
-
-def attr_split(a_name):
-    """
-    split the attribute name into their respective strings
-    :param a_name: <str> attribute name.
-    :return: <tuple> node name, attr name.
-    """
-    return tuple(a_name.split('.'))
 
 
 def create_node(node_type, node_name=""):

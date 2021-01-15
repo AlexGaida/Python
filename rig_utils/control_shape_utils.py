@@ -1,5 +1,5 @@
 """
-control_utils.py utility module for manipulating controllers
+   control_shape_utils.py utility module for manipulating controllers
 """
 # import standard modules
 import re
@@ -15,6 +15,8 @@ from maya_utils import object_utils
 from maya_utils import attribute_utils
 from maya_utils import transform_utils
 from maya_utils import curve_utils
+from maya_utils import measuring_utils
+from maya_utils import math_utils
 
 # import maya modules
 from maya import cmds
@@ -32,19 +34,112 @@ re_numbers = re.compile('_\d+')
 transform_attrs = attribute_utils.Attributes.DEFAULT_ATTR_VALUES
 side_cls = read_sides.Sides()
 
+# reloads
+reload(math_utils)
+
+
+def save_controller_shape(controller_name):
+    """
+    saves the controller shape data to file.
+    :return: <str> controller file path name.
+    """
+    curve_data = curve_utils.get_nurb_data(controller_name)
+    controller_data_file_name = get_controller_path(controller_name)
+    json_cls = file_utils.JSONSerializer(file_name=controller_data_file_name)
+    json_cls.write(data=curve_data)
+    print("[ControllerShapeSaved] :: {}".format(json_cls.file_name))
+    return controller_data_file_name
+
+
+def create_controller_shape(shape_name):
+    """
+    creates the shape from the file.
+    :param shape_name:
+    :return: <tuple> array of created curves.
+    """
+    curve_data = get_controller_data_file(shape_name)
+    curves = ()
+    for c_name, c_data in curve_data.items():
+        form = c_data['form']
+        knots = c_data['knots']
+        cvs = c_data['cvs']
+        degree = c_data['degree']
+        order = c_data['order']
+        cv_length = len(cvs)
+        cv_points = ()
+        # knot = cv_length + degree - 1
+        for cv_point in cvs:
+            cv_points += cv_point[1:],
+        try:
+            curves += cmds.curve(p=cv_points, k=knots[:-2], degree=degree),
+        except RuntimeError:
+            curves += cmds.curve(p=cv_points, k=knots, degree=degree),
+    return curves
+
+
+def get_cv_positions(controller_shape_name):
+    """
+    controller cv positions
+    :param controller_shape_name:
+    :return:
+    """
+    cv_positions = {}
+    cv_list = cmds.ls(controller_shape_name + '.cv[*]', flatten=True)
+    for cv_index in cv_list:
+        cv_positions[cv_index] = cmds.xform(cv_index, t=1, q=1)
+    return cv_positions
+
+
+def relative_scale(controller_shape_name, value):
+    """
+    scale the controller in relative scale values
+    :param controller_shape_name: <str>
+    :param value: <float> percentage value
+    """
+    cv_positions = get_cv_positions(controller_shape_name)
+    cv_indexes = cv_positions.keys()
+    cv_pos = cv_positions.values()
+    center_position = measuring_utils.get_average_vector(cv_pos)
+    cv_vectors = ()
+    for v_pos in cv_pos:
+        cv_vectors += math_utils.get_vector(v_pos, center_position),
+    # get individual distance vector from the average center to the cv position
+    for idx, cv_index in enumerate(cv_indexes):
+        cv_vector = cv_vectors[idx]
+        vector = math_utils.multiply_vector(cv_vector, value)
+        # set the new positions
+        cmds.xform(cv_index, t=vector)
+
+
+def get_shape_vector_positions(controller_shape_name):
+    """
+
+    :return:
+    """
+    cv_vector_data = {}
+    cv_positions = get_cv_positions(controller_shape_name)
+    cv_pos = cv_positions.values()
+    cv_indexes = cv_positions.keys()
+    center_position = measuring_utils.get_average_vector(cv_pos)
+    cv_vectors = ()
+    for v_idx, v_pos in zip(cv_indexes, cv_pos):
+        cv_vectors += math_utils.get_vector(v_pos, center_position),
+        cv_vector_data[v_idx] = v_pos
+    return cv_vector_data
+
 
 def get_controllers():
     """
-    get all controllers in scene.
-    :return: <tuple> controller objects.
+    get all controllers in scene
+    :return: <tuple> controller objects
     """
     return tuple(cmds.ls('*_{}'.format(CTRL_SUFFIX)) + cmds.ls('*:*_{}'.format(CTRL_SUFFIX)))
 
 
 def get_selected_ctrl():
     """
-    the joints from current selection.
-    :return: <tuple> array of joints from selection.
+    the joints from current selection
+    :return: <tuple> array of joints from selection
     """
     selected_obj = object_utils.get_selected_node()
     if selected_obj and object_utils.is_shape_curve(selected_obj):
@@ -53,9 +148,9 @@ def get_selected_ctrl():
 
 def mirror_transforms(object_name=""):
     """
-    mirror the transform controllers. **Must have corresponding left/ right naming.
-    :param object_name: <str> the object to get transform values and find the mirror object from.
-    :return: <bool> True for success. <bool> False for failure.
+    mirror the transform controllers. **Must have corresponding left/ right naming
+    :param object_name: <str> the object to get transform values and find the mirror object from
+    :return: <bool> True for success. <bool> False for failure
     """
     if not object_name:
         object_name = object_utils.get_selected_node(single=True)
@@ -99,10 +194,10 @@ def create_locators():
 
 def copy_xform(object_1, object_2):
     """
-    copy the worldSpace matrix from object_2 to object_1.
-    :param object_1: <str> the first object to snap the second object to.
-    :param object_2: <str> the second object.
-    :return: <bool> True for success.
+    copy the worldSpace matrix from object_2 to object_1
+    :param object_1: <str> the first object to snap the second object to
+    :param object_2: <str> the second object
+    :return: <bool> True for success
     """
     x_mat = cmds.xform(object_1, m=1, q=1, ws=1)
     cmds.xform(object_2, m=x_mat, ws=1)
@@ -111,9 +206,9 @@ def copy_xform(object_1, object_2):
 
 def check_locator_suffix_name(object_name):
     """
-    checks if the incoming object has the locator suffix name.
+    checks if the incoming object has the locator suffix name
     :param object_name:
-    :return:
+    :return: <bool> True if the locator suffix exists, <bool> False if it does not
     """
     suffix_name = '_{}'.format(LOCATOR_SUFFIX)
     if suffix_name in object_name:
@@ -123,7 +218,7 @@ def check_locator_suffix_name(object_name):
 
 def remove_locator_suffix_name(object_name):
     """
-    splits the object name from its locator suffix name.
+    splits the object name from its locator suffix name
     :param object_name:
     :return:
     """
@@ -133,9 +228,9 @@ def remove_locator_suffix_name(object_name):
 
 def check_control_suffix_name(object_name):
     """
-    checks if the incoming object has the locator suffix name.
-    :param object_name: <str> the object name to split.
-    :return: <str> formatted name.
+    checks if the incoming object has the locator suffix name
+    :param object_name: <str> the object name to split
+    :return: <str> formatted name
     """
     suffix_name = '_{}'.format(CTRL_SUFFIX)
     if suffix_name in object_name:
@@ -145,17 +240,17 @@ def check_control_suffix_name(object_name):
 
 def remove_control_suffix_name(object_name):
     """
-    splits the object name from its control suffix name.
-    :param object_name: <str> the object name to split.
-    :return: <str> formatted name.
+    splits the object name from its control suffix name
+    :param object_name: <str> the object name to split
+    :return: <str> formatted name
     """
     return object_name.rpartition('_{}'.format(CTRL_SUFFIX))[0]
 
 
 def snap_control_to_selected_locator():
     """
-    snap the controller to the selected locator with the same leading name.
-    :return: <bool> True for success.
+    snap the controller to the selected locator with the same leading name
+    :return: <bool> True for success
     """
     for sl in cmds.ls(sl=1, type='transform'):
         if not check_locator_suffix_name(sl):
@@ -167,9 +262,9 @@ def snap_control_to_selected_locator():
 
 def get_shape_names(transforms_array=()):
     """
-    from an array of transform objects given, return an array of associated shape names.
+    from an array of transform objects given, return an array of associated shape names
     :param transforms_array: <tuple> array of transform objects
-    :return: <tuple> shape names.
+    :return: <tuple> shape names
     """
     shapes_array = ()
     for transform_name in transforms_array:
@@ -179,8 +274,8 @@ def get_shape_names(transforms_array=()):
 
 def color_code_controllers():
     """
-    color code all controller shape names.
-    :return: <bool> True for success.
+    color code all controller shape names
+    :return: <bool> True for success
     """
     ctrl_curves = get_controllers()
     shape_names_array = get_shape_names(ctrl_curves)
@@ -198,18 +293,19 @@ def color_code_controllers():
 
 def attr_str(ctrl_name, attr_name):
     """
-    join the two strings together to form the attribute name.
+    join the two strings together to form the attribute name
     :param ctrl_name:
     :param attr_name:
     :return:
     """
-    return '{}.{}'.format(ctrl_name, attr_name)
+    attribute_str = '{}.{}'.format(ctrl_name, attr_name)
+    return attribute_str
 
 
 def zero_controllers():
     """
     assuming controllers are all named with a suffix _ctrl
-    :return: <bool> True for success.
+    :return: <bool> True for success
     """
     for ctrl_name in get_controllers():
         for attr_name, attr_val in transform_attrs.items():
@@ -224,8 +320,8 @@ def zero_controllers():
 
 def zero_all_controllers():
     """
-    zeroes out all the scene controllers.
-    :return: <bool> True for success.
+    zeroes out all the scene controllers
+    :return: <bool> True for success
     """
     for ctrl_name in get_controllers():
         c_attr = attribute_utils.Attributes(ctrl_name, keyable=True)
@@ -236,33 +332,21 @@ def zero_all_controllers():
 
 def get_controller_path(shape_name):
     """
-    returns the shape name path.
+    returns the shape name path
     :param shape_name:
     :return:
     """
     return file_utils.concatenate_path(__control_folder_dir__, shape_name)
 
 
-def save_controller_shape(controller_name):
-    """
-    saves the controller shape data to file.
-    :return: <str> controller file path name.
-    """
-    curve_data = curve_utils.get_nurb_data(controller_name)
-    controller_data_file_name = get_controller_path(controller_name)
-    json_cls = file_utils.JSONSerializer(file_name=controller_data_file_name)
-    json_cls.write(data=curve_data)
-    # print("[ControllerShapeFile] :: {}".format(json_cls.file_name))
-    return controller_data_file_name
-
-
 def find_shape_in_dir(shape_name):
     """
-    returns the shape name from the directory.
+    returns the shape name from the directory
     :param shape_name:
     :return:
     """
-    return filter(lambda x: shape_name in file_utils.split_file_name(x), find_controller_shapes())
+    shape_name = filter(lambda x: shape_name in file_utils.split_file_name(x), find_controller_shapes())
+    return shape_name
 
 
 def is_shape_in_dir(shape_name):
@@ -271,7 +355,8 @@ def is_shape_in_dir(shape_name):
     :param shape_name: <str> find this name in the shape directory.
     :return: <bool> the shape name exists in directory.
     """
-    return bool(find_shape_in_dir(shape_name))
+    shape_exists_in_dir = bool(find_shape_in_dir(shape_name))
+    return shape_exists_in_dir
 
 
 def get_controller_data_file(shape_name):
@@ -307,32 +392,6 @@ def insert_groups(object_name="", names=()):
     for name in names:
         grps += object_utils.insert_transform(object_name, name),
     return grps
-
-
-def create_controller_shape(shape_name):
-    """
-    creates the shape from the file.
-    :param shape_name:
-    :return: <tuple> array of created curves.
-    """
-    curve_data = get_controller_data_file(shape_name)
-    curves = ()
-    for c_name, c_data in curve_data.items():
-        form = c_data['form']
-        knots = c_data['knots']
-        cvs = c_data['cvs']
-        degree = c_data['degree']
-        order = c_data['order']
-        cv_length = len(cvs)
-        cv_points = ()
-        # knot = cv_length + degree - 1
-        for cv_point in cvs:
-            cv_points += cv_point[1:],
-        try:
-            curves += cmds.curve(p=cv_points, k=knots[:-2], degree=degree),
-        except RuntimeError:
-            curves += cmds.curve(p=cv_points, k=knots, degree=degree),
-    return curves
 
 
 def get_curve_shape_name(name=""):

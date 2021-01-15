@@ -1,8 +1,6 @@
 """
 Animation data tools, manipulating animation settings.
 """
-# import standard modules
-from math import acos
 
 # import maya modules
 from maya import cmds
@@ -11,7 +9,7 @@ from maya import OpenMaya as OpenMaya
 from maya import OpenMayaAnim as OpenMayaAnim
 
 # import custom modules
-import object_utils
+from . import object_utils
 from maya_utils import math_utils
 
 
@@ -32,14 +30,10 @@ def connect_anim(source_object_name, source_attribute_name, dest_object_name, de
         driven_value=None,
         driver_value=None,
     """
-    set_driven_key(source_object_name, source_attribute_name,
-                                   dest_object_name, dest_attribute_name,
-                                   driven_value=0.0,
-                                   driver_value=0.0)
-    set_driven_key(source_object_name, source_attribute_name,
-                                   dest_object_name, dest_attribute_name,
-                                   driven_value=1.0,
-                                   driver_value=1.0)
+    set_driven_key(source_object_name, source_attribute_name, dest_object_name, dest_attribute_name,
+                   driven_value=0.0, driver_value=0.0)
+    set_driven_key(source_object_name, source_attribute_name, dest_object_name, dest_attribute_name,
+                   driven_value=1.0, driver_value=1.0)
     return True
 
 
@@ -138,7 +132,9 @@ def get_value_from_time(a_node="", idx=0):
     :param idx: <int> the time index.
     :return: <tuple> data.
     """
-    return OpenMaya.MTime(a_node.time(idx).value(), OpenMaya.MTime.kSeconds).value(), a_node.value(idx),
+    # return OpenMaya.MTime(a_node.time(idx), OpenMaya.MTime.kFilm).value(), a_node.value(idx),
+    m_time = a_node.time(idx)
+    return m_time.asUnits(OpenMaya.MTime.kFilm), a_node.value(idx),
 
 
 def get_tangents_from_time(a_node="", idx=0):
@@ -164,7 +160,7 @@ def get_anim_fn_data(a_node=""):
     """
     k_len = a_node.numKeys()
     collection = []
-    for i in xrange(k_len):
+    for i in range(k_len):
         collection.append(get_value_from_time(a_node, i))
     return collection
 
@@ -255,7 +251,7 @@ def connections_gen(object_name="", attribute="", direction='kDownstream', level
 def get_anim_connections(object_name=""):
     """
     get plug connections
-    :param object_name:
+    :param object_name: <str> object name to get animation data from.
     :return: <dict> found animation connection plugs.
     """
     found_nodes = {}
@@ -287,6 +283,7 @@ def get_anim_connections(object_name=""):
             if anim_fn.numKeys():
                 anim_node = OpenMaya.MFnDependencyNode(cur_node).name()
                 found_nodes["animNodes"].update(get_animation_data_from_node(anim_node))
+
     # change the lists into tuples
     if "source" in found_nodes:
         if found_nodes["source"]:
@@ -335,7 +332,7 @@ def get_animation_data_from_node(object_node=""):
                                   'sourceAttr': source_attr,
                                   'targetAttr': destination_attr
                                   }
-        for i_key in xrange(number_of_keys):
+        for i_key in range(number_of_keys):
             # this is a lie
             # i_x = _float_ptr.get_float_ptr()
             # i_y = _float_ptr.get_float_ptr()
@@ -421,3 +418,6 @@ def get_blend_weighted_sum(node_name="", target_attr=""):
     :return: <float> the sum of all values.
     """
     return get_sum(get_blend_weighted_values(node_name, target_attr))
+
+# ______________________________________________________________________________________________________________________
+# animation_utils.py

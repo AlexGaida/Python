@@ -1,5 +1,5 @@
 """
-Attribute module for finding, creating and setting transform attributes.
+    Attribute module for finding, creating and setting transform object attributes
 """
 
 # import maya modules
@@ -11,12 +11,22 @@ import object_utils
 import transform_utils
 
 
+def get_attribute_query(object_name, attribute_name):
+    """
+    query the attribute type of the node and attribute name in question
+    :param attribute_name: <str>  attribute node name
+    :param object_name: <str> object node name
+    :return: <str> attribute node type name
+    """
+    return cmds.attributeQuery(attribute_name, node=object_name, at=True)
+
+
 def get_custom_attributes(object_name="", full_name=False):
     """
-    return an array of custom attributes.
-    :param object_name: <str> object name to pass through.
-    :param full_name: <bool> returns the full name of the attribute.
-    :return: <list> custom attributes found for this object.
+    return an array of custom attributes
+    :param object_name: <str> object name to pass through
+    :param full_name: <bool> returns the full name of the attribute
+    :return: <list> custom attributes found for this object
     """
     cnst_attr = Attributes(object_name, custom=True)
     if not full_name:
@@ -27,9 +37,9 @@ def get_custom_attributes(object_name="", full_name=False):
 
 def get_keyable_attributes(object_name=""):
     """
-    return an array of keyable attributes.
-    :param object_name:
-    :return: <list> keyable attributes found for this object.
+    return an array of keyable attributes
+    :param object_name: <str> node string name
+    :return: <list> keyable attributes found for this object
     """
     cnst_attr = Attributes(object_name, keyable=True)
     return cnst_attr.keyable.keys()
@@ -37,9 +47,9 @@ def get_keyable_attributes(object_name=""):
 
 def get_connected_attributes(object_name=""):
     """
-    return an array of connected attributes.
-    :param object_name:
-    :return: <list> connected attributes found for this object.
+    return an array of connected attributes
+    :param object_name: <str> node string name
+    :return: <list> connected attributes found for this object
     """
     cnst_attr = Attributes(object_name, keyable=True)
     return cnst_attr.connected.keys()
@@ -47,31 +57,160 @@ def get_connected_attributes(object_name=""):
 
 def get_all_attributes(object_name=""):
     """
-    return an array of keyable attributes.
-    :param object_name:
-    :return: <list> all attributes found for this object.
+    return an array of keyable attributes
+    :param object_name: <str> node string name
+    :return: <list> all attributes found for this object
     """
     cnst_attr = Attributes(object_name, keyable=True)
     return cnst_attr.all_attrs.keys()
 
 
-class ImmutableDict(dict):
-    def __setitem__(self, key, value):
-        raise TypeError("%r object does not support item assignment" % type(self).__name__)
+def attr_connect(attr_src, attr_trg):
+    """
+    connect the attributes from the source attribute to the target attribute
+    :param attr_src: <str> source attribute
+    :param attr_trg: <str> target attribute
+    :return: <bool> True for success. <bool> False for failure
+    """
+    if not cmds.isConnected(attr_src, attr_trg):
+        cmds.connectAttr(attr_src, attr_trg)
+    return True
 
-    def __delitem__(self, key):
-        raise TypeError("%r object does not support item deletion" % type(self).__name__)
 
-    def __getattribute__(self, attribute):
-        if attribute in ('clear', 'update', 'pop', 'popitem', 'setdefault'):
-            raise AttributeError("%r object has no attribute %r" % (type(self).__name__, attribute))
-        return dict.__getattribute__(self, attribute)
+def attr_get_default_value(object_name, attribute_name):
+    """
+    get the default value
+    :param object_name: <str> node name
+    :param attribute_name: <str> attribute name
+    :return: <float> default value
+    """
+    node_attr = attr_name(object_name, attribute_name)
+    default_value = cmds.addAttr(node_attr, query=True, dv=True)
+    return default_value
 
-    def __hash__(self):
-        return hash(tuple(sorted(self.iteritems())))
 
-    def fromkeys(self, sequence, v):
-        return type(self)(dict(self).fromkeys(sequence, v))
+def attr_add_float(object_name, attribute_name, min_value=None, max_value=None, default_value=None):
+    """
+    add the new attribute to this node
+    :param object_name: <str> valid node name
+    :param attribute_name: <str> valid attribute name
+    :param min_value: <float> if given, will edit the attributes's minimum value
+    :param max_value: <float> if given, will edit the attribute's maximum value
+    :param default_value: <float> default_value
+    :return: <str> new attribute name
+    """
+    node_attr = attr_name(object_name, attribute_name)
+    if not cmds.objExists(node_attr):
+        cmds.addAttr(object_name, at='float', ln=attribute_name)
+        cmds.setAttr(node_attr, k=1)
+    if not isinstance(min_value, type(None)):
+        cmds.addAttr(node_attr, edit=True, min=min_value)
+    if not isinstance(max_value, type(None)):
+        cmds.addAttr(node_attr, edit=True, max=max_value)
+    if not isinstance(default_value, type(None)):
+        cmds.addAttr(node_attr, edit=True, defaultValue=default_value)
+        cmds.setAttr(node_attr, default_value)
+    return node_attr
+
+
+def attr_float_set_default(object_name, attribute_name, default_value):
+    """
+    change the default value of an attribute
+    :return:
+    """
+    node_attr = attr_name(object_name, attribute_name)
+    cmds.addAttr(node_attr, edit=True, defaultValue=default_value)
+    cmds.setAttr(node_attr, default_value)
+
+
+def list_user_attributes(node_name):
+    """
+    Lists all custom attributes
+    :param node_name:
+    :return: <list> attribute names
+    """
+    attribute_list = cmds.listAttr(node_name, ud=True)
+    return attribute_list
+
+
+def remove_attr(node_name, attribute_name):
+    """
+    Remove an attribute.
+    :param node_name: <str>
+    :param attribute_name: <str> attribute name to remove from node
+    """
+    cmds.deleteAttr(node_name + '.' + attribute_name)
+
+
+def attr_add_str(node_name, attribute_name, value):
+    """
+    Add an attribute to the module name
+    :param node_name: <str> maya node name
+    :param attribute_name: <str> maya attribute name
+    :param value: <str> attribute value
+    :return:
+    """
+    if not cmds.objExists(attr_name(node_name, attribute_name)):
+        cmds.addAttr(node_name, dt='string', ln=attribute_name)
+        cmds.setAttr(attr_name(node_name, attribute_name), value, type='string')
+    attr_str = attr_name(node_name, attribute_name)
+    return attr_str
+
+
+def attr_set_min_max(node_name, attribute_name, min=0.0, max=1.0):
+    """
+    sets the minimum and maximum limits on the attribute.
+    :param node_name: <str> valid node name.
+    :param attribute_name: <str> valid attribute name.
+    :param min: <float> sets the minimum value of this attribute.
+    :param max: <float> sets the maximum value of this attribute.
+    :return: <bool> True for success. <bool> False for failure.
+    """
+    return cmds.addAttr(attr_name(node_name, attribute_name), min=min, max=max, edit=True)
+
+
+def attr_get_value(node_name, attribute_name):
+    """
+    add the new attribute to this node.
+    :param node_name: <str> valid node name
+    :param attribute_name: <str> valid attribute name.
+    :return: <str> new attribute name.
+    """
+    return cmds.getAttr(attr_name(node_name, attribute_name))
+
+
+def attr_name(object_name, attribute_name, check=False):
+    """
+    concatenate strings to make an attribute name.
+    checks to see if the attribute is valid.
+    :return: <str> attribute name.
+    """
+    attr_str = '{}.{}'.format(object_name, attribute_name)
+    if check and not cmds.objExists(attr_str):
+        raise ValueError('[AttrNameError] :: attribute name does not exit: {}]'.format(attr_str))
+    return attr_str
+
+
+def attr_set(object_name, value, attribute_name=""):
+    """
+    set the values to this attribute name.
+    :param object_name: <str> the object node to set attributes to.
+    :param attribute_name: <str> the attribute name to set value to.
+    :param value: <int>, <float>, <str> the value to set to the attribute name.
+    :return: <bool> True for success.
+    """
+    if '.' in object_name:
+        return cmds.setAttr(object_name, value)
+    return cmds.setAttr(attr_name(object_name, attribute_name), value)
+
+
+def attr_split(a_name):
+    """
+    split the attribute name into their respective strings
+    :param a_name: <str> attribute name.
+    :return: <tuple> node name, attr name.
+    """
+    return tuple(a_name.split('.'))
 
 
 class Attributes:
@@ -91,15 +230,12 @@ class Attributes:
 
                            'visibility': 1
                            }
-
     LINEAR_ATTR_TYPES = (OpenMaya.MFn.kDoubleLinearAttribute,
                          OpenMaya.MFn.kFloatLinearAttribute)
-
     INTEGER_ATTR_TYPES = (OpenMaya.MFnNumericData.kShort,
                           OpenMaya.MFnNumericData.kInt,
                           OpenMaya.MFnNumericData.kLong,
                           OpenMaya.MFnNumericData.kByte)
-
     DOUBLE_ATTRS_TYPES = (OpenMaya.MFnNumericData.kFloat,
                           OpenMaya.MFnNumericData.kDouble,
                           OpenMaya.MFnNumericData.kAddr)
@@ -109,13 +245,10 @@ class Attributes:
         self.MAYA_MFN_OBJECT = object_utils.get_mfn_obj(maya_node)
         self.OBJECT_NODE_TYPE = self.MAYA_MFN_OBJECT.typeName()
         self.MAYA_STR_OBJECT = self.MAYA_MFN_OBJECT.name()
-        # self.MAYA_STR_OBJECT = maya_node
         self.attr_data = {}
         self._hash = None
-
         self.DEFAULT_ATTRS = self.get_attribute_list()
         self.get_attributes(all_attrs=all_attrs, keyable=keyable, custom=custom, connected=connected)
-
         # get only the keyable custom attributes
         if keyable and custom and self.attr_data:
             new_data = {}
@@ -638,3 +771,6 @@ class Attributes:
             return iter(self.attr_data)
         except IndexError:
             raise StopIteration
+
+# ______________________________________________________________________________________________________________________
+# attribute_utils.py

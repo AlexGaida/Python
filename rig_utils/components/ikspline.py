@@ -4,7 +4,7 @@ ikspline: set up the ik spline system between the start and end joint of the hie
 """
 
 from maya import cmds
-from rig_utils import control_utils
+from rig_utils import control_shape_utils
 from maya_utils import object_utils
 
 ik_spline_handle_attrs = {
@@ -127,7 +127,7 @@ def build_ik_spline(name="", start_joint="", end_joint="", number_of_spans=4):
         cmds.connectAttr(trans_x_diff + '.outputX', ea_jnt + '.tx')
 
     # Create a controller for every locator
-    return_dict["ik_controllers"] = control_utils.create_controls(
+    return_dict["ik_controllers"] = control_shape_utils.create_controls(
         return_dict["locators"], name, shape_name='cube',
         apply_constraints='parent', maintain_offset=True)
 

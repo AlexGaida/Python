@@ -25,7 +25,6 @@ def get_weight_driver_data():
         num_poses = cmds.getAttr(driver + '.poses', mi=1)
         if not len(num_poses) > 1:
             continue
-
         num_inputs = cmds.getAttr(driver + '.input', mi=1)
         num_outputs = cmds.getAttr(driver + '.output', mi=1)
         driver_data[driver] = {}
@@ -162,3 +161,6 @@ def setup_weight_drivers(driver_data={}):
                 cmds.setAttr(weight_driver_node + '.poses[{}].poseValue[{}]'.format(idx, pose_value_idx), pose_value)
         driver_nodes += cmds.rename(cmds.listRelatives(weight_driver_node, p=1)[0], rbf_node_name),
     return driver_nodes
+
+# ______________________________________________________________________________________________________________________
+# rbf_utils.py

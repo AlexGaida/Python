@@ -83,50 +83,38 @@ def get_plug_value(in_plug):
     # Float Groups - rotate, translate, scale; Compounds
     if apiType in [OpenMaya.MFn.kAttribute3Double, OpenMaya.MFn.kAttribute3Float, OpenMaya.MFn.kCompoundAttribute]:
         result = ()
-
         if in_plug.isCompound():
-            for c in xrange(in_plug.numChildren()):
+            for c in range(in_plug.numChildren()):
                 result += get_plug_value(in_plug.child(c)),
             return result
-
     # Distance
     elif apiType in [OpenMaya.MFn.kDoubleLinearAttribute, OpenMaya.MFn.kFloatLinearAttribute]:
         return in_plug.asMDistance().asCentimeters()
-
     # Angle
     elif apiType in [OpenMaya.MFn.kDoubleAngleAttribute, OpenMaya.MFn.kFloatAngleAttribute]:
         return in_plug.asMAngle().asDegrees()
-
     # TYPED
     elif apiType == OpenMaya.MFn.kTypedAttribute:
         pType = OpenMaya.MFnTypedAttribute(pAttribute).attrType()
-
         # Matrix
         if pType == OpenMaya.MFnData.kMatrix:
             return OpenMaya.MFnMatrixData(in_plug.asMObject()).matrix()
-
         # String
         elif pType == OpenMaya.MFnData.kString:
             return in_plug.asString()
-
     # MATRIX
     elif apiType == OpenMaya.MFn.kMatrixAttribute:
         return OpenMaya.MFnMatrixData(in_plug.asMObject()).matrix()
-
     # NUMBERS
     elif apiType == OpenMaya.MFn.kNumericAttribute:
         pType = OpenMaya.MFnNumericAttribute(pAttribute).unitType()
-
         if pType == OpenMaya.MFnNumericData.kBoolean:
             return in_plug.asBool()
-
         elif pType in [OpenMaya.MFnNumericData.kShort, OpenMaya.MFnNumericData.kInt, OpenMaya.MFnNumericData.kLong,
                        OpenMaya.MFnNumericData.kByte]:
             return in_plug.asInt()
-
         elif pType in [OpenMaya.MFnNumericData.kFloat, OpenMaya.MFnNumericData.kDouble, OpenMaya.MFnNumericData.kAddr]:
             return in_plug.asDouble()
-
     # Enum
     elif apiType == OpenMaya.MFn.kEnumAttribute:
         return in_plug.asInt()
@@ -135,17 +123,14 @@ def get_plug_value(in_plug):
 class Transform(OpenMaya.MFnTransform):
     MAYA_STR_OBJECT = None
     M_SCRIPT_UTIL = OpenMaya.MScriptUtil()
-
     WORLD_SPACE = OpenMaya.MSpace.kWorld
     OBJECT_SPACE = OpenMaya.MSpace.kObject
-
     ROTATION_ORDER_NAMES = {1: 'kXYZ',
                             2: 'kYZX',
                             3: 'kZXY',
                             4: 'kXZY',
                             5: 'kYXZ',
                             6: 'kZYX'}
-
     ROTATE_ORDER_XYZ = OpenMaya.MTransformationMatrix.kXYZ
     ROTATE_ORDER_YZX = OpenMaya.MTransformationMatrix.kYZX
     ROTATE_ORDER_ZXY = OpenMaya.MTransformationMatrix.kZXY
@@ -153,7 +138,6 @@ class Transform(OpenMaya.MFnTransform):
     ROTATE_ORDER_YXZ = OpenMaya.MTransformationMatrix.kYXZ
     ROTATE_ORDER_ZYX = OpenMaya.MTransformationMatrix.kZYX
     ROTATE_ORDER_INVALID = OpenMaya.MTransformationMatrix.kInvalid
-
     X = OpenMaya.MVector(1, 0, 0)
     Y = OpenMaya.MVector(0, 1, 0)
     Z = OpenMaya.MVector(0, 0, 1)
@@ -277,7 +261,6 @@ class Transform(OpenMaya.MFnTransform):
         else:
             m_rotate = OpenMaya.MEulerRotation(self.WORLD_SPACE)
         self.getRotation(m_rotate)
-
         if not as_m_vector:
             x = round(m_rotate.x, 4)
             y = round(m_rotate.y, 4)
@@ -357,7 +340,7 @@ class Transform(OpenMaya.MFnTransform):
         returns an worldMatrix attribute MObject
         :return: <OpenMaya.MObject> attribute object. <bool> False for nothing found.
         """
-        for a_idx in xrange(self.attr_count()):
+        for a_idx in range(self.attr_count()):
             attr_obj = self.MAYA_MFN_OBJECT.attribute(a_idx)
             if not attr_obj.isNull():
                 a_plug = OpenMaya.MPlug(self.MAYA_M_OBJECT, attr_obj)
@@ -377,7 +360,7 @@ class Transform(OpenMaya.MFnTransform):
         returns an worldMatrix attribute MObject
         :return: <OpenMaya.MObject> attribute object. <bool> False for nothing found.
         """
-        for a_idx in xrange(self.attr_count()):
+        for a_idx in range(self.attr_count()):
             attr_obj = self.MAYA_MFN_OBJECT.attribute(a_idx)
             if not attr_obj.isNull():
                 a_plug = OpenMaya.MPlug(self.MAYA_M_OBJECT, attr_obj)
@@ -390,7 +373,7 @@ class Transform(OpenMaya.MFnTransform):
         returns an worldMatrix attribute MObject
         :return: <OpenMaya.MObject> attribute object. <bool> False for nothing found.
         """
-        for a_idx in xrange(self.attr_count()):
+        for a_idx in range(self.attr_count()):
             attr_obj = self.MAYA_MFN_OBJECT.attribute(a_idx)
             if not attr_obj.isNull():
                 a_plug = OpenMaya.MPlug(self.MAYA_M_OBJECT, attr_obj)
@@ -406,11 +389,11 @@ class Transform(OpenMaya.MFnTransform):
 
     def print_4x4_local_matrix(self):
         for m in [self.local_matrix[i:i + 4] for i in range(0, len(self.local_matrix), 4)]:
-            print m
+            print(m)
 
     def print_4x4_world_matrix(self):
         for m in [self.world_matrix[i:i + 4] for i in range(0, len(self.world_matrix), 4)]:
-            print m
+            print(m)
 
     @property
     def wmatrix(self):
@@ -464,8 +447,8 @@ class Transform(OpenMaya.MFnTransform):
                 tuple(
                     self.M_SCRIPT_UTIL.getDoubleArrayItem(
                         m_matrix[r], c
-                    ) for c in xrange(4)
-                ) for r in xrange(4)
+                    ) for c in range(4)
+                ) for r in range(4)
             )
         if flatten:
             return tuple([e for tupl in m_tuples for e in tupl])
@@ -756,7 +739,6 @@ def mirror_object(control_name="", mirror_obj_name="", invert_rotate=False, keep
         control_name = object_utils.get_selected_node(single=True)
     if not control_name:
         return False
-
     # mirror the world matrix
     c_transform = Transform(control_name)
     w_matrix = c_transform.get_world_matrix()
@@ -765,14 +747,11 @@ def mirror_object(control_name="", mirror_obj_name="", invert_rotate=False, keep
     if invert_rotate:
         # mirror rotate y
         rotation_values[1] *= -1
-
         # mirror rotate z
         rotation_values[2] *= -1
-
     elif keep_rotation:
         # mirror rotate x
         rotation_values[2] *= -1
-
     if not mirror_obj_name:
         cmds.xform(control_name, m=mir_matrix, ws=1)
         cmds.xform(control_name, ro=rotation_values)
@@ -780,3 +759,6 @@ def mirror_object(control_name="", mirror_obj_name="", invert_rotate=False, keep
         cmds.xform(mirror_obj_name, m=mir_matrix, ws=1)
         cmds.xform(mirror_obj_name, ro=rotation_values)
     return True
+
+# ______________________________________________________________________________________________________________________
+# transform_utils.py

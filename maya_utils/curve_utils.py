@@ -6,16 +6,18 @@ from maya import OpenMaya
 from maya import cmds
 
 # import local modules
+import name_utils
 import object_utils
 import math_utils
 import transform_utils
+import attribute_utils
 
 # define local variables
 __shape_name__ = 'nurbsCurve'
 connect_attr = object_utils.connect_attr
 create_node = object_utils.create_node
-attr_name = object_utils.attr_name
-attr_set = object_utils.attr_set
+attr_name = attribute_utils.attr_name
+attr_set = attribute_utils.attr_set
 world_transform = lambda x: transform_utils.Transform(x).get_world_translation_list()
 
 
@@ -86,17 +88,14 @@ def get_nurb_obj_knot_data_old(curve_obj=None):
     curve_fn = object_utils.get_fn(curve_obj)
     number_of_knots = curve_fn.numKnots()
     knots = ()
-
     # invent the first knot value for a clamped or periodic curve
     if curve_fn.knot(1) - curve_fn.knot(0) < 0.01:
         knots += curve_fn.knot(0),
     else:
         knots += curve_fn.knot(0) - 1,
-
     # write the rest of the knots
-    for i in xrange(number_of_knots):
+    for i in range(number_of_knots):
         knots += curve_fn.knot(i),
-
     # invent the last knot value
     if curve_fn.knot(1) - curve_fn.knot(0) < 0.01:
         knots += curve_fn.knot(number_of_knots - 1),
@@ -189,7 +188,6 @@ def create_curve_dict(nurb_objects=()):
         if crv_name not in nurb_data:
             nurb_data[crv_name] = {'cvs': (),
                                    'knots': (),
-
                                    'editPts': (),
                                    'degree': (),
                                    'order': (),
@@ -209,7 +207,6 @@ def get_nurb_data(curve_name=""):
         crv_name = object_utils.get_m_object_name(nurb_obj)
         curve_data[crv_name]['cvs'] = get_nurb_obj_cv_data(nurb_obj)
         curve_data[crv_name]['knots'] = get_nurb_obj_knot_data(nurb_obj)
-
         curve_data[crv_name]['editPts'] = get_nurb_obj_edit_points(nurb_obj)
         curve_data[crv_name]['degree'] = get_nurb_obj_curve_degree(nurb_obj)
         curve_data[crv_name]['order'] = get_nurb_obj_curve_order(nurb_obj)
@@ -274,30 +271,22 @@ def attach_transform_to_curve(object_name="", curve_name=""):
     cross_vector_node2 = create_node('vectorProduct', node_name=cross_vector_name2)
     four_by_four_node = create_node('fourByFourMatrix', node_name=four_by_four_name)
     decompose_node = create_node('decomposeMatrix', node_name=decompose_name)
-
     # set the vector product into cross product operation
     attr_set(attr_name(cross_vector_name, 'operation'), 2)
-
     # connect the curve shape into the point on curve node
     connect_attr(object_utils.get_shape_name(curve_name)[0], attr_name(poc_node, 'inputCurve'))
-
     # connect the position vector to the four by four matrix node
     for out_attr, in_attr in zip(('positionX', 'positionY', 'positionZ'),
                                  ('in30', 'in31', 'in32')):
         connect_attr(attr_name(poc_node, out_attr), attr_name(four_by_four_node, in_attr))
-
     # connect the normalized tangent vector to the cross product2 node
     for out_attr, in_attr in zip(('normalizedTangentX', 'normalizedTangentY', 'normalizedTangentZ'),
                                  ('input2X', 'input2Y', 'input2Z')):
         connect_attr(attr_name(poc_node, out_attr), attr_name(cross_vector_node2, in_attr))
-
-    # connect the output
-
     # connect the normalized tangent vector to the four by four matrix node
     for out_attr, in_attr in zip(('normalizedTangentX', 'normalizedTangentY', 'normalizedTangentZ'),
                                  ('in00', 'in01', 'in02')):
         connect_attr(attr_name(poc_node, out_attr), attr_name(four_by_four_node, in_attr))
-
     # connect the normalized normal and the normalized tangent into the vector product (crossProduct)
     for out_attr, in_attr in zip(('normalizedNormalX', 'normalizedNormalY', 'normalizedNormalZ'),
                                  ('input1X', 'input1Y', 'input1Z')):
@@ -306,15 +295,12 @@ def attach_transform_to_curve(object_name="", curve_name=""):
     for out_attr, in_attr in zip(('normalizedTangentX', 'normalizedTangentY', 'normalizedTangentZ'),
                                  ('input2X', 'input2Y', 'input2Z')):
         connect_attr(attr_name(poc_node, out_attr), attr_name(cross_vector_node, in_attr))
-
     # connect the cross product output into the four by four matrix node
     for out_attr, in_attr in zip(('outputX', 'outputY', 'outputZ'),
                                  ('in20', 'in21', 'in22')):
         connect_attr(attr_name(cross_vector_name, out_attr), attr_name(four_by_four_node, in_attr))
-
     # connect the four by four node into the decompose matrix node.
     connect_attr(attr_name(four_by_four_node, 'output'), attr_name(decompose_node, 'inputMatrix'))
-
     # connect the decompose matrix into the transform node.
     connect_attr(attr_name(decompose_node, 'outputRotate'), attr_name(object_name, 'rotate'))
     connect_attr(attr_name(decompose_node, 'outputTranslate'), attr_name(object_name, 'translate'))
@@ -353,7 +339,7 @@ def get_knot_sequence(ncvs, degree):
     num_knots = get_knots(ncvs, degree)
     m_double_array = OpenMaya.MDoubleArray()
     m_double_array.append(0)
-    for i in xrange(0, num_knots + degree - 1):
+    for i in range(0, num_knots + degree - 1):
         m_double_array.append(i)
         if i == num_knots:
             m_double_array.append(i)
@@ -427,15 +413,12 @@ def create_curve_from_points(points_array, degree=2, curve_name="", equal_cv_pos
     knot_length = len(points_array)
     knot_array = get_knot_sequence(knot_length, degree)
     m_point_array = get_point_array(points_array, equal_distance=equal_cv_positions)
-
-    # curve_data = OpenMaya.MFnNurbsCurveData().create()
     curve_fn = OpenMaya.MFnNurbsCurve()
     curve_fn.create(m_point_array, knot_array, degree,
                     OpenMaya.MFnNurbsCurve.kOpen,
                     False, False)
     m_path = OpenMaya.MDagPath()
     curve_fn.getPath(m_path)
-
     if curve_name:
         parent_obj = object_utils.get_parent_obj(m_path.partialPathName())[0]
         object_utils.rename_node(parent_obj, curve_name)
@@ -561,3 +544,6 @@ def _get_param_u(curve_name, transform_obj=None, point=None):
         point = curve_fn.closestPoint(point, double_ptr.ptr, 0.001, OpenMaya.MSpace.kObject)
         curve_fn.getParamAtPoint(point, double_ptr.ptr, 0.001, OpenMaya.MSpace.kObject)
     return double_ptr.get_double()
+
+# ______________________________________________________________________________________________________________________
+# curve_utils.py

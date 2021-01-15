@@ -17,12 +17,11 @@ def get_blueprints(dir_name=""):
     initializes a glob search for all .JSON blueprint files.
     :return: <list> array of found files.
     """
-    # if dir_name:
-    #     return file_utils.get_files(dir_name)
-    # return file_utils.get_files(default_blueprint_path)
     if dir_name:
-        return file_utils.get_directories(dir_name, full_path=False)
-    return file_utils.get_directories(default_blueprint_path, full_path=False)
+        blueprints = file_utils.get_directories(dir_name)
+        return blueprints
+    blueprints = file_utils.get_directories(default_blueprint_path)
+    return blueprints
 
 
 def get_blueprint_file_name(creature_name):
@@ -30,7 +29,8 @@ def get_blueprint_file_name(creature_name):
     grabs the blue print name from the creature name provided.
     :return:
     """
-    return creature_name + '_blueprint'
+    blueprint_file_name = creature_name + '_blueprint'
+    return blueprint_file_name
 
 
 def build_dir(creature_name):
@@ -52,7 +52,8 @@ def get_blueprint_path(creature_name):
     """
     blueprint_dir = build_dir(creature_name)
     blueprint_name = get_blueprint_file_name(creature_name)
-    return file_utils.concatenate_path(blueprint_dir, blueprint_name)
+    blueprint_path = file_utils.concatenate_path(blueprint_dir, blueprint_name)
+    return blueprint_path
 
 
 def update_blueprint(key_name, value):
@@ -74,55 +75,48 @@ def read_blueprint(creature_name):
     """
     blueprint_file_name = get_blueprint_path(creature_name)
     json_file = file_utils.JSONSerializer(file_name=blueprint_file_name)
-    return json_file.read()
+    blueprint_data = json_file.read()
+    return blueprint_data
 
 
 def delete_blueprint_dir(file_name):
     """
     deletes blueprint directory from the file name path.
     :param file_name: <str> file_name.
-    :return: <bool> True for success.
     """
     file_dir = file_utils.directory_name(file_name)
     file_utils.remove_directory(file_dir)
-    return True
 
 
 def delete_blueprint(creature_name):
     """
     removes this file and directory from disk.
-    :return: <bool> True for success.
     """
     blueprint_file_name = get_blueprint_path(creature_name)
     json_file = file_utils.JSONSerializer(file_name=blueprint_file_name)
     json_file.delete()
     delete_blueprint_dir(json_file.FILE_NAME)
-    return True
 
 
 def open_blueprint_dir(creature_name):
     """
     opens the blueprint directory
     :param creature_name: <str> creature name for append path.
-    :return: <bool> True for success.
     """
     blueprint_dir = build_dir(creature_name)
     print("[Opening Creature Dir] :: {}".format(blueprint_dir))
     os.startfile(blueprint_dir)
-    return True
 
 
 def open_blueprint_file(creature_name):
     """
     opens the blueprint directory
     :param creature_name: <str> creature name for append path.
-    :return: <bool> True for success.
     """
     blueprint_file_name = get_blueprint_path(creature_name)
     json_file = file_utils.JSONSerializer(file_name=blueprint_file_name)
     print("[Opening Creature File] :: {}".format(json_file))
     os.startfile(json_file.file_name)
-    return True
 
 
 def write_blueprint(creature_name, data):
@@ -141,6 +135,10 @@ def write_blueprint(creature_name, data):
 def get_file_blueprint():
     """
     gets the blueprint saved into this Maya File.
-    :return:
+    :return: <dict> file blueprint
     """
-    return file_utils.get_internal_var_file_variable("creatureData")
+    file_blueprint = file_utils.get_internal_var_file_variable("creatureData")
+    return file_blueprint
+
+# ______________________________________________________________________________________________________________________
+# blueprint_utils.py

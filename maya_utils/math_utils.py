@@ -3,17 +3,18 @@ Standard math functions and manipulating vector operations.
 """
 # import standard modules
 from collections import Iterable
+import time
+import math
+import decimal
 
 # import maya modules
 from maya.OpenMaya import MVector, MMatrix, MPoint, MPlane, MTransformationMatrix, MQuaternion
 from maya import cmds
 
 # import local modules
-import time
-import math
 import transform_utils
 import object_utils
-import decimal
+import attribute_utils
 
 # define local variables
 M_PI = 3.14159265358979323846
@@ -23,9 +24,9 @@ EXP = 2.718281
 RADIANS_2_DEGREES = 57.2958
 DEGREES_2_RADIANS = 0.0174533
 
-connect_attr = object_utils.attr_connect
-attr_name = object_utils.attr_name
-attr_set = object_utils.attr_set
+connect_attr = attribute_utils.attr_connect
+attr_name = attribute_utils.attr_name
+attr_set = attribute_utils.attr_set
 
 
 def timing(f):
@@ -33,7 +34,6 @@ def timing(f):
         time1 = time.time()
         ret = f(*args, **kwargs)
         time2 = time.time()
-
         millis = int(time2 - time1)
         seconds = int((millis) % 60)
         minutes = int((millis / 60.0 % 60))
@@ -42,6 +42,30 @@ def timing(f):
             func=f.func_name, hours=hours, minutes=minutes, seconds=seconds))
         return ret
     return wrap
+
+
+def multiply_vector(vector_1, scalar=0.0):
+    """
+    vector scalar multiplication
+    :param vector_1: <list> vector list
+    :param scalar: <float> float scalar value
+    :return: <list> multiplied vector
+    """
+    vector = MVector(*vector_1)
+    new_vector = vector * scalar
+    x, y, z = new_vector.x, new_vector.y, new_vector.z
+    return x, y, z
+
+
+def get_vector(vector_2, vector_1):
+    """
+    subtracts one vector from another
+    :param vector_1: <list> array of x, y, z values
+    :param vector_2: <list> array of x, y, z values
+    :return: <list> subtracted vector
+    """
+    vector = MVector(*vector_2) - MVector(*vector_1)
+    return vector
 
 
 def cross_product(vector_1, vector_2):
@@ -87,6 +111,7 @@ def get_range(number=1.0):
     """
     return tuple(float_range(-1, 1, 1.0 / (number / 2.0)))
 
+
 def get_center(objects):
     """
     get the center from objects.
@@ -101,7 +126,6 @@ def get_center(objects):
         x += t[0],
         y += t[1],
         z += t[2],
-
     x_avg = sum(x) / len(x)
     y_avg = sum(y) / len(y)
     z_avg = sum(z) / len(z)
@@ -356,37 +380,29 @@ def magnitude(*args):
 
     """
     data = list()
-
     # if a list of tail vector values are fed.
     if len(args) == 2:
         tail = args[0]
         if isinstance(tail, basestring):
             tail = Vector(tail).position
-
         head = args[1]
         if isinstance(head, basestring):
             head = Vector(head).position
-
         # vectors assume only three values in the list!
         # Using this, we find the vector!
         for j in range(3):
             data.append((tail[j] - head[j])**2)
-
-        data= sum(data)
-
+        data = sum(data)
         return abs(data**0.5)
-
     # if a list of head vector values are fed.
     elif len(args) == 1:
         head = args[0]
         if not type(head) is list:
             raise ValueError("Please use a list of 3 floats or intergers")
-
         # Calculating magnitude of WorldSpace: sqrt((ax * ax) + (ay * ay) + (az * az))
         for j in range(len(head)):
             data.append(head[j]**2)
         data = sum(data)**0.5
-
         return abs(data)
     else:
         print("Wrong number of arguments used!\r\n\
@@ -404,7 +420,6 @@ def angle(vector1, vector2):
     # Add all magnitude of vector components!
     for j in range(3):
         data.append(vector1[j] * vector2[j])
-
     data = sum(data)
     return math.degrees(math.acos(data / (magnitude(vector1) * magnitude(vector2))))
 
@@ -476,43 +491,34 @@ class OldVector:
     def __init__(self, *args):
         data = list()
         mag = list()
-
         # if a list of tail vector values are fed.
         if len(args) == 2:
             tail = args[0]
             if not type(tail) is list:
                 raise ValueError("Please use a list of 3 floats or intergers")
-
             head = args[1]
             if not type(head) is list:
                 raise ValueError("Please use a list of 3 floats or intergers")
-
             self.magnitude = magnitude(tail, head)
-
         # if a list of head vector values are fed.
         elif len(args) == 1:
             head = args[0]
             if not type(head) is list:
                 raise ValueError("Please use a list of 3 floats or intergers")
-
             self.data = head
             self.magnitude = magnitude(head)
-
             # Calculating magnitude of WorldSpace: sqrt((ax * ax) + (ay * ay) + (az * az))
             for j in range(len(self.data)):
                 mag.append(self.data[j]*self.data[j])
             mag = sum(mag)**0.5
             self.magnitude = abs(mag)
-
         else:
             cmds.warning("Wrong number of arguments used!\r\n\
                          You must have either one or two lists of vectors: head, tail or head")
-
         # get the vector data by subtracting from the head by the tail.
         if "tail" in dir():
             for v in range(len(tail)):
                 data.append(head[v] - tail[v])
-
             self.data = data
 
     def __str__(self):
@@ -528,18 +534,14 @@ class OldVector:
 
     def __add__(self, other):
         data = list()
-
         for j in range(len(self.data)):
             data.append(self.data[j] + other.data[j])
-
         return Vector(data)
 
     def __sub__(self, other):
         data = list()
-
         for j in range(len(self.data)):
             data.append(self.data[j] - other.data[j])
-
         return Vector(data)
 
     def __div__(self, division):
@@ -547,42 +549,34 @@ class OldVector:
 
     def __mul__(self, other):
         data = list()
-
         if type(other) is float or type(other) is int:
             for j in range(len(self.data)):
                 data.append(self.data[j] * other)
-
         if type(other) is list or type(other) is tuple:
             for j in range(len(self.data)):
                 data.append(self.data[j] * other[j])
-
         else:
             try:
                 for j in range(len(self.data)):
                     data.append(self.data[j] * other.data[j])
             except IndexError:
                 pass
-
         return Vector(data)
 
     def __pow__(self, other):
         data = list()
-
         if type(other) is float or type(other) is int:
             for j in range(len(self.data)):
                 data.append(self.data[j] ** other)
-
         if type(other) is list or type(other) is tuple:
             for j in range(len(self.data)):
                 data.append(self.data[j] ** other[j])
-
         else:
             try:
                 for j in range(len(self.data)):
                     data.append(self.data[j] ** other.data[j])
             except IndexError:
                 pass
-
         return Vector(data)
 
 
@@ -622,37 +616,30 @@ def look_at(source, target, up_vector=(0, 1, 0), as_vector=True):
         source_parent_name = None
     else:
         parent_world = transform_utils.Transform(source_parent_name).world_matrix_list()
-
     # build normalized vector from the translations from matrix data
     z = MVector(target_world[12] - source_world[12],
                 target_world[13] - source_world[13],
                 target_world[14] - source_world[14])
     z *= -1
     z.normalize()
-
     # get normalized cross product of the z against the up vector at origin
     # x = z ^ MVector(-up_vector[0], -up_vector[1], -up_vector[2])
     x = z ^ MVector(up_vector[0], up_vector[1], up_vector[2])
     x.normalize()
-
     # get the normalized y vector
     y = x ^ z
     y.normalize()
-
     # build the aim matrix
     local_matrix_list = (
         x.x, x.y, x.z, 0,
         y.x, y.y, y.z, 0,
         z.x, z.y, z.z, 0,
         0, 0, 0, 1.0)
-
     matrix = object_utils.ScriptUtil(local_matrix_list, matrix_from_list=True).matrix
-
     if source_parent_name:
         # transform the matrix in the local space of the parent object
         parent_matrix = object_utils.ScriptUtil(parent_world, matrix_from_list=True)
         matrix *= parent_matrix.matrix.inverse()
-
     # retrieve the desired rotation for "source" to aim at "target", in degrees
     if as_vector:
         rotation = MTransformationMatrix(matrix).eulerRotation() * RADIANS_2_DEGREES
@@ -671,7 +658,7 @@ def get_vector_position_2_points(position_1, position_2, divisions=2.0):
     :return: <tuple> vector
     """
     positions = ()
-    for i in xrange(1, divisions):
+    for i in range(1, divisions):
         vec_1 = Vector(*position_1)
         vec_2 = Vector(*position_2)
         new_vec = Vector(vec_1 - vec_2)
@@ -700,15 +687,6 @@ def calculate_angle(vector1, vector2):
     v2 = Vector(*vector2)
     dot_product = v1 * v2
     return math.acos(dot_product) * 180 / M_PI
-
-
-def calculate_angle_with_sign(vector_1, vector_2):
-    """
-    calculates angle with sign direction
-    :param vector_1:
-    :param vector_2:
-    :return:
-    """
 
 
 def calculate_circle_collision(object_1, object_2, object_1_radius=0.0, object_2_radius=0.0):
@@ -858,7 +836,6 @@ def linear_cubic_interpolation(driver_array=(), divisions=20, interpolation='qua
             v3 = Vector(driver_array[2])
             point_final += quadratic(v1, v2, v3, float(t) / float(divisions)),
         return point_final
-
     elif interpolation == 'bezier':
         for t in xrange(divisions):
             v1 = Vector(driver_array[0])
@@ -919,7 +896,6 @@ def get_pole_vector_position(st_joint, mid_joint, en_joint):
     v1 = Vector(st_joint)
     v2 = Vector(en_joint)
     v3 = Vector(mid_joint)
-
     v = Vector(v2 - v1)
     v *= 0.5
     v += v1
@@ -1048,12 +1024,10 @@ def populateRoll(ball=None, startFrame=1, endFrame=400):
     previous = cmds.xform(ball, query=True, worldSpace=True, translation=True)  # get the position of the ball
     matrix = MMatrix.kIdentity
     realRadius = cmds.getAttr(ball + '.realRadius')
-
     for frame in range(startFrame, endFrame):
         scaleRadius = cmds.getAttr(ball + '.scaleRadius')
         cmds.currentTime(frame)
         current = cmds.xform(ball, query=True, worldSpace=True, translation=True) # get current position of ball
-
         if math.fabs(scaleRadius) > 1e-5:  # is the radius scaled close to zero? Avoid divide by zero errors
             radius = 1/scaleRadius*realRadius
             previousVector = MVector(previous)
@@ -1062,17 +1036,14 @@ def populateRoll(ball=None, startFrame=1, endFrame=400):
             length = directionVector.length()  # how far has the ball traveled
             axis = MVector.kYaxisVector ^ directionVector  # what current axis should the ball roll around
             angle = length/radius  # how far should we roll the ball in radians
-
         else:
             angle = 0.0  # fakeRadius was scaled to zero, so don't rotate at all
-
         # calculate the rotation
         rotation = MQuaternion(angle, axis)
         rotationMatrix = rotation.asMatrix()
         matrix = matrix * rotationMatrix
         euler = [math.degrees(x) for x in MTransformationMatrix(matrix).rotation()]
         cmds.xform(ball, rotation=euler)  # apply the rotation
-
         # key the new rotation
         cmds.setKeyframe(ball + '.rotateX')
         cmds.setKeyframe(ball + '.rotateY')
@@ -1105,41 +1076,33 @@ def create_parabola_node_network(x_value_node="", mid_point_node="", point_2_nod
     cmds.setAttr(sub_max_x_max_y + '.operation', 2)
     cmds.connectAttr(point_2_node + '.translateX', sub_max_x_max_y + '.input1D[0]')
     cmds.connectAttr(point_2_node + '.translateX', sub_max_x_max_y + '.input1D[1]')
-
     # create power
     max_x_max_y_power_2 = cmds.createNode('multDoubleLiner', name="max_x_max_y_power_{}".format(number))
     cmds.connectAttr(sub_max_x_max_y + '.output1D', max_x_max_y_power_2 + '.input1')
     cmds.connectAttr(sub_max_x_max_y + '.output1D', max_x_max_y_power_2 + '.input2')
-
     # create addition
     max_y_plus_mid_y = cmds.createNode('addDoubleLinear', name='max_y_plus_mid_y_{}'.format(number))
     cmds.connectAttr(mid_point_node + '.translateX', max_y_plus_mid_y + '.input1')
     cmds.connectAttr(point_2_node + '.translateY', max_y_plus_mid_y + '.input2')
-
     # create division of result a (coefficient)
     divide_result_a = cmds.createNode('multiplyDivide', name='divide_result_a_{}'.format(number))
     cmds.setAttr(divide_result_a + '.operation', 2)
     cmds.connectAttr(max_y_plus_mid_y + '.output', divide_result_a + '.input1X')
     cmds.connectAttr(max_x_max_y_power_2 + '.output', divide_result_a + '.input2X')
-
     # create a negatory multiplication for correct interpolation and extrapolation of results
     a_times_neg_1 = cmds.createNode('multDoubleLinear', name="a_times_neg_1_{}".format(number))
     cmds.setAttr(a_times_neg_1 + '.input2', -1)
     cmds.connectAttr(divide_result_a + '.outputX', a_times_neg_1 + '.input1')
-
     # create mutiplication of a against x input
     a_mult_x = cmds.createNode('multDoubleLinear', name="a_mult_x_{}".format(number))
     cmds.connectAttr(a_times_neg_1 + '.output', a_mult_x + '.input1')
-
     # create x input x_mid_x_power_2
     x_mid_x_power_2 = cmds.createNode('multiplyDivide', name='x_mid_x_power_2_{}'.format(number))
     cmds.setAttr(x_mid_x_power_2 + 'input2X', 2)
     cmds.setAttr(x_mid_x_power_2 + '.operation', 3)
-
     # set the x value here
     cmds.connectAttr(x_value_node + '.translateX', x_mid_x_power_2 + '.input1X')
     cmds.connectAttr(x_mid_x_power_2 + '.outputX', a_mult_x + '.input2')
-
     # result plus mid.ty
     result_plus_mid_y = cmds.createNode('addDoubleLinear', name="result_plus_mid_y_{}".format(number))
     cmds.connectAttr(a_mult_x + '.output', result_plus_mid_y + '.input1')
@@ -1163,7 +1126,6 @@ def barycentric_interpolation(vecA, vecB, vecC, vecP):
     v0 = vecB - vecA
     v1 = vecC - vecA
     v2 = vecP - vecA
-
     d00 = v0 * v0
     d01 = v0 * v1
     d11 = v1 * v1
@@ -1245,7 +1207,6 @@ def simplify(points, epsilon):
         if d > dmax:
             index = i
             dmax = d
-
     if dmax >= epsilon:
         results = simplify(points[:index+1], epsilon)[:-1] + simplify(points[index:], epsilon)
     else:

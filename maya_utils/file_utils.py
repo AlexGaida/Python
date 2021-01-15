@@ -19,6 +19,17 @@ from maya import cmds
 re_slash = re.compile('(\\\\|/)')
 
 
+def read_json_file(json_file_name):
+    """
+    reads the json file name.
+    :param json_file_name: <str> reads the json file name
+    :return: <dict> json file contents
+    """
+    with open(json_file_name, 'r') as f:
+      json_file_contents = json.load(f)
+    return json_file_contents
+
+
 def remove_file(file_name):
     """
     removes this file from disk.
@@ -252,7 +263,7 @@ def _parent_level(level):
     :param level:
     :return:
     """
-    return -1 * xrange(level+1)[-1]
+    return -1 * range(level+1)[-1]
 
 
 def get_this_directory_parent(level=1):
@@ -573,7 +584,6 @@ def interpret_text_data(text=""):
     :return: <TypeName> of data.
     """
     # if the variable is a dictionary
-    print text
     if text.find("{") > -1 and text.find("}") > -1:
         return ast.literal_eval(text)
     elif text.find("[") > -1 and text.find("]") > -1:
