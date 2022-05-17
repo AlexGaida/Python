@@ -7,7 +7,7 @@ import build_utils
 import blueprint_utils
 import ui_tools
 import ui_stylesheets
-import name_utils
+from maya_utils import name_utils
 from rig_utils import joint_utils
 from rig_utils import control_shape_utils
 from maya_utils import ui_utils

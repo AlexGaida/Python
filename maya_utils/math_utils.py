@@ -1212,3 +1212,6 @@ def simplify(points, epsilon):
     else:
         results = [points[0], points[-1]]
     return results
+
+# ______________________________________________________________________________________________________________________
+# math_utils.py

@@ -4,14 +4,14 @@ builds the arm rig
 
 # import local modules
 from rig_utils import joint_utils
-import name_utils
+from maya_utils import name_utils
 from rig_utils import control_shape_utils
 from rig_utils import constraint_utils
-import node_utils
+from maya_utils import node_utils
 from maya_utils import object_utils
 from maya_utils import attribute_utils
 
-# define variables
+# define testable variables
 joint_1_name = "upper_arm"
 joint_2_name = "elbow_arm"
 joint_3_name = "hand_arm"
@@ -59,11 +59,11 @@ def build(joint_1, joint_2, joint_3, name="", prefix_name="", suffix_name=""):
     # create joint
     positions = get_joint_positions(joint_1, joint_2, joint_3)
     bnd_joints = joint_utils.create_joints_from_arrays(
-        positions, get_names(name + "_" + name_utils.BND_JNT_SUFFIX_NAME), parented=True)
+        positions, get_names(name + "_" + name_utils.bind_joint), parented=True)
     ik_joints = joint_utils.create_joints_from_arrays(
-        positions, get_names(name + "_" + name_utils.IK_JNT_SUFFIX_NAME), parented=True)
+        positions, get_names(name + "_" + name_utils.ik_joint), parented=True)
     fk_joints = joint_utils.create_joints_from_arrays(
-        positions, get_names(name + "_" + name_utils.FK_JNT_SUFFIX_NAME), parented=True)
+        positions, get_names(name + "_" + name_utils.fk_joint), parented=True)
     # reorient joints
     joint_utils.orient_joints(bnd_joints, primary_axis='x')
     joint_utils.orient_joints(ik_joints, primary_axis='x')

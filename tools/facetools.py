@@ -1438,3 +1438,6 @@ def create_eyelid_follicle_system(driver_object="", selected_vertices=(), surfac
             driver_value=-1.0)
         anim_data.update({-1.0: min_uv_default})
     return follicle_objs, anim_data
+
+#_______________________________________________________________________________
+# facetool.py

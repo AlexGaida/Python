@@ -284,6 +284,15 @@ def is_exists(object_name):
     return not m_obj.isNull()
 
 
+def is_shape_locator(object_name):
+    """
+    check if the object name has nurbs curve shape object.
+    :param object_name: <str> the object to check shape type from.
+    :return: <bool> True for yes, <bool> False for no.
+    """
+    return bool(get_shape_name(object_name, shape_type="locator"))
+
+
 def is_shape_curve(object_name):
     """
     check if the object name has nurbs curve shape object.
@@ -585,6 +594,46 @@ class ScriptUtil(OpenMaya.MScriptUtil):
         return self.matrix_om
 
 
+def get_world_position(object_name):
+    """
+    world position
+    :param object_name: <str> object node to extract position from
+    :return: <list> world position
+    """
+    position = cmds.xform(object_name, ws=True, t=True, q=True)
+    return position
+
+
+def get_relative_position(object_name):
+    """
+    world position
+    :param object_name: <str> object node to extract position from
+    :return: <list> world position
+    """
+    position = cmds.xform(object_name, ws=False, t=True, q=True)
+    return position
+
+
+def get_world_matrix(object_name):
+    """
+    gets the world position
+    :param object_name: <str> object node to extract matrix from
+    :return: <list> world position matrix
+    """
+    matrix = cmds.xform(object_name, ws=True, q=True, m=True)
+    return matrix
+
+
+def get_relative_matrix(object_name):
+    """
+    gets the world position
+    :param object_name: <str> object node to extract matrix from
+    :return: <list> world position matrix
+    """
+    matrix = cmds.xform(object_name, ws=False, q=True, m=True)
+    return matrix
+
+
 def get_unsigned_int_ptr(int_num=None):
     """
     returns an unsigned integer pointer object.
@@ -731,6 +780,22 @@ def rename_node(object_name, this_name):
     return this_name
 
 
+def delete_node(object_name):
+    """
+    delete the object if it exists in the scene.
+    :param object_name:
+    :return:
+    """
+    try:
+        if cmds.objExists(object_name):
+            cmds.delete(object_name)
+        else:
+            return False
+    except TypeError:
+        OpenMaya.MGlobal.displayWarning("[UnableToRemove] :: {}".format(object_name))
+    return True
+
+
 def remove_node(object_name):
     """
     removes the node(s) form the Maya scene.
@@ -740,14 +805,13 @@ def remove_node(object_name):
     m_dag_mod = OpenMaya.MDagModifier()
     if isinstance(object_name, (list, tuple)):
         array = get_m_obj_array(object_name)
-        for i in xrange(array.length()):
+        for i in range(array.length()):
             m_dag_mod.deleteNode(array[i])
             try:
                 m_dag_mod.doIt()
             except RuntimeError:
                 # object  already deleted
                 continue
-
     elif isinstance(object_name, (str, unicode)) and is_exists(object_name):
             node = get_m_obj(object_name)
             m_dag_mod.deleteNode(node)
@@ -937,7 +1001,8 @@ def get_parents(object_name=None, stop_at=''):
             p_node_ls = m_path.fullPathName().split('|')
             p_node_ls.reverse()
             for p in p_node_ls:
-                return_data += p,
+                if p:
+                    return_data += p,
                 if p == stop_at:
                     break
     return return_data
@@ -2067,3 +2132,6 @@ def unlock_attribute(source_attr):
 
 def lock_attribute(source_attr):
     return cmds.setAttr(source_attr, l=True)
+
+# ______________________________________________________________________________________________________________________
+# object_utils.py

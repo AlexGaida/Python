@@ -1,7 +1,6 @@
 """
     Attribute module for finding, creating and setting transform object attributes
 """
-
 # import maya modules
 from maya import OpenMaya
 from maya import cmds
@@ -176,7 +175,11 @@ def attr_get_value(node_name, attribute_name):
     :param attribute_name: <str> valid attribute name.
     :return: <str> new attribute name.
     """
-    return cmds.getAttr(attr_name(node_name, attribute_name))
+    attribute_name = attr_name(node_name, attribute_name)
+    if cmds.objExists(attribute_name):
+        return cmds.getAttr(attribute_name)
+    else:
+        return False
 
 
 def attr_name(object_name, attribute_name, check=False):
@@ -201,7 +204,24 @@ def attr_set(object_name, value, attribute_name=""):
     """
     if '.' in object_name:
         return cmds.setAttr(object_name, value)
+    print(attr_name(object_name, attribute_name))
     return cmds.setAttr(attr_name(object_name, attribute_name), value)
+
+
+def attr_set_str(object_name, value, attribute_name=""):
+    """
+    set the values to this attribute name.
+    :param object_name: <str> the object node to set attributes to.
+    :param attribute_name: <str> the attribute name to set value to.
+    :param value: <int>, <float>, <str> the value to set to the attribute name.
+    :return: <bool> True for success.
+    """
+    if hasattr(object_name, 'name'):
+        object_name = object_name.name
+    if not cmds.objExists(object_name + '.' + attribute_name):
+        attr_add_str(object_name, attribute_name, str(value))
+    attr_set(object_name, attribute_name, str(value))
+    return value
 
 
 def attr_split(a_name):

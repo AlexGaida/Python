@@ -103,3 +103,6 @@ def symmetry_constraint(source_obj, target_obj):
     cmds.connectAttr(sym_node_cnst_scale_attr, target_scale_attr)
     cmds.connectAttr(sym_node_cnst_rotate_order_attr, target_rotate_order_attr)
     cmds.parent(symmetry_node, source_obj)
+
+# ______________________________________________________________________________________________________________________
+# constraint_utils.py

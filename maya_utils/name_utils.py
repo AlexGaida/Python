@@ -11,11 +11,14 @@ from maya import cmds
 from maya_utils import file_utils, object_utils
 
 # define local variables
+re_first_underscore = re.compile("^_")
 re_brackets = re.compile(r"\[?\]?")
 re_capitals = re.compile('[A-Z][^A-Z]*')
 re_lowers = re.compile('[a-z]*')
 re_numbers = re.compile("\d+")
-naming_convention_file = posixpath.join(file_utils.get_this_directory_parent(3), 'RigModules', 'naming_convention.json')
+naming_convention_file = posixpath.join(
+    file_utils.get_this_directory_parent(3),
+    'RigModules', 'naming_convention.json')
 
 
 def get_naming_conventions():
@@ -27,6 +30,19 @@ def get_naming_conventions():
         names_data = json.load(f)
     return names_data
 
+naming_conventions = get_naming_conventions()
+
+
+def incorporate_standard_naming_conventions():
+    """
+    grab the naming convention and make part of the locals() of this module
+    """
+    globs = globals()
+    for k, v in naming_conventions["standard"].items():
+        globs[k] = v
+
+incorporate_standard_naming_conventions()
+
 
 def get_naming_plan(convention=None):
     """
@@ -35,13 +51,25 @@ def get_naming_plan(convention=None):
     """
     if not convention:
         convention = 'standard'
-    naming_conventions = get_naming_conventions()
     conventions = naming_conventions[convention]
     naming_plan = conventions['naming_plan']
     return naming_plan
 
 
-def get_name(name, index=None, letter='', side_name="", suffix_name="",
+def get_classification_name(name_type, convention='standard'):
+    """
+    returns the name of the type and classification
+    :param name_type: <str> the type of name to retrieve
+    :param convention: <str> convention classification standard
+    :return: <str> classification name
+    """
+    names_group = naming_conventions[convention]
+    if name_type in names_group:
+        name_type = names_group[name_type]
+    return name_type
+
+
+def get_name(name, index=None, letter="", side_name="", suffix_name="",
              prefix_name="", direction_name="", naming_convention=None):
     """
     generic name structure concatenation
@@ -55,21 +83,26 @@ def get_name(name, index=None, letter='', side_name="", suffix_name="",
     :param naming_convention: <str> Default: None, use a different naming convention
     :return: <str> return the modified name
     """
+    if not naming_convention:
+        naming_convention = 'standard'
     naming_plan = get_naming_plan(convention=naming_convention)
     naming_plan = naming_plan.replace("{base_name}", name)
-    if index:
-        naming_plan = naming_plan.replace("{index}", index)
+    if index is not None:
+        naming_plan = naming_plan.replace("{index}", str(index))
     else:
         naming_plan = naming_plan.replace("{index}", "")
     if letter:
+        letter = letter.upper()
         naming_plan = naming_plan.replace("{letter}", letter)
     else:
         naming_plan = naming_plan.replace("{letter}", "")
     if side_name:
+        side_name = get_classification_name(side_name, convention=naming_convention)
         naming_plan = naming_plan.replace("{side_name}", side_name)
     else:
         naming_plan = naming_plan.replace("{side_name}", "")
     if suffix_name:
+        suffix_name = get_classification_name(suffix_name, convention=naming_convention)
         naming_plan = naming_plan.replace("{suffix_name}", suffix_name)
     else:
         naming_plan = naming_plan.replace("{suffix_name}", "")
@@ -81,8 +114,68 @@ def get_name(name, index=None, letter='', side_name="", suffix_name="",
         naming_plan = naming_plan.replace("{direction_name}", direction_name)
     else:
         naming_plan = naming_plan.replace("{direction_name}", "")
+    naming_plan = naming_plan.replace("___", "_")
     naming_plan = naming_plan.replace("__", "_")
+    naming_plan = re.sub(r'^_', '', naming_plan)
     return naming_plan
+
+
+def deconstruct_name(name_string, naming_convention=None):
+    """
+    deconstruct the name.
+    :param name_string: <str> name string deconstruction
+    :return: <str>
+    """
+    naming_plan = get_naming_plan(convention=naming_convention)
+    return True
+
+
+def get_letter_string(name_str):
+    """
+    Get letter string from the name argument provided.
+    :return: <str> letter string.
+    """
+    split_names = name_str.split('_')
+    for split_name in split_names:
+        if len(split_name) == 1:
+            return split_name
+    return ''
+
+
+def get_side_string(name_str):
+    """
+    Get side string
+    :param name_str:
+    :return: <str> the the side name string.
+    """
+    left_name = get_classification_name('left')
+    right_name = get_classification_name('right')
+    center_name = get_classification_name('center')
+    split_names = name_str.split('_')
+    for split_name in split_names:
+        if split_name.startswith(left_name + '_'):
+            return split_name
+        elif split_name.startswith(right_name + '_'):
+            return split_name
+        elif split_name.startswith(center_name + '_'):
+            return split_name
+    return True
+
+
+def get_base_name_string(name_str, side_string=None):
+    """
+    Gets the base name
+    :param name_str:
+    :return: <str> the base name string.
+    """
+    if not side_string:
+        side_string = get_side_string(name_str)
+    if side_string:
+        side_string = get_classification_name(side_string)
+    name_tokens = name_str.split('_')
+    side_idx = name_tokens.index(side_string)
+    base_name = name_tokens[side_idx + 1]
+    return base_name
 
 
 def get_node_type(object_name):
@@ -106,21 +199,6 @@ def split_name_from_object_type_name(object_type_name):
     lower_names = re_lowers.findall(object_type_name)[0]
     type_key_str = lower_names + '_' + titled_names
     return type_key_str
-
-
-def get_classification_name(name_type, convention='standard'):
-    """
-    returns the name of the type and classification
-    :param name_type: <str> the type of name to retrieve
-    :param convention: <str> convention classification standard
-    :return: <str> classification name
-    """
-    names_data = get_naming_conventions()
-    names_group = names_data[convention]
-    names = {}
-    if name_type in names_group:
-        names = names_group[name_type]
-    return names
 
 
 def get_name_count(name, suffix_name=""):
