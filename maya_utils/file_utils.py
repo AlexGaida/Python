@@ -91,9 +91,12 @@ def get_directories(path_name, full_path=False):
     """
     files = tuple(glob.glob(path_name + '/*'))
     if full_path:
-        return files
+        directories = [f for f in files if os.path.isdir(f)]
+        return directories
     else:
-        return tuple(map(lambda x: os.path.split(x)[-1], files))
+        directories = tuple(map(lambda x: os.path.split(x)[-1] if os.path.isdir(x) else None, files))
+        directories = filter(None, directories)
+        return directories
 
 
 def build_dir(dir_name):
@@ -136,7 +139,8 @@ def get_maya_workspace_dir():
     get the current working directory path for the maya project
     :return: <str> path
     """
-    return cmds.workspace(dir=True, q=1)
+    maya_workspace_dir = cmds.workspace(dir=True, q=1)
+    return maya_workspace_dir
 
 
 def get_maya_workspace_data_dir():
@@ -287,44 +291,50 @@ def directory_name(file_name):
 
 def controller_data_dir():
     """
-    gets the relative path for the controller data folder directory.
-    :return: <str> directory path name.
+    gets the relative path for the controller data folder directory
+    :return: <str> directory path name
     """
     dir_name = get_this_directory_parent(level=2)
     return posixpath.join(dir_name, 'rig_utils', 'controller_data')
 
 
-def list_files(file_name):
+def list_files(file_name, filter_ext=None):
     """
-    lists files in a file path given.
-    :param file_name:
+    lists files in a file path given
+    :param file_name: <str> the file directory name to list files from
+    :param filter_ext: <list> filters these extension names
     :return: <tuple> array of available files.
     """
     if is_file(file_name):
-        return tuple(os.listdir(directory_name(file_name)))
-    return tuple(os.listdir(file_name))
+        files = tuple(os.listdir(directory_name(file_name)))
+        return files
+    files = tuple(os.listdir(file_name))
+    if filter_ext:
+        for filt_ext in filter_ext:
+            files = [f for f in files if not f.endswith(filt_ext)]
+    return files
 
 
 def list_controller_files():
     """
     lists all the files in the controller directory
-    :return: <tuple> array of available controller files.
+    :return: <tuple> array of available controller files
     """
     return list_files(controller_data_dir())
 
 
 def concatenate_path(*args):
     """
-    concatenate the strings into one path.
+    concatenate the strings into one path
     :param args:
-    :return: <str> directory file path name.
+    :return: <str> directory file path name
     """
     return posixpath.join(*args)
 
 
 class JSONSerializer:
     """
-    json serializer data class in case we want to manipulate json data.
+    json serializer data class in case we want to manipulate json data
     """
     READ_DATA = {}
     FILE_NAME = ""
@@ -592,3 +602,6 @@ def interpret_text_data(text=""):
         return ast.literal_eval(text)
     else:
         return text
+
+# ______________________________________________________________________________________________________________________
+# file_utils.py

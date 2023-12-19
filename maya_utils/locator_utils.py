@@ -16,10 +16,9 @@ reload(node_utils)
 reload(object_utils)
 
 
-class Control(node_utils.Node):
-    def __init__(self, color_name=None, color_level=0, color_value=None, shape=None,
-                 position=None, stacks=0, children=0, **kwargs):
-        super(Control, self).__init__(**kwargs)
+class Locator(node_utils.Node):
+    def __init__(self, color_name=None, color_level=0, color_value=None, shape=None, position=None, **kwargs):
+        super(Locator, self).__init__(**kwargs)
         if not shape:
             shape = 'cube'
         self.shape = shape
@@ -27,14 +26,11 @@ class Control(node_utils.Node):
         self.color_name = color_name
         self.color_level = color_level
         self.color_value = color_value
-        self.stacks = stacks
-        self.children = children
-        self.stack_count = []
-        if not self.suffix_name:
-            self.suffix_name = self.naming_convention['control']
+        self.suffix_name = self.naming_convention['control']
         # get the name with the updated suffix name parameter
+        self.name = self.get_name(suffix_name=self.suffix_name)
         if not self.exists:
-            self.name = self.get_name()
+            self.node = self.name
             self.create()
 
     def create(self):
@@ -48,13 +44,6 @@ class Control(node_utils.Node):
         self.set_outliner_color_name()
         self.set_outliner_color_value()
         self.node = ctrl
-        self.set_name_dict_attr()
-        if self.stacks:
-            for idx in range(self.stacks):
-                self.stack_count.append(self.insert_parent_group(suffix_name='{}_Grp'.format(idx)))
-        # Create the home group
-        self.insert_parent_group(suffix_name='Offset')
-        self.insert_parent_group(suffix_name='Home')
 
     def set_color_by_name(self, color_name=None, color_level=None):
         """
@@ -80,13 +69,6 @@ class Control(node_utils.Node):
         if self.color_value:
             nurbs_color_utils.set_rgb_color_by_color_value(self.shape_name, color_value=self.color_value)
 
-    def is_exists(self):
-        """
-        check if the node exists
-        :return: <bool>
-        """
-        object_utils.is_exists(self.node)
-
     def get_shape_name(self):
         """
         get the nurbs curve shape node
@@ -111,12 +93,7 @@ class Control(node_utils.Node):
             grp_node = object_utils.create_group(grp_name, position=world_position)
         else:
             raise ValueError("[ParentGroup] :: Already exists")
-        par_nodes = object_utils.get_parents(self.node)
-        if par_nodes:
-            object_utils.do_parent(par_nodes[-1], grp_node)
-        else:
-            object_utils.do_parent(self.node, grp_node)
-        grp_node = node_utils.Group(node=grp_node)
+        object_utils.do_parent(self.node, grp_node)
         return grp_node
 
     def insert_child_group(self, suffix_name):
@@ -150,8 +127,8 @@ class Control(node_utils.Node):
         verify if the current node is of type nurbs curve
         :return: <bool>
         """
-        is_control = object_utils.is_shape_nurbs_curve(self.node)
+        is_control = object_utils.is_shape_locator(self.node)
         return is_control
 
 # ______________________________________________________________________________________________________________________
-# control_shape_utils.py
+# locator_utils.py

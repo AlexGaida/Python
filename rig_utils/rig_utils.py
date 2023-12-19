@@ -14,13 +14,8 @@ from maya_utils import transform_utils
 from maya_utils import math_utils
 from maya_utils import mesh_utils
 from deformers import skincluster_utils
-reload(object_utils)
-reload(skincluster_utils)
-reload(mesh_utils)
-reload(math_utils)
 # local variables
 letters = string.ascii_uppercase
-
 
 def aim_nodes(forward, up, driven_obj, number=1):
     """Creates an aim constraint system using the maya node objects
@@ -538,22 +533,18 @@ def create_sphere_joints(sphere_mesh="", forward_axis='z', name=""):
     # return edge loop by axis value
     edge_loops = mesh_utils.get_edge_loop_points_at_axis(sphere_mesh, axis=forward_axis)
     cmds.xform(sphere_mesh, ws=1, m=1, q=1)
-
     # create the main joint
     main_jnt = cmds.joint(name=name + 'Base', orientation=joint_orients[axes.index(forward_axis)])
-
     # set the transform matrix value
     transform = cmds.xform(sphere_mesh, ws=1, m=1, q=1)
     cmds.xform(main_jnt, m=transform)
-
     index = 0
     joints = {}
     positions = edge_loops.keys()
-    positions.sort()
     for position in positions:
         if index > 0:
             vtxs = edge_loops[position]
-            names = map(lambda vtx: mesh_utils.get_index_name(sphere_mesh, vtx), vtxs)
+            names = list(map(lambda vtx: mesh_utils.get_index_name(sphere_mesh, vtx), vtxs))
             center_position = math_utils.get_center(names)
             edge_loop_jnt = cmds.joint(name=name + letters[index-1] + '_jnt', r=1)
             if index > 1:
@@ -561,22 +552,21 @@ def create_sphere_joints(sphere_mesh="", forward_axis='z', name=""):
             cmds.xform(edge_loop_jnt, t=center_position, ws=1)
             joints[edge_loop_jnt] = names
         index += 1
-
     # parent the main joint to the world
     cmds.parent(main_jnt, world=True)
-
     # skin the sphere
     skin_name = skincluster_utils.apply_skin(sphere_mesh, joints.keys(), name=name + '_skin')[0]
     cmds.select(sphere_mesh + '.vtx[*]')
     cmds.skinPercent(skin_name, transformValue=[(main_jnt, 1.0)])
     for jnt, ids in joints.items():
-        cmds.select(ids)
-        cmds.skinPercent(skin_name, transformValue=[(jnt, 1.0)])
+        print('-->', skin_name, jnt, ids)
+        cmds.skinPercent(skin_name, ids, transformValue=[(jnt, 1.0)])
     cmds.select(d=1)
     return [main_jnt] + sorted(joints.keys())
 
-
 def construct_eye_rig(radius=1.0):
+    """construct a basic eye-lid rig
+    """
     sphere_mesh, sphere_shape = create_sphere(radius=radius)
     joints_list = create_sphere_joints(sphere_mesh)
     distance = math_utils.magnitude(joints_list[0], joints_list[-1])
@@ -592,3 +582,6 @@ def construct_eye_rig(radius=1.0):
     for jnt in joints_list[1:-1]:
         clamp_translation(jnt, driven_attr='translateZ', max_value=distance)
     return True
+
+# ____________________________________________________________________________________________________________
+# rig_utils.py

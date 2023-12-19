@@ -4,19 +4,18 @@ joint_utils.py manipulating and retrieving information from joints.
 # import standard modules
 
 # import maya modules
-from maya import cmds
-from maya import OpenMaya
+from maya import cmds, OpenMaya
 
 # import local modules
-import name_utils
-import node_utils
+from maya_utils import name_utils
+from maya_utils import node_utils
 from maya_utils import object_utils
 from maya_utils import transform_utils
 from maya_utils import curve_utils
 
 # define local variables
-BND_JNT_SUFFIX = name_utils.BND_JNT_SUFFIX_NAME
-JNT_SUFFIX = name_utils.JNT_SUFFIX_NAME
+BND_JNT_SUFFIX = name_utils.get_classification_name('bound_joint')
+JNT_SUFFIX = name_utils.get_classification_name('joint')
 
 
 def reload_selection(func):
@@ -526,6 +525,26 @@ def unlock_joints(jnt_suffix=''):
 class Joint(node_utils.Node):
     def __init__(self, **kwargs):
         super(Joint, self).__init__(**kwargs)
+        self.dag_mod = OpenMaya.MDagModifier()
+        if not self.suffix_name:
+            self.suffix_name = self.naming_convention['joint']
+        # get the name with the updated suffix name parameter
+        self.name = self.get_name(suffix_name=self.suffix_name)
+        if not self.exists:
+            self.node = self.name
+            self.create()
+
+    def create(self, mfn_dag=False):
+        if not self.exists:
+            if mfn_dag:
+                # The first joint has no parent.
+                jnt_obj = self.dag_mod.createNode('joint')
+                # rename the joint using OpenMaya
+                self.dag_mod.renameNode(jnt_obj, self.name)
+                self.dag_mod.doIt()
+            else:
+                cmds.select(d=True)  # deselect first before creating any joints
+                cmds.joint(name=self.name)
 
     def unlock(self):
         """
@@ -549,6 +568,14 @@ class Joint(node_utils.Node):
             cmds.joint(self.node, e=True, oj='yzx', secondaryAxisOrient='yup', ch=True, zso=True)
         if axis == 'z':
             cmds.joint(self.node, e=True, oj='zxy', secondaryAxisOrient='yup', ch=True, zso=True)
+
+    def zero_joint_orients(self):
+        """
+        zeroes joint orientations
+        """
+        cmds.setAttr(self.node + ".jointOrientX", 0)
+        cmds.setAttr(self.node + ".jointOrientY", 0)
+        cmds.setAttr(self.node + ".jointOrientZ", 0)
 
 # ______________________________________________________________________________________________________________________
 # joint_utils.py

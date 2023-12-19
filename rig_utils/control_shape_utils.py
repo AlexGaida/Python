@@ -7,7 +7,7 @@ import re
 # import local modules
 import read_sides
 import constraint_utils
-import name_utils
+from maya_utils import name_utils
 
 # import custom modules
 from maya_utils import file_utils
@@ -25,13 +25,13 @@ from maya import cmds
 __control_folder_dir__ = file_utils.controller_data_dir()
 
 # define local variables
-CTRL_SUFFIX = name_utils.CTRL_SUFFIX
-LOCATOR_SUFFIX = name_utils.LOCATOR_SUFFIX
-CONSTRAINT_GRP = name_utils.CONSTRAINT_GRP
-GROUP_NAME = name_utils.GROUP_NAME
+CTRL_SUFFIX = name_utils.get_classification_name('control')
+LOCATOR_SUFFIX = name_utils.get_classification_name('locator')
+CONSTRAINT_GRP = name_utils.get_classification_name('constraint_group')
+GROUP_NAME = name_utils.get_classification_name('group')
+transform_attrs = attribute_utils.Attributes.DEFAULT_ATTR_VALUES
 re_brackets = re.compile(r'\[|]')
 re_numbers = re.compile('_\d+')
-transform_attrs = attribute_utils.Attributes.DEFAULT_ATTR_VALUES
 side_cls = read_sides.Sides()
 
 # reloads
@@ -40,8 +40,8 @@ reload(math_utils)
 
 def save_controller_shape(controller_name):
     """
-    saves the controller shape data to file.
-    :return: <str> controller file path name.
+    saves the controller shape data to file
+    :return: <str> controller file path name
     """
     curve_data = curve_utils.get_nurb_data(controller_name)
     controller_data_file_name = get_controller_path(controller_name)
@@ -53,9 +53,9 @@ def save_controller_shape(controller_name):
 
 def create_controller_shape(shape_name):
     """
-    creates the shape from the file.
-    :param shape_name:
-    :return: <tuple> array of created curves.
+    creates the shape from the file
+    :param shape_name: <str> shape names to use
+    :return: <tuple> array of created curves
     """
     curve_data = get_controller_data_file(shape_name)
     curves = ()
@@ -80,8 +80,8 @@ def create_controller_shape(shape_name):
 def get_cv_positions(controller_shape_name):
     """
     controller cv positions
-    :param controller_shape_name:
-    :return:
+    :param controller_shape_name: <str> controller shape name
+    :return: <dict> CV index, position data
     """
     cv_positions = {}
     cv_list = cmds.ls(controller_shape_name + '.cv[*]', flatten=True)
@@ -90,7 +90,7 @@ def get_cv_positions(controller_shape_name):
     return cv_positions
 
 
-def relative_scale(controller_shape_name, value):
+def set_relative_scale(controller_shape_name, value):
     """
     scale the controller in relative scale values
     :param controller_shape_name: <str>
@@ -113,8 +113,8 @@ def relative_scale(controller_shape_name, value):
 
 def get_shape_vector_positions(controller_shape_name):
     """
-
-    :return:
+    controller shape CV positions
+    :return: <dict> CV vector position data
     """
     cv_vector_data = {}
     cv_positions = get_cv_positions(controller_shape_name)
@@ -207,7 +207,7 @@ def copy_xform(object_1, object_2):
 def check_locator_suffix_name(object_name):
     """
     checks if the incoming object has the locator suffix name
-    :param object_name:
+    :param object_name: <str> object name
     :return: <bool> True if the locator suffix exists, <bool> False if it does not
     """
     suffix_name = '_{}'.format(LOCATOR_SUFFIX)
@@ -219,8 +219,8 @@ def check_locator_suffix_name(object_name):
 def remove_locator_suffix_name(object_name):
     """
     splits the object name from its locator suffix name
-    :param object_name:
-    :return:
+    :param object_name: <str> object name to remove locator suffix from
+    :return: <str> removed suffix name
     """
     suffix_name = '_{}'.format(LOCATOR_SUFFIX)
     return object_name.rpartition(suffix_name)[0]
@@ -275,7 +275,6 @@ def get_shape_names(transforms_array=()):
 def color_code_controllers():
     """
     color code all controller shape names
-    :return: <bool> True for success
     """
     ctrl_curves = get_controllers()
     shape_names_array = get_shape_names(ctrl_curves)
@@ -288,15 +287,14 @@ def color_code_controllers():
             curve_utils.set_nurb_shape_color(shape_name, color='blue')
         if side_name == 'Right':
             curve_utils.set_nurb_shape_color(shape_name, color='red')
-    return True
 
 
 def attr_str(ctrl_name, attr_name):
     """
     join the two strings together to form the attribute name
-    :param ctrl_name:
-    :param attr_name:
-    :return:
+    :param ctrl_name: <str> controller name
+    :param attr_name: <str> attribute name
+    :return: <str> attribute string
     """
     attribute_str = '{}.{}'.format(ctrl_name, attr_name)
     return attribute_str
@@ -305,7 +303,6 @@ def attr_str(ctrl_name, attr_name):
 def zero_controllers():
     """
     assuming controllers are all named with a suffix _ctrl
-    :return: <bool> True for success
     """
     for ctrl_name in get_controllers():
         for attr_name, attr_val in transform_attrs.items():
@@ -315,26 +312,23 @@ def zero_controllers():
             if object_utils.is_attr_connected(ctrl_name, attr_name):
                 continue
             cmds.setAttr(ctrl_attribute, attr_val)
-    return True
 
 
 def zero_all_controllers():
     """
     zeroes out all the scene controllers
-    :return: <bool> True for success
     """
     for ctrl_name in get_controllers():
         c_attr = attribute_utils.Attributes(ctrl_name, keyable=True)
         if c_attr.non_zero_attributes():
             c_attr.zero_attributes()
-    return True
 
 
 def get_controller_path(shape_name):
     """
     returns the shape name path
-    :param shape_name:
-    :return:
+    :param shape_name: <str> shape name to concatenate to the folder directory
+    :return: <str> concatenated path name
     """
     return file_utils.concatenate_path(__control_folder_dir__, shape_name)
 
@@ -342,8 +336,8 @@ def get_controller_path(shape_name):
 def find_shape_in_dir(shape_name):
     """
     returns the shape name from the directory
-    :param shape_name:
-    :return:
+    :param shape_name: <str> shape name to find in directory
+    :return: <str> shape name in directory
     """
     shape_name = filter(lambda x: shape_name in file_utils.split_file_name(x), find_controller_shapes())
     return shape_name
@@ -351,9 +345,9 @@ def find_shape_in_dir(shape_name):
 
 def is_shape_in_dir(shape_name):
     """
-    finds if the file name is in the directory.
-    :param shape_name: <str> find this name in the shape directory.
-    :return: <bool> the shape name exists in directory.
+    finds if the file name is in the directory
+    :param shape_name: <str> find this name in the shape directory
+    :return: <bool> the shape name exists in directory
     """
     shape_exists_in_dir = bool(find_shape_in_dir(shape_name))
     return shape_exists_in_dir
@@ -361,9 +355,9 @@ def is_shape_in_dir(shape_name):
 
 def get_controller_data_file(shape_name):
     """
-    get the data from shape name given.
-    :param shape_name:
-    :return:
+    get the data from shape name given
+    :param shape_name: <str> shape name to find in directory
+    :return: <dict> json file dictionary
     """
     if not is_shape_in_dir(shape_name):
         raise IOError("[NoControllerShapesFoundInDir] :: {}".format(shape_name))
@@ -375,18 +369,18 @@ def get_controller_data_file(shape_name):
 
 def find_controller_shapes():
     """
-    finds all the saves controller shapes.
-    :return: <tuple> array of files.
+    finds all the saves controller shapes
+    :return: <tuple> array of files
     """
     return file_utils.list_controller_files()
 
 
 def insert_groups(object_name="", names=()):
     """
-    insert transform groups.
-    :param object_name: <str> insert groups here.
-    :param names: <tuple> array of names to use to create the groups with.
-    :return:
+    insert transform groups
+    :param object_name: <str> insert groups here
+    :param names: <tuple> array of names to use to create the groups with
+    :return: <tuple> groups
     """
     grps = ()
     for name in names:
@@ -396,18 +390,18 @@ def insert_groups(object_name="", names=()):
 
 def get_curve_shape_name(name=""):
     """
-    return the name of the curves.
-    :param name: <str> base name.
-    :return: <str> curve shape name.
+    return the name of the curves
+    :param name: <str> base name
+    :return: <str> curve shape name
     """
     return '{}Shape'.format(name)
 
 
 def get_curve_shapes_in_array(curve_names):
     """
-    get the curve shape names in the array given.
-    :param curve_names:
-    :return:
+    get the curve shape names in the array given
+    :param curve_names: <str> curve shape names
+    :return: <tuple> curve shape names array
     """
     c_shapes = ()
     for c_name in curve_names:
@@ -417,9 +411,9 @@ def get_curve_shapes_in_array(curve_names):
 
 def parent_curve_shapes(curve_names):
     """
-    parents the shapes of the curves to the last curve in the array.
-    :param curve_names: <tuple> array of objects to parent.
-    :return: <str> the name of the curve.
+    parents the shapes of the curves to the last curve in the array
+    :param curve_names: <tuple> array of objects to parent
+    :return: <str> the name of the curve
     """
     curve_name = curve_names[-1]
     if len(curve_names) != 1:
@@ -429,43 +423,60 @@ def parent_curve_shapes(curve_names):
     return curve_name
 
 
-def create_control(shape_name='cube', name='', groups=('grp', CONSTRAINT_GRP)):
+def create_control_with_groups(shape_name='cube', name='', groups=('Grp', CONSTRAINT_GRP)):
     """
-    create a controller object with specified groups.
-    :param shape_name: <str> create this shape.
-    :param name: <str> the name of the controller to name.
-    :param groups: <tuple> array of group suffixes to create.
-    :return: <tuple> group names belonging to this controller name.
+    create a controller object with specified groups
+    :param shape_name: <str> create this shape
+    :param name: <str> the name of the controller to name
+    :param groups: <tuple> array of group suffixes to create
+    :return: <tuple> group names belonging to this controller name
     """
     return_data = {}
     curve_names = create_controller_shape(shape_name)
     curve_name = parent_curve_shapes(curve_names)
-
     # renames the default curve name into specified name string
     if name:
         curve_name = cmds.rename(curve_name, name)
     else:
         curve_name = cmds.rename(curve_name, shape_name)
     return_data['controller'] = curve_name
-    group_names = map(lambda x: '{}_{}'.format(curve_name, x), groups)
-    grps = insert_groups(curve_name, names=group_names)
-    return_data['group_names'] = grps
+    if groups:
+        group_names = map(lambda x: '{}_{}'.format(curve_name, x), groups)
+        grps = insert_groups(curve_name, names=group_names)
+        return_data['group_names'] = grps
     return return_data
+
+
+def create_controller(shape_name='cube', name=''):
+    """
+    create a controller object with specified groups
+    :param shape_name: <str> create this shape
+    :param name: <str> the name of the controller to name
+    :return: <tuple> group names belonging to this controller name
+    """
+    curve_names = create_controller_shape(shape_name)
+    curve_name = parent_curve_shapes(curve_names)
+    # renames the default curve name into specified name string
+    if name:
+        curve_name = cmds.rename(curve_name, name)
+    else:
+        curve_name = cmds.rename(curve_name, shape_name)
+    return curve_name
 
 
 def create_control_at_transform(object_name, name='', shape_name="cube", auto_num=True):
     """
-    creates a controller object at the same space as the transform.
-    :param object_name: <str> object name to use.
-    :param name: <str> the name for the new controller object.
-    :param shape_name: <str> build this shape.
-    :param auto_num: <int> generate a number associated with the name.
-    :return: <str> control grp.
+    creates a controller object at the same space as the transform
+    :param object_name: <str> object name to use
+    :param name: <str> the name for the new controller object
+    :param shape_name: <str> build this shape
+    :param auto_num: <int> generate a number associated with the name
+    :return: <str> control grp
     """
     tfm = transform_utils.Transform(object_name)
     if auto_num:
         name = name_utils.get_start_name_with_num(name)
-    ctrl_data = create_control(shape_name, name=name)
+    ctrl_data = create_controller(shape_name, name=name)
     grps = ctrl_data['group_names']
     cmds.xform(grps[-1], m=tfm.world_matrix(), ws=1)
     return ctrl_data
@@ -473,20 +484,20 @@ def create_control_at_transform(object_name, name='', shape_name="cube", auto_nu
 
 def get_control_name(name, idx=0):
     """
-    return the controller name.
+    return the controller name
     :param name: <str> the base name
-    :param idx: <int> integer index for iteration.
-    :return: <str> controller name.
+    :param idx: <int> integer index for iteration
+    :return: <str> controller name
     """
     return '{}_{}_{}'.format(name, idx, CTRL_SUFFIX)
 
 
 def rename_controls(ctrl_grp, new_name=""):
     """
-    renames the controller from the group name.
-    :param ctrl_grp: <str> controller group.
-    :param new_name: <str> new name used.
-    :return: <tuple> the names of the children created.
+    renames the controller from the group name
+    :param ctrl_grp: <str> controller group
+    :param new_name: <str> new name used
+    :return: <tuple> the names of the children created
     """
     children = object_utils.get_transform_relatives(ctrl_grp, find_child=True, as_strings=True)
     new_children = ()
@@ -499,31 +510,27 @@ def rename_controls(ctrl_grp, new_name=""):
 
 def create_controls(objects_array, name='', shape_name="cube", apply_constraints=None, maintain_offset=False):
     """
-    creates controllers at this transform object name.
-    :param name: <str> create curves with this object name.
-    :param objects_array: <tuple> array of objects.
-    :param shape_name: <str> build this shape.
-    :param apply_constraints: <tuple> array or constraints to create.
-    :param maintain_offset: <bool> create constraints with maintain offset.
-    :return: <tuple> controller data.
+    creates controllers at this transform object name
+    :param name: <str> create curves with this object name
+    :param objects_array: <tuple> array of objects
+    :param shape_name: <str> build this shape
+    :param apply_constraints: <tuple> array or constraints to create
+    :param maintain_offset: <bool> create constraints with maintain offset
+    :return: <tuple> controller data
     """
     if isinstance(objects_array, str):
         objects_array = objects_array,
-
     names = ()
+    groups = ()
     for idx in range(len(objects_array)):
         if not name:
             name = objects_array[idx]
         names += name_utils.get_control_name(name, idx),
-
     # if a string was given to the apply_constraints parameter, convert it to an array
     apply_constraints = object_utils.convert_str_to_list(apply_constraints)
-
-    groups = ()
     # create controllers at the transform provided
     for trfm_name, obj_name in zip(objects_array, names):
         data = create_control_at_transform(trfm_name, obj_name, shape_name, auto_num=False)
-
         if apply_constraints:
             if 'parent' in apply_constraints:
                 constraint_utils.parent_constraint(data['controller'], trfm_name, maintain_offset)
@@ -540,11 +547,11 @@ def create_controls(objects_array, name='', shape_name="cube", apply_constraints
 def create_controllers_with_standard_constraints(name, objects_array=(), shape_name="cube", maintain_offset=False):
     """
     creates controllers with constraints on the objects in the array.
-    :param name: <str>
+    :param name: <str> names to use to create
     :param objects_array: <tuple> (optional) if not given, the objects will depend on your selection.
-    :param shape_name: <str>
-    :param maintain_offset: <bool> create constraints with maintain offset.
-    :return: <tuple> controller groups.
+    :param shape_name: <str> shape name to create on the objects array
+    :param maintain_offset: <bool> create constraints with maintain offset
+    :return: <tuple> controller groups array
     """
     if not objects_array:
         objects_array = object_utils.get_selected_node(single=False)
@@ -557,12 +564,12 @@ def create_controllers_with_standard_constraints(name, objects_array=(), shape_n
 
 def create_controllers_with_point_constraints(name, objects_array=(), shape_name="cube", maintain_offset=False):
     """
-    creates controllers with constraints on the objects in the array.
-    :param name: <str>
-    :param objects_array: <tuple> (optional) if not given, the objects will depend on your selection.
-    :param shape_name: <str>
-    :param maintain_offset: <bool> create constraints with maintain offset.
-    :return: <tuplw>
+    creates controllers with constraints on the objects in the array
+    :param name: <str> names to use to create
+    :param objects_array: <tuple> (optional) if not given, the objects will depend on your selection
+    :param shape_name: <str> shape name to create
+    :param maintain_offset: <bool> create constraints with maintain offset
+    :return: <tuplw> controller groups array
     """
     if not objects_array:
         objects_array = object_utils.get_selected_node(single=False)
@@ -571,3 +578,6 @@ def create_controllers_with_point_constraints(name, objects_array=(), shape_name
         shape_name=shape_name,
         apply_constraints=['point'],
         maintain_offset=maintain_offset)
+
+# ______________________________________________________________________________________________________________________
+# control_shape_utils.py

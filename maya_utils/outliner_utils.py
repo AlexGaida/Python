@@ -7,7 +7,7 @@
 import ast, posixpath
 
 # import local modules
-import file_utils
+from . import file_utils
 
 # import maya modules
 from maya import cmds

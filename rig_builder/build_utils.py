@@ -60,9 +60,14 @@ def get_rig_module(module_name, module_version):
     :param module_version: <str> version
     :return: <str> rig_module_file
     """
+    module_dir_name = None
+    if 'Guide' in module_name:
+        module_dir_name = module_name.split('Guide')[0]
+    if 'Build' in module_name:
+        module_dir_name = module_name.split('Build')[0]
     module_file = module_file_name(module_name, module_version)
     if py_version == 2:
-        fp, pathname, description = imp.find_module(module_file, [rig_modules_dir])
+        fp, pathname, description = imp.find_module(module_file, [rig_modules_dir + '/' + module_dir_name])
         rig_module_name = imp.load_module(module_file, fp, pathname, description)
     elif py_version == 3:
         module_data = importlib.util.find_spec(module_file)
@@ -106,7 +111,7 @@ def get_proper_modules():
     return mod_data
 
 
-def find_files(module_name, by_name):
+def find_files(module_name, by_name=None):
     """
     find the modules by the parameter instruction.
     :param module_name: <str> find the file
