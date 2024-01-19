@@ -214,6 +214,15 @@ def get_nurb_data(curve_name=""):
     return curve_data
 
 
+def create_nurb_from_data(nurb_data, curve_name=""):
+    """
+    creates a nurbsCurve shape from the data provided
+    :return:
+    """
+    points_array = nurb_data['cvs']
+    create_curve_from_points(points_array, degree=2, curve_name=curve_name, equal_cv_positions=True)
+
+
 def set_nurb_shape_color(shape_name="", color='yellow'):
     """
     sets the color on the nurbsCurve shape.
@@ -347,9 +356,7 @@ def get_knot_sequence(ncvs, degree):
 
 
 def get_point_array(points_array, equal_distance=False):
-    """
-    calculate the positional array object.
-
+    """calculate the positional array object.
     :param points_array:
     :param equal_distance: <bool> calculate the equal distance of CV's
     :return:
@@ -368,7 +375,8 @@ def get_point_array(points_array, equal_distance=False):
                 new_vec = math_utils.Vector(cur_v - prev_v)
                 new_vec = math_utils.Vector(new_vec * 0.5)
                 new_vec = math_utils.Vector(prev_v + new_vec)
-                m_array.append(OpenMaya.MPoint(*new_vec.position))
+                position = (new_vec.x, new_vec.y, new_vec.z)
+                m_array.append(OpenMaya.MPoint(*position))
             elif idx == array_length - 1:
                 prev_p, cur_p, next_p = list_scanner(points_array, idx)
                 prev_v = math_utils.Vector(*prev_p)
@@ -377,26 +385,29 @@ def get_point_array(points_array, equal_distance=False):
                 new_vec = math_utils.Vector(new_vec * 0.5)
                 new_vec = math_utils.Vector(prev_v + new_vec)
                 # add two points in the same spot
-                m_array.append(OpenMaya.MPoint(*new_vec.position))
+                m_array.append(OpenMaya.MPoint(new_vec.x, new_vec.y, new_vec.z))
                 m_array.append(OpenMaya.MPoint(*point))
     else:
         for idx, point in enumerate(points_array):
+            print(point)
             if idx == 1:
                 prev_p, cur_p, next_p = list_scanner(points_array, idx)
-                cur_v = math_utils.Vector(*cur_p)
-                prev_v = math_utils.Vector(*prev_p)
-                new_vec = math_utils.Vector(cur_v - prev_v)
-                new_vec = math_utils.Vector(new_vec * 0.5)
-                new_vec = math_utils.Vector(prev_v + new_vec)
-                m_array.append(OpenMaya.MPoint(*new_vec.position))
+                cur_v = OpenMaya.MVector(*cur_p)
+                prev_v = OpenMaya.MVector(*prev_p)
+                new_vec = OpenMaya.MVector(cur_v - prev_v)
+                new_vec = OpenMaya.MVector(new_vec * 0.5)
+                new_vec = OpenMaya.MVector(prev_v + new_vec)
+                position = (new_vec.x, new_vec.y, new_vec.z)
+                m_array.append(OpenMaya.MPoint(*position))
             elif idx == len(points_array) - 1:
                 prev_p, cur_p, next_p = list_scanner(points_array, idx)
-                prev_v = math_utils.Vector(*prev_p)
-                next_v = math_utils.Vector(*next_p)
-                new_vec = math_utils.Vector(next_v - prev_v)
-                new_vec = math_utils.Vector(new_vec * 0.5)
-                new_vec = math_utils.Vector(prev_v + new_vec)
-                m_array.append(OpenMaya.MPoint(*new_vec.position))
+                prev_v = OpenMaya.MVector(*prev_p)
+                next_v = OpenMaya.MVector(*next_p)
+                new_vec = OpenMaya.MVector(next_v - prev_v)
+                new_vec = OpenMaya.MVector(new_vec * 0.5)
+                new_vec = OpenMaya.MVector(prev_v + new_vec)
+                position = (new_vec.x, new_vec.y, new_vec.z)
+                m_array.append(OpenMaya.MPoint(*position))
             m_array.append(OpenMaya.MPoint(*point))
     return m_array
 

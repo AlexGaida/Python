@@ -10,6 +10,7 @@ import json
 import glob
 import ast
 import shutil
+import pickle
 
 # import maya modules
 from maya import cmds
@@ -332,9 +333,68 @@ def concatenate_path(*args):
     return posixpath.join(*args)
 
 
+class Serializer:
+    """Abstract class for use as a base for context-specific data serialization"""
+    def __init__(self):
+        pass
+    def save_file():
+        pass
+    def load_file():
+        pass
+    def insert_data():
+        pass
+    def append_data():
+        pass
+    def delete_file():
+        pass
+
+class DataSerializer(Serializer):
+    """Data Serializer class for the basis of serializing python objects"""
+    READ_DATA = None
+    UPDATE_DATA = None
+    FILE_NAME = ""
+    EXT_NAME = ""
+    SOURCE_DIR_PATH = ""
+    DESTINATION_DIR_PATH = ""
+    def __init__(self, destination_dir_path=None, source_dir_path=None, source_file=None):
+        DataSerializer.SOURCE_DIR_PATH = source_dir_path
+        DataSerializer.DESTINATION_DIR_PATH = destination_dir_path
+        DataSerializer.FILE_NAME = source_file
+        Serializer.__init__(self)
+    def save_file():
+        """save the updated data to a file if changes are made to the original data"""
+        pass
+    def load_file():
+        """load the file and read the contents of the file"""
+        pass
+    def insert_data():
+        """update the contents of the data file"""
+        pass
+    def append_data():
+        """add new contents of data to the file"""
+        pass
+    def delete_data():
+        """deletes the contents of data inside the file"""
+        pass
+
+
+class PickleSerializer(DataSerializer):
+    """Pickle serializer for manipulation of data files."""
+    READ_DATA = {}
+    FILE_NAME = ""
+    UPDATE_DATA = {}
+    EXT_NAME = "json"
+
+class CSVSerializer(DataSerializer):
+    """CSV serializer for manipulation of data files."""
+    READ_DATA = {}
+    FILE_NAME = ""
+    UPDATE_DATA = {}
+    EXT_NAME = "json"
+
 class JSONSerializer:
     """
-    json serializer data class in case we want to manipulate json data
+    json serializer data class in case we want to manipulate json data.
     """
     READ_DATA = {}
     FILE_NAME = ""
