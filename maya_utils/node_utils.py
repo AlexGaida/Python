@@ -5,21 +5,25 @@
 # standard imports
 import ast
 
+# standard imports
+import ast
+
 # import maya modules
 from maya import cmds
 
 # local imports
-import name_utils
-import attribute_utils
-import object_utils
-import outliner_utils
+from . import name_utils
+from . import attribute_utils
+from . import object_utils
+from . import outliner_utils
 import math_utils
+from . import math_utils
 
 # local variables
 naming_conventions = name_utils.get_naming_conventions()
 
 # reloads
-reload(attribute_utils)
+# reload(attribute_utils)
 
 
 def print_node_types():
@@ -45,6 +49,7 @@ class Node(object):
     """
     The main node class for general maya node use
     """
+
     def __init__(self, node="", base_name="", suffix_name="", prefix_name="", index=None,
                  outliner_color_value=None, outliner_color_name=None,
                  letter=None, side_name="", naming_convention="standard", direction_name="", **kwargs):
@@ -165,7 +170,8 @@ class Node(object):
         gets the naming dictionary attribute to the node
         :return: <dict> naming dictionary data
         """
-        naming_dict_str = attribute_utils.attr_get_value(self.node, self.naming_attr)
+        naming_dict_str = attribute_utils.attr_get_value(
+            self.node, self.naming_attr)
         naming_dict = ast.literal_eval(naming_dict_str)
         return naming_dict
 
@@ -177,7 +183,8 @@ class Node(object):
         if color_value:
             self.outliner_color_value = color_value
         if self.outliner_color_value:
-            outliner_utils.set_outliner_color_value(self.node, self.outliner_color_value)
+            outliner_utils.set_outliner_color_value(
+                self.node, self.outliner_color_value)
 
     def set_outliner_color_name(self, color_name=None):
         """
@@ -187,7 +194,8 @@ class Node(object):
         if not color_name:
             self.outliner_color_name = color_name
         if self.outliner_color_name:
-            outliner_utils.set_outliner_color_by_name(self.node, self.outliner_color_name)
+            outliner_utils.set_outliner_color_by_name(
+                self.node, self.outliner_color_name)
 
     def connect_to(self, source_attribute, target_node, target_attribute):
         """
@@ -211,7 +219,8 @@ class Node(object):
         """
         accepted_axes = set(('x', 'y', 'z'))
         skip_axes = set(accepted_axes).difference(skip_axes)
-        point_cnst = cmds.pointConstraint(self.node, target_node, mo=maintain_offset, skip=skip_axes)
+        point_cnst = cmds.pointConstraint(
+            self.node, target_node, mo=maintain_offset, skip=skip_axes)
         return point_cnst
 
     def orient_constrain_to(self, target_node, skip_axes=('x', 'y', 'z'), maintain_offset=False):
@@ -224,7 +233,8 @@ class Node(object):
         """
         accepted_axes = set(('x', 'y', 'z'))
         skip_axes = set(accepted_axes).difference(skip_axes)
-        orient_cnst = cmds.orientConstraint(self.node, target_node, mo=maintain_offset, skip=skip_axes)
+        orient_cnst = cmds.orientConstraint(
+            self.node, target_node, mo=maintain_offset, skip=skip_axes)
         return orient_cnst
 
     def parent_constrain_to(self, target_node, maintain_offset=False):
@@ -234,7 +244,8 @@ class Node(object):
         :param maintain_offset: <bool> constrain with offset
         :return: <str> parent constraint node
         """
-        parent_cnst = cmds.parentConstraint(self.node, target_node, mo=maintain_offset)
+        parent_cnst = cmds.parentConstraint(
+            self.node, target_node, mo=maintain_offset)
         return parent_cnst
 
     def scale_constrain_to(self, target_node, skip_axes=('x', 'y', 'z'), maintain_offset=False):
@@ -247,7 +258,8 @@ class Node(object):
         """
         accepted_axes = set(('x', 'y', 'z'))
         skip_axes = set(accepted_axes).difference(skip_axes)
-        scale_cnst = cmds.scaleConstraint(self.node, target_node, mo=maintain_offset, skip=skip_axes)
+        scale_cnst = cmds.scaleConstraint(
+            self.node, target_node, mo=maintain_offset, skip=skip_axes)
         return scale_cnst
 
     def aim_constrain_to(self, target_node, skip_axes=('x', 'y', 'z'), world_up_type="scene",
@@ -295,7 +307,8 @@ class Node(object):
         """
         sides = ('right', 'left', 'center')
         if self.side_name and self.side_name not in sides:
-            raise ValueError("[SideNameInvalid] :: Incorrect side name provided.")
+            raise ValueError(
+                "[SideNameInvalid] :: Incorrect side name provided.")
         side_name = self.naming_convention[self.side_name]
         return side_name
 
@@ -350,7 +363,8 @@ class Node(object):
         :param node_type: <str> mandatory, type of node to look for
         :return: <list> found connections
         """
-        find_types = cmds.findType(self.node, type=node_type, deep=deep, exact=exact, forward=forward)
+        find_types = cmds.findType(
+            self.node, type=node_type, deep=deep, exact=exact, forward=forward)
         return find_types
 
     def get_world_matrix(self):

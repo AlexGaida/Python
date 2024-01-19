@@ -19,7 +19,7 @@ __verbosity__ = 0
 __m_util = OpenMaya.MScriptUtil()
 
 
-def connect_anim(source_object_name, source_attribute_name, dest_object_name, dest_attribute_name):
+def connect_anim(source_object_name, source_attribute_name, dest_object_name, dest_attribute_name, driver_value=1.0):
     """
     connects an attribute using set driven keys.
     benefit: set driven keyframes can be blended into a single driven attribute.
@@ -27,13 +27,14 @@ def connect_anim(source_object_name, source_attribute_name, dest_object_name, de
         driver_attr='',
         driven_node='',
         driven_attr='',
-        driven_value=None,
-        driver_value=None,
+        driver_value=1.0,
     """
     set_driven_key(source_object_name, source_attribute_name, dest_object_name, dest_attribute_name,
                    driven_value=0.0, driver_value=0.0)
     set_driven_key(source_object_name, source_attribute_name, dest_object_name, dest_attribute_name,
-                   driven_value=1.0, driver_value=1.0)
+                   driven_value=1.0, driver_value=driver_value)
+    # ...
+    
     return True
 
 

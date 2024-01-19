@@ -5,10 +5,6 @@
 from maya import OpenMaya
 from maya import cmds
 
-# import local modules
-import object_utils
-import transform_utils
-
 
 def get_attribute_query(object_name, attribute_name):
     """
@@ -232,6 +228,33 @@ def attr_split(a_name):
     """
     return tuple(a_name.split('.'))
 
+def get_m_obj(object_str):
+    """
+    get MDagPath from MObject.
+    :param object_str: <str> get the MObject from this parameter given.
+    :return: <OpenMaya.MObject> the maya object.
+    """
+    if isinstance(object_str, (unicode, str)):
+        try:
+            om_sel = OpenMaya.MSelectionList()
+            om_sel.add(object_str)
+            node = OpenMaya.MObject()
+            om_sel.getDependNode(0, node)
+            return node
+        except:
+            raise RuntimeError('[Get MObject] :: failed on {}'.format(object_str))
+    return object_str
+
+def get_mfn_obj(m_obj=None):
+    """
+    returns a function object node.
+    :param m_obj: <MObject> m object node.
+    :return: <MFnDependencyNode>
+    """
+    if isinstance(m_obj, basestring):
+        return OpenMaya.MFnDependencyNode(get_m_obj(m_obj))
+    elif isinstance(m_obj, OpenMaya.MObject):
+        return OpenMaya.MFnDependencyNode(m_obj)
 
 class Attributes:
     MAYA_STR_OBJECT = None
@@ -261,8 +284,8 @@ class Attributes:
                           OpenMaya.MFnNumericData.kAddr)
 
     def __init__(self, maya_node="", all_attrs=False, keyable=False, custom=False, connected=False):
-        self.MAYA_M_OBJECT = object_utils.get_m_obj(maya_node)
-        self.MAYA_MFN_OBJECT = object_utils.get_mfn_obj(maya_node)
+        self.MAYA_M_OBJECT = get_m_obj(maya_node)
+        self.MAYA_MFN_OBJECT = get_mfn_obj(maya_node)
         self.OBJECT_NODE_TYPE = self.MAYA_MFN_OBJECT.typeName()
         self.MAYA_STR_OBJECT = self.MAYA_MFN_OBJECT.name()
         self.attr_data = {}

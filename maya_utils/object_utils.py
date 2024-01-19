@@ -27,14 +27,14 @@ line = re.sub(r'''
 # import standard modules
 import re
 import collections
+import string
+
 
 # import maya modules
 from maya import cmds
 from maya import OpenMaya as OpenMaya
 from maya import OpenMayaAnim as OpenMayaAnim
 
-# import local modules
-import attribute_utils
 
 # define local variables
 node_types = {
@@ -148,14 +148,13 @@ def get_dag(object_name="", shape=False):
     elif shape:
         shapes_len = get_shapes_len(get_m_obj(object_name))
         if shapes_len > 0:
-            for i in xrange(shapes_len):
+            for i in range(shapes_len):
                 m_sel.add(get_shape_name(object_name)[i])
         elif not shapes_len and not has_fn(get_shape_name(object_name), 'transform'):
             m_sel.add(object_name)
     m_dag = OpenMaya.MDagPath()
     m_sel.getDagPath(0, m_dag)
     return m_dag
-
 
 def get_selection_iter():
     """
@@ -188,13 +187,11 @@ def get_m_selection(objects_array=(), as_strings=False):
         OpenMaya.MGlobal.getActiveSelectionList(m_list)
     elif objects_array:
         map(m_list.add, objects_array)
-    OpenMaya.MItSelectionList(m_list)
     if as_strings:
         m_string_array = list()
         m_list.getSelectionStrings(m_string_array)
         return m_string_array
     return m_list
-
 
 def get_m_selection_iter(objects_array=()):
     """
@@ -205,10 +202,11 @@ def get_m_selection_iter(objects_array=()):
     m_list = OpenMaya.MSelectionList()
     if not objects_array:
         OpenMaya.MGlobal.getActiveSelectionList(m_list)
-    elif objects_array:
-        map(m_list.add, objects_array)
-    return OpenMaya.MItSelectionList(m_list, OpenMaya.MFn.kInvalid)
-
+    else:
+        for obj_name in objects_array:
+            m_list.add(obj_name)
+    mIt_list = OpenMaya.MItSelectionList(m_list)
+    return mIt_list
 
 def iterate_items(objects_array=()):
     """
@@ -1080,9 +1078,12 @@ def has_fn(item_name, shape_type):
     :param shape_type: <str>, <OpenMaya.MFn.kType> the type id.
     :return: <bool> True for type is match. <bool> for no match.
     """
-    if isinstance(item_name, (str, unicode)):
-        item_name = get_m_obj(item_name)
-    if isinstance(shape_type, str):
+    try:
+        base_strings = (str, unicode)
+    except NameError:
+        base_strings = str,
+    item_name = get_m_obj(item_name)
+    if isinstance(shape_type, base_strings):
         if shape_type not in node_types:
             return False
         return item_name.hasFn(node_types[shape_type])
@@ -1402,9 +1403,10 @@ def get_connected_nodes(object_name="", find_node_type='animCurve',
         cur_fn = OpenMaya.MFnDependencyNode(cur_item)
         cur_name = cur_fn.name()
         if find_attr:
-            attrs = attribute_utils.Attributes(cur_name, custom=1)
+            # attrs = attribute_utils.Attributes(cur_name, custom=1)
+            attrs = cmds.listAttr(cur_name)
             if attrs:
-                find_relevant_attr = filter(lambda x: find_attr in x, attrs.keys)
+                find_relevant_attr = filter(lambda x: find_attr in x, attrs)
                 if find_relevant_attr:
                     if as_strings:
                         if with_shape:
@@ -1493,7 +1495,11 @@ def get_m_obj(object_str):
     :param object_str: <str> get the MObject from this parameter given.
     :return: <OpenMaya.MObject> the maya object.
     """
-    if isinstance(object_str, (unicode, str)):
+    try:
+        string_array = (str, unicode)
+    except NameError:
+        string_array = str,
+    if isinstance(object_str, string_array):
         try:
             om_sel = OpenMaya.MSelectionList()
             om_sel.add(object_str)
@@ -1741,8 +1747,11 @@ def zero_transforms(object_name=""):
     """
     if not object_name:
         return ValueError("[ZeroTransforms] :: Please provide object_name parameter.")
-    keyable_attrs = attribute_utils.Attributes(object_name, keyable=1, custom=0)
-    keyable_attrs.zero_attributes()
+    # keyable_attrs = attribute_utils.Attributes(object_name, keyable=1, custom=0)
+    keyable_attrs = cmds.listAttr(object_name, k=True, ud=False)
+    # keyable_attrs.zero_attributes()
+    for key_attr in keyable_attrs:
+        cmds.setAttr(object_name + '.' + key_attr, 0)
     return True
 
 

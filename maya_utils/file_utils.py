@@ -394,7 +394,7 @@ class CSVSerializer(DataSerializer):
 
 class JSONSerializer:
     """
-    json serializer data class in case we want to manipulate json data.
+    json serializer data class in case we want to manipulate json data
     """
     READ_DATA = {}
     FILE_NAME = ""

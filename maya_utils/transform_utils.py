@@ -9,7 +9,7 @@ from maya import OpenMaya
 from maya import cmds
 
 # import local modules
-import object_utils
+from . import object_utils
 
 
 def set_to_object_center(object_name, target_name):

@@ -6,11 +6,10 @@ from maya import OpenMaya
 from maya import cmds
 
 # import local modules
-import name_utils
-import object_utils
-import math_utils
-import transform_utils
-import attribute_utils
+from . import object_utils
+from . import math_utils
+from . import transform_utils
+from . import attribute_utils
 
 # define local variables
 __shape_name__ = 'nurbsCurve'

@@ -2,7 +2,9 @@
     name_utils module for dealing anything related with naming
 """
 # import standard modules
-import re, json, posixpath
+import re
+import json
+import posixpath
 
 # import maya modules
 from maya import cmds
@@ -30,6 +32,7 @@ def get_naming_conventions():
         names_data = json.load(f)
     return names_data
 
+
 naming_conventions = get_naming_conventions()
 
 
@@ -40,6 +43,7 @@ def incorporate_standard_naming_conventions():
     globs = globals()
     for k, v in naming_conventions["standard"].items():
         globs[k] = v
+
 
 incorporate_standard_naming_conventions()
 
@@ -85,6 +89,8 @@ def get_name(name, index=None, letter="", side_name="", suffix_name="",
     """
     if not naming_convention:
         naming_convention = 'standard'
+    if not naming_convention:
+        naming_convention = 'standard'
     naming_plan = get_naming_plan(convention=naming_convention)
     naming_plan = naming_plan.replace("{base_name}", name)
     if index is not None:
@@ -93,16 +99,19 @@ def get_name(name, index=None, letter="", side_name="", suffix_name="",
         naming_plan = naming_plan.replace("{index}", "")
     if letter:
         letter = letter.upper()
+        letter = letter.upper()
         naming_plan = naming_plan.replace("{letter}", letter)
     else:
         naming_plan = naming_plan.replace("{letter}", "")
     if side_name:
-        side_name = get_classification_name(side_name, convention=naming_convention)
+        side_name = get_classification_name(
+            side_name, convention=naming_convention)
         naming_plan = naming_plan.replace("{side_name}", side_name)
     else:
         naming_plan = naming_plan.replace("{side_name}", "")
     if suffix_name:
-        suffix_name = get_classification_name(suffix_name, convention=naming_convention)
+        suffix_name = get_classification_name(
+            suffix_name, convention=naming_convention)
         naming_plan = naming_plan.replace("{suffix_name}", suffix_name)
     else:
         naming_plan = naming_plan.replace("{suffix_name}", "")
@@ -115,9 +124,69 @@ def get_name(name, index=None, letter="", side_name="", suffix_name="",
     else:
         naming_plan = naming_plan.replace("{direction_name}", "")
     naming_plan = naming_plan.replace("___", "_")
+    naming_plan = naming_plan.replace("___", "_")
     naming_plan = naming_plan.replace("__", "_")
     naming_plan = re.sub(r'^_', '', naming_plan)
+    naming_plan = re.sub(r'^_', '', naming_plan)
     return naming_plan
+
+
+def deconstruct_name(name_string, naming_convention=None):
+    """
+    deconstruct the name.
+    :param name_string: <str> name string deconstruction
+    :return: <str>
+    """
+    naming_plan = get_naming_plan(convention=naming_convention)
+    return True
+
+
+def get_letter_string(name_str):
+    """
+    Get letter string from the name argument provided.
+    :return: <str> letter string.
+    """
+    split_names = name_str.split('_')
+    for split_name in split_names:
+        if len(split_name) == 1:
+            return split_name
+    return ''
+
+
+def get_side_string(name_str):
+    """
+    Get side string
+    :param name_str:
+    :return: <str> the the side name string.
+    """
+    left_name = get_classification_name('left')
+    right_name = get_classification_name('right')
+    center_name = get_classification_name('center')
+    split_names = name_str.split('_')
+    for split_name in split_names:
+        if split_name.startswith(left_name + '_'):
+            return split_name
+        elif split_name.startswith(right_name + '_'):
+            return split_name
+        elif split_name.startswith(center_name + '_'):
+            return split_name
+    return True
+
+
+def get_base_name_string(name_str, side_string=None):
+    """
+    Gets the base name
+    :param name_str:
+    :return: <str> the base name string.
+    """
+    if not side_string:
+        side_string = get_side_string(name_str)
+    if side_string:
+        side_string = get_classification_name(side_string)
+    name_tokens = name_str.split('_')
+    side_idx = name_tokens.index(side_string)
+    base_name = name_tokens[side_idx + 1]
+    return base_name
 
 
 def deconstruct_name(name_string, naming_convention=None):
@@ -269,7 +338,8 @@ def get_bound_name_array(prefix_name="", name="", length=1):
     start_name = get_prefix_name(name, prefix_name=prefix_name)
     bind_jnt_suffix_name = get_classification_name('bound_joint')
     for index in range(length):
-        bound_names += '{name}_{idx}_{suffix}'.format(name=start_name, idx=index, suffix=bind_jnt_suffix_name),
+        bound_names += '{name}_{idx}_{suffix}'.format(
+            name=start_name, idx=index, suffix=bind_jnt_suffix_name),
     return bound_names
 
 
@@ -288,7 +358,8 @@ def get_suffix_name_array(prefix_name="", name="", suffix_name="", length=1):
     if joint_suffix_name not in suffix_name:
         suffix_name += '_{}'.format(joint_suffix_name)
     for index in range(length):
-        bound_names += '{name}_{idx}_{suffix}'.format(name=start_name, idx=index, suffix=suffix_name),
+        bound_names += '{name}_{idx}_{suffix}'.format(
+            name=start_name, idx=index, suffix=suffix_name),
     return bound_names
 
 
@@ -319,7 +390,8 @@ def get_guide_name_array(prefix_name="", name="", length=1):
     start_name = get_prefix_name(name, prefix_name=prefix_name)
     guide_joint_suffix_name = get_classification_name('guide_joint')
     for index in range(length):
-        guide_names += '{name}_{idx}__{suffix}'.format(name=start_name, idx=index, suffix=guide_joint_suffix_name),
+        guide_names += '{name}_{idx}__{suffix}'.format(
+            name=start_name, idx=index, suffix=guide_joint_suffix_name),
     return guide_names
 
 
@@ -406,9 +478,12 @@ def search_replace_objects_hierarchy(selected_objects, search_str="", replace_st
     """
     named_items = ()
     for obj_name in selected_objects:
-        hierarchy_name_array = object_utils.get_transform_relatives(obj_name, find_child=True, as_strings=True)
-        replaced_names = search_replace_names(hierarchy_name_array, search_str, replace_str)
-        named_items += tuple(map(cmds.rename, zip(hierarchy_name_array, replaced_names)))
+        hierarchy_name_array = object_utils.get_transform_relatives(
+            obj_name, find_child=True, as_strings=True)
+        replaced_names = search_replace_names(
+            hierarchy_name_array, search_str, replace_str)
+        named_items += tuple(map(cmds.rename,
+                             zip(hierarchy_name_array, replaced_names)))
     return named_items
 
 

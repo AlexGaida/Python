@@ -7,7 +7,11 @@ joint_utils.py manipulating and retrieving information from joints.
 from maya import cmds, OpenMaya
 
 # import local modules
-from maya_utils import name_utils, node_utils, object_utils, transform_utils, curve_utils
+from maya_utils import name_utils
+from maya_utils import node_utils
+from maya_utils import object_utils
+from maya_utils import transform_utils
+from maya_utils import curve_utils
 
 # define local variables
 BND_JNT_SUFFIX = name_utils.get_classification_name('bound_joint')
@@ -111,7 +115,8 @@ def set_joint_labels():
             side = 'r'
             cmds.setAttr(j_name + ".side", 2)
         if side:
-            cmds.setAttr(j_name+'.otherType', j_name.replace(side, ''), type='string')
+            cmds.setAttr(j_name+'.otherType',
+                         j_name.replace(side, ''), type='string')
     return True
 
 
@@ -153,7 +158,8 @@ def create_joints(objects_array, name, bind_name=False):
     :param bind_name: <bool> create bind joint name.
     :return: <tuple> array of joints.
     """
-    names = name_utils.get_joint_name_array(name, length=len(objects_array), bind_name=bind_name)
+    names = name_utils.get_joint_name_array(
+        name, length=len(objects_array), bind_name=bind_name)
     joints = ()
     for trfm_name, obj_name in zip(objects_array, names):
         joints += create_joint_at_transform(trfm_name, obj_name),
@@ -230,7 +236,8 @@ def get_joint_hierarchy_positions(base_joint_name=""):
     joint_hierarchy = get_joint_hierarchy(base_joint_name)
     positions_array = ()
     for jnt_name in joint_hierarchy:
-        positions_array += transform_utils.Transform(jnt_name).get_world_translation_list(),
+        positions_array += transform_utils.Transform(
+            jnt_name).get_world_translation_list(),
     return positions_array
 
 
@@ -243,7 +250,8 @@ def create_dynamic_chain(base_joint_name="", name="", curve_degree=2):
     joint_hierarchy = get_joint_hierarchy(base_joint_name)
     points_array = get_joint_hierarchy_positions(base_joint_name)
     print(points_array)
-    curve_name = curve_utils.create_curve_from_points(points_array, degree=curve_degree, curve_name=name)
+    curve_name = curve_utils.create_curve_from_points(
+        points_array, degree=curve_degree, curve_name=name)
     # cmds.select(curve_name)
     # make the curve name dynamic
     # mel.eval('makeCurvesDynamic 2 { "1", "0", "1", "1", "0"};')
@@ -386,7 +394,8 @@ def create_joint(name, prefix_name="",
             jnt_objects += object_utils.get_m_obj(new_name),
         # snap the joint to the transform
         if use_transform and object_utils.is_exists(new_name):
-            object_utils.snap_to_transform(new_name, use_transform, matrix=True)
+            object_utils.snap_to_transform(
+                new_name, use_transform, matrix=True)
         # set the position of the newly created joint
         if use_position:
             if isinstance(use_position[0], (int, float)):
@@ -434,7 +443,8 @@ def create_joints_from_arrays(positions, names, parented=False):
     idx = 0
     joints = ()
     for position, name in zip(positions, names):
-        joints += create_joint(name, use_position=position, use_name=True, as_strings=True)[0],
+        joints += create_joint(name, use_position=position,
+                               use_name=True, as_strings=True)[0],
         if parented and idx > 0:
             # parent the last joint created to the newly created joint
             cmds.parent(joints[idx], joints[idx - 1])
@@ -466,7 +476,8 @@ def freeze_transformations(object_name, translate=True, rotate=True, scale=True)
     :param scale: <bool> freeze the scale on this transform.
     :return: <bool> True for success.
     """
-    cmds.makeIdentity(object_name, apply=1, t=translate, r=rotate, s=scale, n=0, pn=1)
+    cmds.makeIdentity(object_name, apply=1, t=translate,
+                      r=rotate, s=scale, n=0, pn=1)
     return True
 
 
@@ -501,7 +512,8 @@ def orient_joints(joint_array, primary_axis='x'):
             return cmds.joint(jnt_name, e=True, oj='yzx', secondaryAxisOrient='yup', ch=True, zso=True)
         if primary_axis == 'z':
             return cmds.joint(jnt_name, e=True, oj='zxy', secondaryAxisOrient='yup', ch=True, zso=True)
-    raise ValueError("[OrientJoints] :: You must specify the axis of orientation: x, y or z.")
+    raise ValueError(
+        "[OrientJoints] :: You must specify the axis of orientation: x, y or z.")
 
 
 def unlock_joints(jnt_suffix=''):
@@ -539,7 +551,8 @@ class Joint(node_utils.Node):
                 self.dag_mod.renameNode(jnt_obj, self.name)
                 self.dag_mod.doIt()
             else:
-                cmds.select(d=True)  # deselect first before creating any joints
+                # deselect first before creating any joints
+                cmds.select(d=True)
                 cmds.joint(name=self.name)
 
     def unlock(self):
@@ -559,11 +572,14 @@ class Joint(node_utils.Node):
         :param axis: <str> joint orient axis
         """
         if axis == 'x':
-            cmds.joint(self.node, e=True, oj='xyz', secondaryAxisOrient='yup', ch=True, zso=True)
+            cmds.joint(self.node, e=True, oj='xyz',
+                       secondaryAxisOrient='yup', ch=True, zso=True)
         if axis == 'y':
-            cmds.joint(self.node, e=True, oj='yzx', secondaryAxisOrient='yup', ch=True, zso=True)
+            cmds.joint(self.node, e=True, oj='yzx',
+                       secondaryAxisOrient='yup', ch=True, zso=True)
         if axis == 'z':
-            cmds.joint(self.node, e=True, oj='zxy', secondaryAxisOrient='yup', ch=True, zso=True)
+            cmds.joint(self.node, e=True, oj='zxy',
+                       secondaryAxisOrient='yup', ch=True, zso=True)
 
     def zero_joint_orients(self):
         """

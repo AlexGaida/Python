@@ -3,8 +3,6 @@ Querying, getting and setting skincluster information.
 """
 # import standard modules
 import time
-import threading
-from Queue import Queue
 
 # import maya modules
 from maya import cmds
@@ -20,7 +18,6 @@ from maya_utils import mesh_utils
 # define private variables
 __version__ = "1.0.0"
 
-
 def get_mesh_shape(mesh_name=""):
     """
     returns the mesh shape object name from the mesh transform name provided.
@@ -28,7 +25,6 @@ def get_mesh_shape(mesh_name=""):
     :return: <str> mesh shape name.
     """
     return object_utils.get_shape_name(mesh_name, 'mesh')[0]
-
 
 def get_connected_skin_cluster(shape_name=""):
     """
@@ -43,7 +39,6 @@ def get_connected_skin_cluster(shape_name=""):
         up_stream=True,
         as_strings=True)
 
-
 def get_attached_skincluster(mesh_name=""):
     """
     grabs the skin cluster node from the mesh transform provided.
@@ -54,7 +49,6 @@ def get_attached_skincluster(mesh_name=""):
         get_mesh_shape(
             mesh_name)
     )
-
 
 def get_mesh_from_skin(skin_name=""):
     """
@@ -67,7 +61,6 @@ def get_mesh_from_skin(skin_name=""):
                                                 up_stream=False, depth=True)
     return object_utils.get_m_object_name(mesh_obj[0])
 
-
 def get_mesh_fn_from_skin(skin_name=""):
     """
 
@@ -77,7 +70,6 @@ def get_mesh_fn_from_skin(skin_name=""):
     return OpenMaya.MFnMesh(object_utils.get_connected_nodes(skin_name, find_node_type='mesh',
                                                              up_stream=False, depth=True)[0])
 
-
 def get_mesh_dag_from_skin(skin_name=""):
     """
     return the mesh dag path from skin cluster name provided.
@@ -85,7 +77,6 @@ def get_mesh_dag_from_skin(skin_name=""):
     :return:
     """
     return object_utils.get_m_dag(get_mesh_from_skin(skin_name))
-
 
 def restore_dag_pose(influences=()):
     """
@@ -99,7 +90,6 @@ def restore_dag_pose(influences=()):
         return False
     return True
 
-
 def get_existing_influences(skin_name=""):
     """
     find existing influences acting on the skin cluster.
@@ -107,7 +97,6 @@ def get_existing_influences(skin_name=""):
     :return: <list> skin influences.
     """
     return cmds.ls(cmds.skinCluster(skin_name, query=True, weightedInfluence=True), l=True)
-
 
 def add_influences(skin_name="", influences=[]):
     """
@@ -129,7 +118,6 @@ def add_influences(skin_name="", influences=[]):
         )
     return True
 
-
 def copy_skin_weights(source_skin="", target_skin=""):
     """
     copy the skin weights from one to another.
@@ -145,7 +133,6 @@ def copy_skin_weights(source_skin="", target_skin=""):
                          normalize=True)
     return True
 
-
 def get_skin_name(object_name=""):
     """
     creates a new skin cluster name from the object provided.
@@ -153,7 +140,6 @@ def get_skin_name(object_name=""):
     :return: <str> new skin name.
     """
     return object_name + '_Skin'
-
 
 def apply_skin(object_name="", influences=(), name=""):
     """
@@ -163,6 +149,8 @@ def apply_skin(object_name="", influences=(), name=""):
     :param name: <str> name of the skin cluster created.
     :return: <list> skinCluster node.
     """
+    if not isinstance(influences, (list, tuple, set)):
+        influences = list(influences)
     return cmds.skinCluster(influences,
                             object_name,
                             name=name,
@@ -170,7 +158,6 @@ def apply_skin(object_name="", influences=(), name=""):
                             skinMethod=0,
                             dropoffRate=3.5,
                             obeyMaxInfluences=1)
-
 
 def create_skin_cluster(mesh_name="", influences=[]):
     """
@@ -184,7 +171,6 @@ def create_skin_cluster(mesh_name="", influences=[]):
         return apply_skin(mesh_name, influences, name=get_skin_name(mesh_name))
     return skin_name
 
-
 def copy_skincluster(source_mesh="", target_mesh=""):
     """
     copies the skincluster from the source skin name, to the target skin name.
@@ -195,10 +181,8 @@ def copy_skincluster(source_mesh="", target_mesh=""):
     # define variables
     source_skin = get_attached_skincluster(source_mesh)
     source_influences = get_existing_influences(source_skin)
-
     if not source_skin:
         return False
-
     target_skin = get_attached_skincluster(target_mesh)
     if target_skin:
         add_influences(target_skin, source_influences)
@@ -207,7 +191,6 @@ def copy_skincluster(source_mesh="", target_mesh=""):
     # copy the skins
     copy_skin_weights(source_skin[0], target_skin[0])
     return True
-
 
 def skin_as():
     """
@@ -219,7 +202,6 @@ def skin_as():
     for dest_obj in destination_objects:
         copy_skincluster(source_object_name, dest_obj)
     return True
-
 
 def get_skin_fn(skin_name=""):
     """
@@ -236,7 +218,6 @@ def get_skin_fn(skin_name=""):
     m_selection.getDependNode(0, m_cluster)
     return OpenMayaAnim.MFnSkinCluster(m_cluster)
 
-
 def get_all_skin_nodes():
     """
     Given a mesh name, find the skinCluster node connection.
@@ -249,7 +230,6 @@ def get_all_skin_nodes():
         if OpenMaya.MFn.kSkin == m_obj.apiType():
             return m_dag_fn.fullPathName()
         m_iterator.next()
-
 
 def get_skin_cluster(source_obj=None):
     """
@@ -265,7 +245,6 @@ def get_skin_cluster(source_obj=None):
         if skin_obj:
             return OpenMayaAnim.MFnSkinCluster(skin_obj[0]), OpenMaya.MFnDependencyNode(skin_obj[0]).name()
     return False, False
-
 
 def get_skin_cluster_old(source_obj=None):
     """
@@ -286,7 +265,6 @@ def get_skin_cluster_old(source_obj=None):
         m_it_graph.next()
     return False, False
 
-
 def get_m_plug(in_obj=None, in_plug_name=None):
     """
     Gets a node's plug as an MPlug.
@@ -297,7 +275,6 @@ def get_m_plug(in_obj=None, in_plug_name=None):
         return False
     depend_fn = OpenMaya.MFnDependencyNode(in_obj)
     return depend_fn.findPlug(in_plug_name)
-
 
 def connect(source_obj, source_plug_name, destination_obj, destination_plug_name):
     """
@@ -312,7 +289,6 @@ def connect(source_obj, source_plug_name, destination_obj, destination_plug_name
     mg_mod = OpenMaya.MDGModifier()
     mg_mod.connect(source_plug, destination_plug)
     mg_mod.doIt()
-
 
 def get_influences(skin_name="", full_names=False):
     """
@@ -337,7 +313,6 @@ def get_influences(skin_name="", full_names=False):
         influences += inf_path,
     return ids, influences,
 
-
 def unlock_influences(skin_name=""):
     """
     unlocks all influences
@@ -348,7 +323,6 @@ def unlock_influences(skin_name=""):
         cmds.setAttr('{}.liw'.format(inf), 0)
     return True
 
-
 def get_skin_data(mesh_obj=None, full_names=True):
     """
     Returns a dictionary of skinCluster influences and weights.
@@ -358,14 +332,11 @@ def get_skin_data(mesh_obj=None, full_names=True):
     """
     weights = {}
     skin_fn, skin_name = get_skin_cluster(mesh_obj)
-
     if not all((skin_fn, skin_name)):
         return False
-
     # get the MDagPath for all influence
     inf_dag_arr = OpenMaya.MDagPathArray()
     skin_fn.influenceObjects(inf_dag_arr)
-
     # create a dictionary whose key is the MPlug indice id and
     # whose value is the influence list id
     inf_ids = {}
@@ -380,14 +351,12 @@ def get_skin_data(mesh_obj=None, full_names=True):
         inf_ids[inf_id] = x
         influences.append(inf_path)
     weights["influences"] = influences
-
     # get the MPlug for the weightList and weights attributes
     weight_list_plug = skin_fn.findPlug('weightList')
     weights_plug = skin_fn.findPlug('weights')
     weight_list_attr_plug = weight_list_plug.attribute()
     weights_attr = weights_plug.attribute()
     weight_int_arr = OpenMaya.MIntArray()
-
     # the weights are stored in dictionary, the key is the vert id,
     # the value is another dictionary whose key is the influence id and
     # value is the weight for that influence
@@ -396,16 +365,13 @@ def get_skin_data(mesh_obj=None, full_names=True):
         weight_values = {}
         # tell the weights attribute which vertex id it represents
         weights_plug.selectAncestorLogicalIndex(v_id, weight_list_attr_plug)
-
         # get the indicies of all non-zero weights for this vertex
         weights_plug.getExistingArrayAttributeIndices(weight_int_arr)
-
         # create a copy of the current weights_plug
         inf_plug = OpenMaya.MPlug(weights_plug)
         for inf_id in weight_int_arr:
             # tell the inf_plug it represents the current influence id
             inf_plug.selectAncestorLogicalIndex(inf_id, weights_attr)
-
             # add this influence and its weight to this verts weights
             try:
                 weight_values[inf_ids[inf_id]] = inf_plug.asDouble()
@@ -415,7 +381,6 @@ def get_skin_data(mesh_obj=None, full_names=True):
         weights["weights"][v_id] = weight_values
     return weights
 
-
 def normalize_weights(skin_name):
     """
     normalizes skin weights.
@@ -423,7 +388,6 @@ def normalize_weights(skin_name):
     :return:
     """
     return cmds.skinCluster(skin_name, e=True, fnw=True)
-
 
 def prune_weights(skin_name="", mesh_name="", influences=()):
     """
@@ -433,17 +397,14 @@ def prune_weights(skin_name="", mesh_name="", influences=()):
     # unlock influences used by skincluster
     for inf in influences:
         cmds.setAttr('%s.liw' % inf, 0)
-
     # normalize needs turned off for the prune to work
     skinNorm = cmds.getAttr('%s.normalizeWeights' % skin_name)
     if skinNorm != 0:
         cmds.setAttr('%s.normalizeWeights' % skin_name, 0)
     cmds.skinPercent(skin_name, mesh_name, nrm=False, prw=100)
-
     # restore normalize setting
     if skinNorm != 0:
         cmds.setAttr('%s.normalizeWeights' % skin_name, skinNorm)
-
 
 def check_namespace(name=""):
     """
@@ -455,7 +416,6 @@ def check_namespace(name=""):
         return '-'.join(name.split(':'))
     return name
 
-
 def check_hyphen(name=""):
     """
     replaces the hyphen with a colon.
@@ -465,7 +425,6 @@ def check_hyphen(name=""):
     if '-' in name:
         return ':'.join(name.split(':'))
     return name
-
 
 def save_to_file(mesh_obj='', file_dir=""):
     """
@@ -477,14 +436,13 @@ def save_to_file(mesh_obj='', file_dir=""):
         mesh_obj = object_utils.get_selected_node()
     data = get_skin_data(mesh_obj)
     file_name = check_namespace(mesh_obj)
-    if file_dir:
+    if not file_dir:
         file_dir = file_utils.get_maya_workspace_data_dir()
     skin_file = file_utils.get_path(file_dir, file_name)
     ft = file_utils.JSONSerializer(skin_file, data)
     ft.write()
     print("Weights saved: {}\n".format(ft.FILE_NAME))
     return skin_file
-
 
 def save_selected_objects_to_file():
     """
@@ -495,7 +453,6 @@ def save_selected_objects_to_file():
         save_to_file(node)
     return True
 
-
 def load_selected_objects_from_file():
     """
     save the mesh objects' skins to directory.
@@ -505,7 +462,6 @@ def load_selected_objects_from_file():
         data = read_from_file(node)
         set_skin_data(node, data)
     return True
-
 
 def read_from_file(mesh_obj, file_dir=""):
     """
@@ -521,6 +477,18 @@ def read_from_file(mesh_obj, file_dir=""):
     ft = file_utils.JSONSerializer(skin_file)
     return ft.read()
 
+def verify_influences(weights={}):
+    """
+    verifies the influences and creates new joints to attach skincluster to.
+    :param weights: <dict> weight dictionary data.
+    :return: <list> created new joints.
+    """
+    new_inf = ()
+    for influence in weights['influences']:
+        if not cmds.objExists(influence):
+            cmds.createNode('joint', name=influence)
+            new_inf += influence,
+    return new_inf
 
 def set_skin_data(mesh_obj=None, weights={}):
     """
@@ -529,6 +497,9 @@ def set_skin_data(mesh_obj=None, weights={}):
     :param weights: <dict> weight dictionary data.
     :return: <bool> True for success.  <bool> False for failure.
     """
+    # verify influences and create joints that do not exist
+    verify_influences(weights=weights)
+
     skin_fn, skin_name = get_skin_cluster(mesh_obj)
     if not skin_fn:
         skin_name = create_skin_cluster(mesh_obj, weights['influences'])[0]
@@ -542,7 +513,6 @@ def set_skin_data(mesh_obj=None, weights={}):
     print("Weights set on: {}".format(skin_name))
     return True
 
-
 def set_skin_file_data(mesh_obj='', file_dir=""):
     """
     sets the skin data from file.
@@ -555,13 +525,11 @@ def set_skin_file_data(mesh_obj='', file_dir=""):
     set_skin_data(mesh_obj, skin_data)
     return True
 
-
 def get_skin_attributes(skin_name=""):
     skin_fn = get_skin_fn(skin_name)
     normalize_plug = skin_fn.findPlug("normalizeWeights", False)
     normalize = normalize_plug.asInt()
     return normalize
-
 
 def get_weights(skin_name=""):
     """
@@ -574,23 +542,19 @@ def get_weights(skin_name=""):
     indices = OpenMaya.MIntArray()
     vertex_comp_fn.getElements(indices)
     skin_fn = get_skin_fn(skin_name)
-
     element_count = indices.length()
     influence_indices = get_influence_indices(skin_name)
     influence_count = len(influence_indices)
-
+    #...get the weights through OpenMaya
     weights = OpenMaya.MDoubleArray(element_count * influence_count, 0.0)
     skin_fn.getWeights(mesh_dag, vertex_comp, influence_indices, weights)
     return weights
 
-
 def set_weights(skin_name="", array_weights=None, undo_weights=None, normalize=True):
     """
     funtion call for setting MFnSkinCluster weights with undo.
-
     Note:
         the normalize flag is a lie.
-
     :param skin_name: <str>
     :param array_weights: <OpenMaya.MDoubleArray>
     :param undo_weights: <OpenMaya.MDoubleArray>
@@ -604,7 +568,6 @@ def set_weights(skin_name="", array_weights=None, undo_weights=None, normalize=T
     skin_fn.setWeights(mesh_dag, vertex_comp, influence_indices, array_weights, normalize, undo_weights)
     return True
 
-
 def get_influence_indices(skin_name):
     """
     gets the influence indices of all influences of the given skin cluster node.
@@ -617,7 +580,6 @@ def get_influence_indices(skin_name):
         influence_indices.append(idx)
     return influence_indices
 
-
 def get_influence_count(skin_name):
     """
     return the influence count from the skin cluster name provided.
@@ -625,7 +587,6 @@ def get_influence_count(skin_name):
     :return:
     """
     return len(get_influence_indices(skin_name))
-
 
 def get_influence_dag_paths(skin_name):
     """
@@ -637,7 +598,6 @@ def get_influence_dag_paths(skin_name):
     dag_paths = OpenMaya.MDagPathArray()
     skin_fn.influenceObjects(dag_paths)
     return dag_paths
-
 
 def get_influence_locks(skin_name):
     """
@@ -656,7 +616,6 @@ def get_influence_locks(skin_name):
             locks[idx] = lock_plug.asBool()
     return locks
 
-
 def get_all_vertex_components(mesh_dag):
     """
     get component MObject for all vertex components of the given mesh.
@@ -670,7 +629,6 @@ def get_all_vertex_components(mesh_dag):
     comp_fn.setCompleteData(num_vertices)  # sets the data as complete
     return vtx_comp, comp_fn
 
-
 def get_num_vertices(skin_name):
     """
     return the number of vertices
@@ -681,7 +639,6 @@ def get_num_vertices(skin_name):
     mesh_fn = OpenMaya.MFnMesh(mesh_dag)  # MFnMesh
     num_vertices = mesh_fn.numVertices()  # NumVertices
     return num_vertices
-
 
 def get_influence_vertices(skin_name, jnt_name=""):
     """
@@ -698,7 +655,6 @@ def get_influence_vertices(skin_name, jnt_name=""):
     indices = OpenMaya.MIntArray()
     dag_path = OpenMaya.MDagPath()
     comp_obj = OpenMaya.MObject()
-
     sel_iter = OpenMaya.MItSelectionList(sel, OpenMaya.MFn.kMeshVertComponent)
     while not sel_iter.isDone():
         sel_iter.getDagPath(dag_path, comp_obj)
@@ -709,7 +665,6 @@ def get_influence_vertices(skin_name, jnt_name=""):
                 mesh_vertex_iter.next()
         sel_iter.next()
     return indices
-
 
 def get_influence_vertices_iter(skin_name, jnt_name=""):
     """
@@ -726,7 +681,6 @@ def get_influence_vertices_iter(skin_name, jnt_name=""):
     sel_iter = OpenMaya.MItSelectionList(sel, OpenMaya.MFn.kMeshVertComponent)
     return sel_iter
 
-
 def get_index_by_name(skin_name, joint_name):
     """
     gets the joint index from skin cluster provided.
@@ -736,7 +690,6 @@ def get_index_by_name(skin_name, joint_name):
     """
     jnt_list = cmds.listConnections(skin_name + '.matrix')
     return jnt_list.index(joint_name)
-
 
 def get_weights_from_vertex_index(skin_name, component_index=0, weights_array=None):
     """
@@ -751,7 +704,6 @@ def get_weights_from_vertex_index(skin_name, component_index=0, weights_array=No
     start_slice, end_slice = get_array_slices_from_vertex_index(skin_name, component_index)
     return weights_array[start_slice:end_slice]
 
-
 def get_array_slices_from_vertex_index(skin_name, component_index=0):
     """
     returns the weight values from component number
@@ -765,7 +717,6 @@ def get_array_slices_from_vertex_index(skin_name, component_index=0):
     end_slice = start_slice + num_influences
     return start_slice, end_slice
 
-
 def __set_transfer_weights(skin_name, index, current_weights, source_index, destination_index, transfer_weights):
     """
     a separate function call for maya python threading
@@ -773,14 +724,11 @@ def __set_transfer_weights(skin_name, index, current_weights, source_index, dest
     """
     weights = get_weights_from_vertex_index(skin_name, index, weights_array=current_weights)
     start_slice, end_slice = get_array_slices_from_vertex_index(skin_name, index)
-
     src_weight = weights[source_index]
     dest_weight = weights[destination_index]
-
     transfer_weights.set(0.0, start_slice + source_index)
     transfer_weights.set(dest_weight + src_weight, start_slice + destination_index)
     return transfer_weights
-
 
 def get_weight_list_length(skin_name=""):
     """
@@ -792,7 +740,6 @@ def get_weight_list_length(skin_name=""):
     num_vertices = get_num_vertices(skin_name)
     return num_influences * num_vertices
 
-
 def get_num_threads(skin_name="", max_threads=20):
     """
     returns the number of threads relative to the length of the skinning weight list
@@ -802,7 +749,6 @@ def get_num_threads(skin_name="", max_threads=20):
     num_influences = get_influence_count(skin_name)
     num_vertices = get_num_vertices(skin_name)
     num_of_work_per_thread = num_vertices / max_threads
-
 
 def set_skinweight_value_at_components(skin_name="", joint_name="", component_ids=(), skin_value=1.0):
     """
@@ -818,16 +764,12 @@ def set_skinweight_value_at_components(skin_name="", joint_name="", component_id
     names = map(lambda vtx: mesh_utils.get_index_name(mesh_name, vtx), component_ids)
     sel_iter = object_utils.array_to_mit_selection(names)
     current_weights = get_weights(skin_name)
-
     source_index = get_index_by_name(skin_name, joint_name)
-
     dag_path = OpenMaya.MDagPath()
     comp_obj = OpenMaya.MObject()
-
     # copy the weights array, doing it this way shaves off 4.5 seconds
     transfer_weights = OpenMaya.MDoubleArray()
     transfer_weights.copy(current_weights)
-
     # putting the iteration here shaves off 1 second of computational time
     while not sel_iter.isDone():
         sel_iter.getDagPath(dag_path, comp_obj)
@@ -843,7 +785,6 @@ def set_skinweight_value_at_components(skin_name="", joint_name="", component_id
                     mesh_vertex_iter.next()
         sel_iter.next()
     set_weights(skin_name, array_weights=transfer_weights, undo_weights=current_weights, normalize=True)
-
 
 def transfer_skin_weights_from_joint_to_joint(skin_name="", from_jnt_name="", to_jnt_name="", specific_indices=()):
     """
@@ -863,23 +804,18 @@ def transfer_skin_weights_from_joint_to_joint(skin_name="", from_jnt_name="", to
     # st = time.time()
     # unlock all skin joints first.
     unlock_influences(skin_name=skin_name)
-
     # collect current data
     sel_iter = get_influence_vertices_iter(skin_name, from_jnt_name)
     current_weights = get_weights(skin_name)
-
     source_index = get_index_by_name(skin_name, from_jnt_name)
     destination_index = get_index_by_name(skin_name, to_jnt_name)
-
     dag_path = OpenMaya.MDagPath()
     comp_obj = OpenMaya.MObject()
-
     # copy the weights array, doing it this way shaves off 4.5 seconds
     transfer_weights = OpenMaya.MDoubleArray()
     transfer_weights.copy(current_weights)
     # en = time.time()
     # print('variables :: {}'.format(en-st))
-
     # putting the iteration here shaves off 1 second of computational time
     while not sel_iter.isDone():
         sel_iter.getDagPath(dag_path, comp_obj)
@@ -891,42 +827,27 @@ def transfer_skin_weights_from_joint_to_joint(skin_name="", from_jnt_name="", to
                 if specific_indices and index in specific_indices:
                     weights = get_weights_from_vertex_index(skin_name, index, weights_array=current_weights)
                     start_slice, end_slice = get_array_slices_from_vertex_index(skin_name, index)
-
                     src_weight = weights[source_index]
                     dest_weight = weights[destination_index]
-
                     transfer_weights.set(0.0, start_slice + source_index)
                     transfer_weights.set(dest_weight + src_weight, start_slice + destination_index)
-
                     mesh_vertex_iter.next()
 
                 else:
                     weights = get_weights_from_vertex_index(skin_name, index, weights_array=current_weights)
                     start_slice, end_slice = get_array_slices_from_vertex_index(skin_name, index)
-
                     src_weight = weights[source_index]
                     dest_weight = weights[destination_index]
-
                     transfer_weights.set(0.0, start_slice + source_index)
                     transfer_weights.set(dest_weight + src_weight, start_slice + destination_index)
-
                     mesh_vertex_iter.next()
         sel_iter.next()
-
     # en = time.time()
     # print('transfer weights :: {}'.format(en-st))
-
     # st = time.time()
     # finally set the weights with the weight transfer data
     set_weights(skin_name, array_weights=transfer_weights, undo_weights=current_weights, normalize=True)
     # en = time.time()
     # print('set weights :: {}'.format(en-st))
-
-
-def perform_threaded_transfer():
-    """
-    perform the threaded transfer by calculating the number of threads to use.
-    :return:
-    """
-    max_threads = 20
-    get_worker_percentage = get_weight_list_length() /
+# ________________________________________________________________________________________________
+# skincluster_utils.py

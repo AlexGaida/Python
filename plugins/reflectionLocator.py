@@ -340,7 +340,7 @@ def get_vector_value(in_plug):
     vector_result = ()
     if in_plug.isCompound:
         # get the compound numeric attribute vector
-        for c in xrange(in_plug.numChildren()):
+        for c in range(in_plug.numChildren()):
             ch_item = in_plug.child(c)
             api_type = OpenMaya.MFnNumericAttribute(ch_item.attribute()).numericType()
             if api_type in (OpenMaya.MFnNumericData.kFloat, OpenMaya.MFnNumericData.kDouble):
