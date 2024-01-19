@@ -8,7 +8,7 @@ import math
 import decimal
 
 # import maya modules
-from maya.OpenMaya import MVector, MMatrix, MPoint, MPlane, MTransformationMatrix, MQuaternion
+from maya.OpenMaya import MVector, MMatrix, MPoint, MPlane, MTransformationMatrix, MQuaternion, MScriptUtil
 from maya import cmds
 
 # import local modules
@@ -240,16 +240,28 @@ def get_halfway_point(point1="", point2=""):
     return vector_result.x, vector_result.y, vector_result.z
 
 def world_matrix(obj):
-    """'
-    convenience method to get the world matrix of <obj> as a matrix object
+    """convenience method to get the world matrix of <obj> as a matrix object
+    :param obj: (str) the name of the transform object from the maya scene
+    :return: MMatrix
     """
-    return MMatrix(get_object_matrix(obj))
+    m = MMatrix()
+    MScriptUtil.createMatrixFromList(get_object_matrix(obj), m)
+    return m
 
 def world_pos(obj):
-    """'
-    convenience method to get the world position of <obj> as an MPoint
+    """convenience method to get the world position of <obj> as an MPoint
+    :param obj: (str) the name of the transform object from the maya scene
+    :return: MPoint
     """
-    return MPoint(get_object_transform(obj))
+    return MPoint(*get_object_transform(obj))
+
+def world_vec(obj):
+    """
+    convenience method to get the world position of <obj> as an MVector
+    :param obj: (str) the name of the transform object from the maya scene
+    :return: MVector
+    """
+    return MVector(*get_object_transform(obj))
 
 def relative_position(world_object="", position_object=""):
     """
@@ -1134,5 +1146,54 @@ def simplify(points, epsilon):
     else:
         results = [points[0], points[-1]]
     return results
+
+def mirror_vector(transform_object, mirror_object=None, normal=(1.0, 0.0, 0.0)):
+    """r = d -2(d⋅n)n
+    Perform the mirror vector using transform objects
+    :param transform_object: (str, ) the transform object to mirror
+    :param mirror_object: (str, ) the base object to reflect vector against
+    :param normal: (tuple, ) the direction of the reflection vector
+    """
+    # get transform object
+    transform_vector = world_vec(transform_object)
+    # get world origin normal
+    if mirror_object:
+        mirror_object_matrix = world_matrix(mirror_object)
+        mirror_object_vector = list_from_MMatrix(mirror_object_matrix)[12:15]
+    else:
+        mirror_object_matrix = MMatrix()
+        mirror_object_vector = list_from_MMatrix(mirror_object_matrix)[12:15]
+    reflection_vector = mirror_vector_math(transform_vector, mirror_object_vector, normal)
+    return reflection_vector
+
+def list_from_MMatrix(m):
+    """return a list from MMatrix object
+    :param m: (OpenMaya.MMatrix, )
+    :return: (list, ) xform matrix list
+    """
+    return [
+        m(0, 0), m(0, 1), m(0, 2), m(0, 3),
+        m(1, 0), m(1, 1), m(1, 2), m(1, 3),
+        m(2, 0), m(2, 1), m(2, 2), m(2, 3),
+        m(3, 0), m(3, 1), m(3, 2), m(3, 3)]
+
+def mirror_vector_math(pointed_vector, base_vector, normal=None):
+    """mirror vector math: r = a -2 *(a)n*n;
+    :param pointed_vector: (tuple, list, ) the vector to mirror
+    :param base_vector: (tuple, list, ) the base vector to mirror against
+    :param normal: (tuple, list, ) the direction of the reflected vector
+    :return: (tuple, list) mirror, reflected vector
+    """
+    base_vector = MVector(*base_vector)
+    pointed_vector = MVector(*pointed_vector)
+    if normal:
+        normal = base_vector + MVector(*normal)
+        normal.normalize()
+    else:
+        normal = MVector(*normal)
+    # wrong: 2.0 * MVector(0.0, 1.0, 0.0)
+    # right: MVector(0.0, 1.0, 0.0) * 2.0
+    mirror_vector = pointed_vector - (normal * ((pointed_vector * 2.0) * normal))
+    return mirror_vector.x, mirror_vector.y, mirror_vector.z 
 # ______________________________________________________________________________________________________________________
 # math_utils.py

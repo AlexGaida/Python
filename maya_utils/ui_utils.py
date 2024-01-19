@@ -22,7 +22,7 @@ from PySide2.QtGui import QPixmap
 from PySide2.QtCore import Qt
 
 # import local modules
-import object_utils
+from . import object_utils
 
 
 class MessageBox(QtWidgets.QDialog):
@@ -54,7 +54,11 @@ def get_maya_parent_window():
     """
     ptr = OpenMayaUI.MQtUtil.mainWindow()
     if ptr is not None:
-        return wrapInstance(long(ptr), QtWidgets.QMainWindow)
+        try:
+            return wrapInstance(long(ptr), QtWidgets.QMainWindow)
+        except NameError:
+            # for python3x.x only
+            return wrapInstance(int(ptr), QtWidgets.QMainWindow)
 
 
 def is_object_deleted(widget_obj):
@@ -148,3 +152,4 @@ def open_skin_paint_tool():
     node = object_utils.get_selected_node()
     object_utils.is_shape_mesh(node)
     mel.eval("ArtPaintSkinWeightsToolOptions; changeSelectMode -object; select -add {};".format(node))
+
