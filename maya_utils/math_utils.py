@@ -28,6 +28,20 @@ connect_attr = attribute_utils.attr_connect
 attr_name = attribute_utils.attr_name
 attr_set = attribute_utils.attr_set
 
+__version__ = "1.1.0"
+
+
+def mvector_to_list(mvector): return (mvector.x, mvector.y, mvector.z,)
+
+
+def identity_scale(node): [cmds.setAttr(node + x, 1.0)
+                           for x in ('.sx', '.sy', '.sz') if cmds.getAttr(node + x) != 1.0]
+
+
+def identity_shear(node): [cmds.setAttr(node + x, 0.0)
+                           for x in ('.shearXY', '.shearXZ', '.shearYZ') if cmds.getAttr(node + x) != 0.0]
+
+
 def timing(f):
     def wrap(*args, **kwargs):
         time1 = time.time()
@@ -42,6 +56,51 @@ def timing(f):
         return ret
     return wrap
 
+
+class ListMatrix():
+    rotation_order = {
+        0: 'xyz',
+        1: 'yzx',
+        2: 'zxy',
+        3: 'xzy',
+        4: 'yxz',
+        5: 'zyx',
+    }
+
+    def __init__(self, node):
+        original_matrix = matrix = cmds.xform(node, m=1, ws=1, q=True)
+        self.original_matrix = original_matrix
+        self.axis_x = matrix[0:3]
+        self.axis_y = matrix[4:7]
+        self.axis_z = matrix[8:11]
+        self.base = matrix[13:16]
+        self.scale = matrix[4], matrix[8], matrix[12]
+        # matrix = self.matrix_organize_x(self.axis_x, matrix)
+        # matrix = self.matrix_organize_y(self.axis_y, matrix)
+        # matrix = self.matrix_organize_z(self.axis_z, matrix)
+        self.matrix = matrix
+        self.order = cmds.getAttr(node + '.rotateOrder')
+        self.rotate_order = ListMatrix.rotation_order[self.order]
+
+    def vectors(self):
+        return self.axis_x, self.axis_y, self.axis_z, self.base
+
+    def matrix_organize_x(self, vector, matrix):
+        for i in range(0, 3):
+            matrix[i] = vector[i]
+        return matrix
+
+    def matrix_organize_y(self, vector, matrix):
+        for i in range(4, 7):
+            matrix[i] = vector[i - 4]
+        return matrix
+
+    def matrix_organize_z(self, vector, matrix):
+        for i in range(8, 11):
+            matrix[i] = vector[i - 8]
+        return matrix
+
+
 def multiply_vector(vector_1, scalar=0.0):
     """
     vector scalar multiplication
@@ -54,6 +113,7 @@ def multiply_vector(vector_1, scalar=0.0):
     x, y, z = new_vector.x, new_vector.y, new_vector.z
     return x, y, z
 
+
 def get_vector(vector_2, vector_1):
     """
     subtracts one vector from another
@@ -63,6 +123,7 @@ def get_vector(vector_2, vector_1):
     """
     vector = MVector(*vector_2) - MVector(*vector_1)
     return vector
+
 
 def cross_product(vector_1, vector_2):
     """
@@ -75,6 +136,7 @@ def cross_product(vector_1, vector_2):
     vector.normalize()
     return vector.x, vector.y, vector.z,
 
+
 def dot_product(vector_1, vector_2):
     """
     Checks if the angle of the second vector is in the negative category.
@@ -83,6 +145,7 @@ def dot_product(vector_1, vector_2):
     :return: <tuple> xyz values.
     """
     return MVector(*vector_1) * MVector(*vector_2)
+
 
 def float_range(start, stop, step):
     """
@@ -96,6 +159,7 @@ def float_range(start, stop, step):
         yield float(start)
         start += decimal.Decimal(step)
 
+
 def get_range(number=1.0):
     """
     return a range of tuples by the number specified.
@@ -103,6 +167,7 @@ def get_range(number=1.0):
     :return:
     """
     return tuple(float_range(-1, 1, 1.0 / (number / 2.0)))
+
 
 def get_center(objects):
     """
@@ -123,6 +188,7 @@ def get_center(objects):
     z_avg = sum(z) / len(z)
     return x_avg, y_avg, z_avg
 
+
 def get_selection_center():
     """
     returns the xyz average center of the selection.
@@ -130,6 +196,7 @@ def get_selection_center():
     """
     objects = object_utils.get_selected_components()
     return get_center(objects)
+
 
 def get_bounding_box_center(object_name):
     """
@@ -140,6 +207,7 @@ def get_bounding_box_center(object_name):
     bb_min = cmds.getAttr('{}.boundingBoxMin'.format(object_name))[0]
     bb_max = cmds.getAttr('{}.boundingBoxMax'.format(object_name))[0]
     return bb_max[0]/2 + bb_min[0] / 2,  bb_max[1]/2 + bb_min[1] / 2, bb_max[2] / 2 + bb_min[2] / 2,
+
 
 def barycentric(vector1, vector2, vector3, u, v, w):
     """
@@ -152,6 +220,7 @@ def barycentric(vector1, vector2, vector3, u, v, w):
     """
     return u * vector1 + v * vector2 + w * vector3
 
+
 def squared_difference(num_array=()):
     """
     calculate the squared difference (the mean) from the array of number values given.
@@ -159,6 +228,7 @@ def squared_difference(num_array=()):
     :return:
     """
     return (sum(map(lambda x: x**2, num_array)) / len(num_array))**0.5
+
 
 def gaussian(in_value=0.0, magnitude=0.0, mean=0.0, variance=0.0):
     """
@@ -173,6 +243,7 @@ def gaussian(in_value=0.0, magnitude=0.0, mean=0.0, variance=0.0):
         variance = 0.001
     return magnitude * EXP ** (-1 * (in_value - mean**2) / (2.0 * variance))
 
+
 def flatten_list(list_data=()):
     """
     flatten the nested lists into one list.
@@ -186,6 +257,7 @@ def flatten_list(list_data=()):
         else:
             yield x
 
+
 def get_sum(value_data=()):
     """
     gets the sum of all values inside a list object.
@@ -194,25 +266,32 @@ def get_sum(value_data=()):
     """
     return sum(flatten_list(value_data))
 
+
 def power(x, n):
     return x ** n
+
 
 def exponential(x):
     return EXP**x
 
+
 def gaussian(x, x0, sigma):
     return exponential(-power((x - x0)/sigma, 2.0)/2.0)
+
 
 def float_range(start, stop, step):
     while start <= stop:
         yield float(start)
         start += step
 
+
 def degrees_to_radians(degrees):
     return degrees * (M_PI / 180.0)
 
+
 def radians_to_degrees(radians):
     return radians * (180.0 / M_PI)
+
 
 def round_to_step(x, parts=4):
     """
@@ -223,11 +302,14 @@ def round_to_step(x, parts=4):
     """
     return round(x*parts)/parts
 
+
 def get_object_transform(item):
     return tuple(map(float, cmds.xform(item, q=True, t=True, ws=True)))
 
+
 def get_object_matrix(item):
     return tuple(cmds.xform(item, q=True, matrix=True, ws=True))
+
 
 def get_halfway_point(point1="", point2=""):
     """
@@ -239,6 +321,7 @@ def get_halfway_point(point1="", point2=""):
     vector_result = (omv_1 + omv_2) / 2
     return vector_result.x, vector_result.y, vector_result.z
 
+
 def world_matrix(obj):
     """convenience method to get the world matrix of <obj> as a matrix object
     :param obj: (str) the name of the transform object from the maya scene
@@ -248,12 +331,14 @@ def world_matrix(obj):
     MScriptUtil.createMatrixFromList(get_object_matrix(obj), m)
     return m
 
+
 def world_pos(obj):
     """convenience method to get the world position of <obj> as an MPoint
     :param obj: (str) the name of the transform object from the maya scene
     :return: MPoint
     """
     return MPoint(*get_object_transform(obj))
+
 
 def world_vec(obj):
     """
@@ -263,12 +348,14 @@ def world_vec(obj):
     """
     return MVector(*get_object_transform(obj))
 
+
 def relative_position(world_object="", position_object=""):
     """
     Get an object's relative position to another.
     :return: <str> position.
     """
     return str(world_pos(position_object) * world_matrix(world_object).inverse())
+
 
 def pythag(x, y, find=0):
     """
@@ -281,9 +368,11 @@ def pythag(x, y, find=0):
     :return: <float>
     """
     if not isinstance(x, float) and not isinstance(x, int):
-        raise ValueError("Please input only float/ interger values for x: such as 1.0")
+        raise ValueError(
+            "Please input only float/ interger values for x: such as 1.0")
     if not isinstance(y, float) and not isinstance(y, int):
-        raise ValueError("Please input only float/ interger values for y: such as 1.0")
+        raise ValueError(
+            "Please input only float/ interger values for y: such as 1.0")
     if find == 0:
         ''' input is opposite and adjacent '''
         return ((x**2)+(y**2))*0.5
@@ -291,6 +380,7 @@ def pythag(x, y, find=0):
     if find == 1:
         ''' input is hypotenuse and opposite or adjacent '''
         return abs((x**2)-(y**2))**0.5
+
 
 def bary_2d(start, end, percent, barycentric=False):
     """
@@ -306,10 +396,12 @@ def bary_2d(start, end, percent, barycentric=False):
     if type(percent) not in [float, int]:
         if percent > 1 or percent < 0:
             raise ValueError("Percent must fall in between 1 and 0.")
-        raise ValueError("Please input only float/ interger values for incrementing such as 1.0")
+        raise ValueError(
+            "Please input only float/ interger values for incrementing such as 1.0")
     # clamp = lambda n, minn, maxn: max(min(maxn, n), minn)
     # perc = clamp( percent, -1, 0)
-    vc = lambda x, y, z, i, percent: ((x * (i + percent)), (y*(i + percent)), (z*(i + percent)))
+    def vc(x, y, z, i, percent): return (
+        (x * (i + percent)), (y*(i + percent)), (z*(i + percent)))
     if start and end:
         vector1 = vc(*(start+(0, percent)))
         vector2 = vc(*(end+(-1, percent)))
@@ -319,6 +411,7 @@ def bary_2d(start, end, percent, barycentric=False):
     if barycentric:
         return (start * percent) + (end * (1-percent))
     return mvec_3.x, mvec_3.y, mvec_3.z
+
 
 def mag(vector1, vector2):
     """
@@ -331,8 +424,18 @@ def mag(vector1, vector2):
     omv_1 = MVector(*vector1)
     omv_2 = MVector(*vector2)
     omv_3 = omv_2 - omv_1
-    segment_mag = lambda x, y, z: ((x**2)+(y**2)+(z**2))**0.5
+    def segment_mag(x, y, z): return ((x**2)+(y**2)+(z**2))**0.5
     return segment_mag(omv_3.x, omv_3.y, omv_3.z)
+
+
+def float_mag(float_vector):
+    """returns the magnitude of a float vector"""
+    x = float_vector[0]
+    y = float_vector[1]
+    z = float_vector[2]
+    mag = ((x * 2) + (y * 2) + (z * 2))**0.5
+    return mag
+
 
 def magnitude(*args):
     """
@@ -340,7 +443,7 @@ def magnitude(*args):
         args: magnitude( list(), list() ) or magnitude(list())
 
     INFO:
-        suebtracts the second list vector from the first.
+        subtracts the second list vector from the first.
         squares each item in list then
 
         Inputs must be a vector of 3 values in a list!
@@ -374,6 +477,7 @@ def magnitude(*args):
         print("Wrong number of arguments used!\r\n\
                 You must have either one or two lists of vectors: head, tail or head")
 
+
 def angle(vector1, vector2):
     """
     Using formula cos? = a.b / |a||b|
@@ -387,6 +491,7 @@ def angle(vector1, vector2):
         data.append(vector1[j] * vector2[j])
     data = sum(data)
     return math.degrees(math.acos(data / (magnitude(vector1) * magnitude(vector2))))
+
 
 class Vector(MVector):
     RESULT = ()
@@ -429,6 +534,7 @@ class Vector(MVector):
     def position(self):
         return self.get_position()
 
+
 class OldVector:
     """
     INPUT:
@@ -451,6 +557,7 @@ class OldVector:
         c = a - b
         print "SUB: %s"%c
     """
+
     def __init__(self, *args):
         data = list()
         mag = list()
@@ -542,6 +649,7 @@ class OldVector:
                 pass
         return Vector(data)
 
+
 def rotate_object_2d(x, y, delta=0.5):
     """
     rotates the object in 2d in x, z plane
@@ -552,6 +660,7 @@ def rotate_object_2d(x, y, delta=0.5):
     point_x = x * cos - y * sin
     point_y = y * cos + x * sin
     return point_x, point_y
+
 
 def rotate_object_3d(x, y, z, delta=0.5):
     """
@@ -564,6 +673,7 @@ def rotate_object_3d(x, y, z, delta=0.5):
     """
     return True
 
+
 def look_at(source, target, up_vector=(0, 1, 0), as_vector=True):
     """
     allows the transform object to look at another target vector object.
@@ -575,7 +685,8 @@ def look_at(source, target, up_vector=(0, 1, 0), as_vector=True):
     if source_parent_name == 'world':
         source_parent_name = None
     else:
-        parent_world = transform_utils.Transform(source_parent_name).world_matrix_list()
+        parent_world = transform_utils.Transform(
+            source_parent_name).world_matrix_list()
     # build normalized vector from the translations from matrix data
     z = MVector(target_world[12] - source_world[12],
                 target_world[13] - source_world[13],
@@ -595,18 +706,22 @@ def look_at(source, target, up_vector=(0, 1, 0), as_vector=True):
         y.x, y.y, y.z, 0,
         z.x, z.y, z.z, 0,
         0, 0, 0, 1.0)
-    matrix = object_utils.ScriptUtil(local_matrix_list, matrix_from_list=True).matrix
+    matrix = object_utils.ScriptUtil(
+        local_matrix_list, matrix_from_list=True).matrix
     if source_parent_name:
         # transform the matrix in the local space of the parent object
-        parent_matrix = object_utils.ScriptUtil(parent_world, matrix_from_list=True)
+        parent_matrix = object_utils.ScriptUtil(
+            parent_world, matrix_from_list=True)
         matrix *= parent_matrix.matrix.inverse()
     # retrieve the desired rotation for "source" to aim at "target", in degrees
     if as_vector:
-        rotation = MTransformationMatrix(matrix).eulerRotation() * RADIANS_2_DEGREES
+        rotation = MTransformationMatrix(
+            matrix).eulerRotation() * RADIANS_2_DEGREES
         vector = rotation.asVector()
         return vector.x, vector.y, vector.z,
     else:
         return local_matrix_list
+
 
 def get_vector_position_2_points(position_1, position_2, divisions=2.0):
     """
@@ -626,6 +741,7 @@ def get_vector_position_2_points(position_1, position_2, divisions=2.0):
         positions += Vector(result_vec + vec_2).position,
     return positions
 
+
 def get_vector_positon_2_objects(object_1, object_2, divisions=2):
     """
     calculates the world space vector between the two points.
@@ -634,6 +750,7 @@ def get_vector_positon_2_objects(object_1, object_2, divisions=2):
     vector_1 = transform_utils.Transform(object_1).translate_values(world=True)
     vector_2 = transform_utils.Transform(object_2).translate_values(world=True)
     return get_vector_position_2_points(vector_1, vector_2, divisions)
+
 
 def calculate_angle(vector1, vector2):
     """
@@ -644,6 +761,7 @@ def calculate_angle(vector1, vector2):
     v2 = Vector(*vector2)
     dot_product = v1 * v2
     return math.acos(dot_product) * 180 / M_PI
+
 
 def calculate_circle_collision(object_1, object_2, object_1_radius=0.0, object_2_radius=0.0):
     """
@@ -656,6 +774,7 @@ def calculate_circle_collision(object_1, object_2, object_1_radius=0.0, object_2
     """
     return mag(object_1, object_2) <= object_1_radius + object_2_radius
 
+
 def calculate_circle_point_collision(object_1, object_2, object_1_radius=0.0):
     """
     return True if the two objects' radiuses collide with each other.
@@ -665,6 +784,7 @@ def calculate_circle_point_collision(object_1, object_2, object_1_radius=0.0):
     :return: <bool> if the objects collide.
     """
     return mag(object_1, object_2) <= object_1_radius
+
 
 def create_ratio_driver(driver_object="", driven_object="", add_clamp=True, radius=1.0, driver_type='sine',
                         driven_attribute='translateY', driver_attributes=('translateX', 'translateY')):
@@ -681,24 +801,32 @@ def create_ratio_driver(driver_object="", driven_object="", add_clamp=True, radi
     """
     ratio_node_name = "{}_{}_ratio".format(driver_object, driver_type)
     clamp_node_name = "{}_{}_clamp".format(driver_object, driver_type)
-    ratio_node = object_utils.create_node('multiplyDivide', node_name=ratio_node_name)
+    ratio_node = object_utils.create_node(
+        'multiplyDivide', node_name=ratio_node_name)
     clamp_node = object_utils.create_node('clamp', node_name=clamp_node_name)
     attr_set(attr_name(ratio_node, 'operation'), 2)
     if driver_type == 'sine':
         attr_set(attr_name(ratio_node, 'input2X'), radius)
-        connect_attr(attr_name(driver_object, driver_attributes[1]), attr_name(ratio_node, 'input1X'))
+        connect_attr(attr_name(driver_object, driver_attributes[1]), attr_name(
+            ratio_node, 'input1X'))
     elif driver_type == 'cosine':
         attr_set(attr_name(ratio_node, 'input2X'), radius)
-        connect_attr(attr_name(driver_object, driver_attributes[0]), attr_name(ratio_node, 'input1X'))
+        connect_attr(attr_name(driver_object, driver_attributes[0]), attr_name(
+            ratio_node, 'input1X'))
     else:
-        raise NotImplementedError("[InvalidDriverType] :: Available options: sine, cosine.")
+        raise NotImplementedError(
+            "[InvalidDriverType] :: Available options: sine, cosine.")
     attr_set(attr_name(clamp_node, 'maxR'), 1.0)
     if add_clamp:
-        connect_attr(attr_name(ratio_node, 'outputX'), attr_name(clamp_node, 'inputR'))
-        connect_attr(attr_name(clamp_node, 'outputR'), attr_name(driven_object, driven_attribute))
+        connect_attr(attr_name(ratio_node, 'outputX'),
+                     attr_name(clamp_node, 'inputR'))
+        connect_attr(attr_name(clamp_node, 'outputR'),
+                     attr_name(driven_object, driven_attribute))
     elif not add_clamp:
-        connect_attr(attr_name(ratio_node, 'outputX'), attr_name(driven_object, driven_attribute))
+        connect_attr(attr_name(ratio_node, 'outputX'),
+                     attr_name(driven_object, driven_attribute))
     return ratio_node
+
 
 def create_sine_ratio_driver(driver_object="", driven_object="", add_clamp=True, radius=1.0,
                              driven_attribute='translateY', driver_attributes=('translateX', 'translateY')):
@@ -720,6 +848,7 @@ def create_sine_ratio_driver(driver_object="", driven_object="", add_clamp=True,
                                driven_attribute,
                                driver_attributes)
 
+
 def create_cosine_ratio_driver(driver_object="", driven_object="", add_clamp=True, radius=1.0,
                                driven_attribute='translateZ', driver_attributes=('translateX', 'translateY')):
     """
@@ -740,6 +869,7 @@ def create_cosine_ratio_driver(driver_object="", driven_object="", add_clamp=Tru
                                driven_attribute,
                                driver_attributes)
 
+
 def quadratic(v0, v1, v2, t):
     """
     calculates the quadratic curve interpolation
@@ -750,10 +880,14 @@ def quadratic(v0, v1, v2, t):
     :return:
     """
     point_final = {}
-    point_final.update(x=((1 - t) ** 2) * v0.x + (1 - t) * 2 * t * v1.x + t * t * v2.x)
-    point_final.update(y=((1 - t) ** 2) * v0.y + (1 - t) * 2 * t * v1.y + t * t * v2.y)
-    point_final.update(z=((1 - t) ** 2) * v0.z + (1 - t) * 2 * t * v1.z + t * t * v2.z)
+    point_final.update(x=((1 - t) ** 2) * v0.x + (1 - t)
+                       * 2 * t * v1.x + t * t * v2.x)
+    point_final.update(y=((1 - t) ** 2) * v0.y + (1 - t)
+                       * 2 * t * v1.y + t * t * v2.y)
+    point_final.update(z=((1 - t) ** 2) * v0.z + (1 - t)
+                       * 2 * t * v1.z + t * t * v2.z)
     return point_final
+
 
 def bezier(v0, v1, v2, v3, t):
     """
@@ -766,11 +900,14 @@ def bezier(v0, v1, v2, v3, t):
     :return:
     """
     point_final = {}
-    point_final.update(x=((1 - t) ** 3) * v0.x + (1 - t) ** 2 * 3 * t * v1.x + (1 - t) * 3 * t * t * v2.x + t * t * t * v3.x)
+    point_final.update(x=((1 - t) ** 3) * v0.x + (1 - t) ** 2 *
+                       3 * t * v1.x + (1 - t) * 3 * t * t * v2.x + t * t * t * v3.x)
     point_final.update(y=((1 - t) ** 3) * v0.y + (1 - t) ** 2 * 3 * t * v1.y +
                          (1 - t) * 3 * t * t * v2.y + t * t * t * v3.y)
-    point_final.update(z=((1 - t) ** 3) * v0.z + (1 - t) ** 2 * 3 * t * v1.z + (1 - t) * 3 * t * t * v2.z + t * t * t * v3.z)
+    point_final.update(z=((1 - t) ** 3) * v0.z + (1 - t) ** 2 *
+                       3 * t * v1.z + (1 - t) * 3 * t * t * v2.z + t * t * t * v3.z)
     return point_final
+
 
 def linear_cubic_interpolation(driver_array=(), divisions=20, interpolation='quadratic'):
     """
@@ -794,6 +931,7 @@ def linear_cubic_interpolation(driver_array=(), divisions=20, interpolation='qua
             point_final += bezier(v1, v2, v3, v4, float(t) / float(divisions))
         return point_final
 
+
 def normalize(num, max_num):
     """
     normalizes the number by the maximum number.
@@ -802,6 +940,7 @@ def normalize(num, max_num):
     :return:
     """
     return num / max_num
+
 
 def lerp(norm, min, max):
     """
@@ -813,13 +952,15 @@ def lerp(norm, min, max):
     """
     return (max - min) * norm + min
 
+
 def reflection_vector(object_name, as_array=True):
     """
     calculates the reflection vector from the origin.
     R = 2(N * L) * N - L
     :return:
     """
-    array_1 = transform_utils.Transform(object_name).translate_values(world=True)
+    array_1 = transform_utils.Transform(
+        object_name).translate_values(world=True)
     vector_1 = MVector(*array_1)
     normal = MVector(0.0, 1.0, 0.0)
     vector = normal * (2 * (normal * vector_1))
@@ -828,6 +969,7 @@ def reflection_vector(object_name, as_array=True):
         return vector
     else:
         return vector.x, vector.y, vector.z
+
 
 def get_pole_vector_position(st_joint, mid_joint, en_joint):
     """
@@ -847,6 +989,7 @@ def get_pole_vector_position(st_joint, mid_joint, en_joint):
     va = v3 - v
     v += va * Vector(v2 - v1).length()
     return Vector(v).position
+
 
 class Plane(MPlane):
     def __init__(self):
@@ -938,7 +1081,8 @@ class Plane(MPlane):
         :return:
         """
         visualizer_plane = cmds.polyPlane(name=name, width=self.magnitude, height=self.magnitude,
-                                          axis=[self.normal().x, self.normal().y, self.normal().z],
+                                          axis=[
+                                              self.normal().x, self.normal().y, self.normal().z],
                                           constructionHistory=False)
         # cmds.toggle(visualizer_plane, state=True, template=True)
         if not position:
@@ -953,8 +1097,10 @@ class Plane(MPlane):
                 position = Vector(0, 0, -self.distance() / self.normal().z)
             else:
                 cmds.warning("Invalid plane normal, all components are 0")
-        transform_utils.match_position_transform(visualizer_plane, position.position)
+        transform_utils.match_position_transform(
+            visualizer_plane, position.position)
         return visualizer_plane
+
 
 def populateRoll(ball=None, startFrame=1, endFrame=400):
     """
@@ -964,20 +1110,26 @@ def populateRoll(ball=None, startFrame=1, endFrame=400):
     :param endFrame:
     :return:
     """
-    previous = cmds.xform(ball, query=True, worldSpace=True, translation=True)  # get the position of the ball
+    previous = cmds.xform(ball, query=True, worldSpace=True,
+                          translation=True)  # get the position of the ball
     matrix = MMatrix.kIdentity
     realRadius = cmds.getAttr(ball + '.realRadius')
     for frame in range(startFrame, endFrame):
         scaleRadius = cmds.getAttr(ball + '.scaleRadius')
         cmds.currentTime(frame)
-        current = cmds.xform(ball, query=True, worldSpace=True, translation=True) # get current position of ball
-        if math.fabs(scaleRadius) > 1e-5:  # is the radius scaled close to zero? Avoid divide by zero errors
+        # get current position of ball
+        current = cmds.xform(
+            ball, query=True, worldSpace=True, translation=True)
+        # is the radius scaled close to zero? Avoid divide by zero errors
+        if math.fabs(scaleRadius) > 1e-5:
             radius = 1/scaleRadius*realRadius
             previousVector = MVector(previous)
             currentVector = MVector(current)
-            directionVector = currentVector - previousVector  # get vector of the direction the ball is traveling
+            # get vector of the direction the ball is traveling
+            directionVector = currentVector - previousVector
             length = directionVector.length()  # how far has the ball traveled
-            axis = MVector.kYaxisVector ^ directionVector  # what current axis should the ball roll around
+            # what current axis should the ball roll around
+            axis = MVector.kYaxisVector ^ directionVector
             angle = length/radius  # how far should we roll the ball in radians
         else:
             angle = 0.0  # fakeRadius was scaled to zero, so don't rotate at all
@@ -985,7 +1137,8 @@ def populateRoll(ball=None, startFrame=1, endFrame=400):
         rotation = MQuaternion(angle, axis)
         rotationMatrix = rotation.asMatrix()
         matrix = matrix * rotationMatrix
-        euler = [math.degrees(x) for x in MTransformationMatrix(matrix).rotation()]
+        euler = [math.degrees(x)
+                 for x in MTransformationMatrix(matrix).rotation()]
         cmds.xform(ball, rotation=euler)  # apply the rotation
         # key the new rotation
         cmds.setKeyframe(ball + '.rotateX')
@@ -993,12 +1146,14 @@ def populateRoll(ball=None, startFrame=1, endFrame=400):
         cmds.setKeyframe(ball + '.rotateZ')
         previous = current
 
+
 def parabola(x, mid_x, mid_y, max_x, max_y):
     """Produces a parabola result based on the mid point and one other point.
     """
     a = -1 * (max_y + mid_y / (max_x - max_y)**2)
     y = a * (x - mid_x) ** 2 + mid_y
     return y
+
 
 def create_parabola_node_network(x_value_node="", mid_point_node="", point_2_node="", number=0):
     """Parabola node network. Recreating the equation above using the nodes instead.
@@ -1013,44 +1168,64 @@ def create_parabola_node_network(x_value_node="", mid_point_node="", point_2_nod
 
     """
     # create subtraction.
-    sub_max_x_max_y = cmds.createNode('plusMinusAverage', name="sub_max_x_max_y_{}".format(number))
+    sub_max_x_max_y = cmds.createNode(
+        'plusMinusAverage', name="sub_max_x_max_y_{}".format(number))
     cmds.setAttr(sub_max_x_max_y + '.operation', 2)
-    cmds.connectAttr(point_2_node + '.translateX', sub_max_x_max_y + '.input1D[0]')
-    cmds.connectAttr(point_2_node + '.translateX', sub_max_x_max_y + '.input1D[1]')
+    cmds.connectAttr(point_2_node + '.translateX',
+                     sub_max_x_max_y + '.input1D[0]')
+    cmds.connectAttr(point_2_node + '.translateX',
+                     sub_max_x_max_y + '.input1D[1]')
     # create power
-    max_x_max_y_power_2 = cmds.createNode('multDoubleLiner', name="max_x_max_y_power_{}".format(number))
-    cmds.connectAttr(sub_max_x_max_y + '.output1D', max_x_max_y_power_2 + '.input1')
-    cmds.connectAttr(sub_max_x_max_y + '.output1D', max_x_max_y_power_2 + '.input2')
+    max_x_max_y_power_2 = cmds.createNode(
+        'multDoubleLiner', name="max_x_max_y_power_{}".format(number))
+    cmds.connectAttr(sub_max_x_max_y + '.output1D',
+                     max_x_max_y_power_2 + '.input1')
+    cmds.connectAttr(sub_max_x_max_y + '.output1D',
+                     max_x_max_y_power_2 + '.input2')
     # create addition
-    max_y_plus_mid_y = cmds.createNode('addDoubleLinear', name='max_y_plus_mid_y_{}'.format(number))
-    cmds.connectAttr(mid_point_node + '.translateX', max_y_plus_mid_y + '.input1')
-    cmds.connectAttr(point_2_node + '.translateY', max_y_plus_mid_y + '.input2')
+    max_y_plus_mid_y = cmds.createNode(
+        'addDoubleLinear', name='max_y_plus_mid_y_{}'.format(number))
+    cmds.connectAttr(mid_point_node + '.translateX',
+                     max_y_plus_mid_y + '.input1')
+    cmds.connectAttr(point_2_node + '.translateY',
+                     max_y_plus_mid_y + '.input2')
     # create division of result a (coefficient)
-    divide_result_a = cmds.createNode('multiplyDivide', name='divide_result_a_{}'.format(number))
+    divide_result_a = cmds.createNode(
+        'multiplyDivide', name='divide_result_a_{}'.format(number))
     cmds.setAttr(divide_result_a + '.operation', 2)
-    cmds.connectAttr(max_y_plus_mid_y + '.output', divide_result_a + '.input1X')
-    cmds.connectAttr(max_x_max_y_power_2 + '.output', divide_result_a + '.input2X')
+    cmds.connectAttr(max_y_plus_mid_y + '.output',
+                     divide_result_a + '.input1X')
+    cmds.connectAttr(max_x_max_y_power_2 + '.output',
+                     divide_result_a + '.input2X')
     # create a negatory multiplication for correct interpolation and extrapolation of results
-    a_times_neg_1 = cmds.createNode('multDoubleLinear', name="a_times_neg_1_{}".format(number))
+    a_times_neg_1 = cmds.createNode(
+        'multDoubleLinear', name="a_times_neg_1_{}".format(number))
     cmds.setAttr(a_times_neg_1 + '.input2', -1)
     cmds.connectAttr(divide_result_a + '.outputX', a_times_neg_1 + '.input1')
     # create mutiplication of a against x input
-    a_mult_x = cmds.createNode('multDoubleLinear', name="a_mult_x_{}".format(number))
+    a_mult_x = cmds.createNode(
+        'multDoubleLinear', name="a_mult_x_{}".format(number))
     cmds.connectAttr(a_times_neg_1 + '.output', a_mult_x + '.input1')
     # create x input x_mid_x_power_2
-    x_mid_x_power_2 = cmds.createNode('multiplyDivide', name='x_mid_x_power_2_{}'.format(number))
+    x_mid_x_power_2 = cmds.createNode(
+        'multiplyDivide', name='x_mid_x_power_2_{}'.format(number))
     cmds.setAttr(x_mid_x_power_2 + 'input2X', 2)
     cmds.setAttr(x_mid_x_power_2 + '.operation', 3)
     # set the x value here
-    cmds.connectAttr(x_value_node + '.translateX', x_mid_x_power_2 + '.input1X')
+    cmds.connectAttr(x_value_node + '.translateX',
+                     x_mid_x_power_2 + '.input1X')
     cmds.connectAttr(x_mid_x_power_2 + '.outputX', a_mult_x + '.input2')
     # result plus mid.ty
-    result_plus_mid_y = cmds.createNode('addDoubleLinear', name="result_plus_mid_y_{}".format(number))
+    result_plus_mid_y = cmds.createNode(
+        'addDoubleLinear', name="result_plus_mid_y_{}".format(number))
     cmds.connectAttr(a_mult_x + '.output', result_plus_mid_y + '.input1')
-    cmds.connectAttr(mid_point_node + '.translateY', result_plus_mid_y + '.input2')
-    cmds.connectAttr(result_plus_mid_y + '.output', x_value_node + '.translateY')
+    cmds.connectAttr(mid_point_node + '.translateY',
+                     result_plus_mid_y + '.input2')
+    cmds.connectAttr(result_plus_mid_y + '.output',
+                     x_value_node + '.translateY')
     return (sub_max_x_max_y, max_x_max_y_power_2, max_y_plus_mid_y, divide_result_a,
             a_times_neg_1, a_mult_x, x_mid_x_power_2, result_plus_mid_y)
+
 
 def barycentric_interpolation(vecA, vecB, vecC, vecP):
     """
@@ -1077,12 +1252,15 @@ def barycentric_interpolation(vecA, vecB, vecC, vecP):
     u = 1.0 - v - w
     return [u, v, w]
 
+
 def sine_maxima(x, b):
     pi = 3.1415926
     return (2 * x * pi + pi/2, 1) * b
 
+
 def sinusoidal_function(x, a, b, c, d):
     return a * math.sin(b * x - c) + d
+
 
 def sinusoidal_period(x, a, b):
     """
@@ -1095,6 +1273,7 @@ def sinusoidal_period(x, a, b):
     """
     return a * math.sin(b * x)
 
+
 def distance(a, b):
     """get the distance between two 2D points
 
@@ -1106,6 +1285,7 @@ def distance(a, b):
         float: the distance between points
     """
     return ((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2) ** 0.5
+
 
 def point_line_distance(point, start, end):
     """shortest ditance between a point and a line
@@ -1128,6 +1308,7 @@ def point_line_distance(point, start, end):
         d = ((end[0] - start[0]) ** 2 + (end[1] - start[1]) ** 2) ** 0.5
         return n / d
 
+
 def simplify(points, epsilon):
     """Reduces a series of points to a simplified version that loses detail, but
     maintains the general shape of the series.
@@ -1142,10 +1323,12 @@ def simplify(points, epsilon):
             index = i
             dmax = d
     if dmax >= epsilon:
-        results = simplify(points[:index+1], epsilon)[:-1] + simplify(points[index:], epsilon)
+        results = simplify(points[:index+1], epsilon)[:-1] + \
+            simplify(points[index:], epsilon)
     else:
         results = [points[0], points[-1]]
     return results
+
 
 def mirror_vector(transform_object, mirror_object=None, normal=(1.0, 0.0, 0.0)):
     """r = d -2(d⋅n)n
@@ -1163,8 +1346,10 @@ def mirror_vector(transform_object, mirror_object=None, normal=(1.0, 0.0, 0.0)):
     else:
         mirror_object_matrix = MMatrix()
         mirror_object_vector = list_from_MMatrix(mirror_object_matrix)[12:15]
-    reflection_vector = mirror_vector_math(transform_vector, mirror_object_vector, normal)
+    reflection_vector = get_mirror_vector(
+        transform_vector, mirror_object_vector, normal)
     return reflection_vector
+
 
 def list_from_MMatrix(m):
     """return a list from MMatrix object
@@ -1177,7 +1362,15 @@ def list_from_MMatrix(m):
         m(2, 0), m(2, 1), m(2, 2), m(2, 3),
         m(3, 0), m(3, 1), m(3, 2), m(3, 3)]
 
-def mirror_vector_math(pointed_vector, base_vector, normal=None):
+
+def print_list_matrix(list_matrix):
+    print(['%.4f' % i for i in list_matrix[0:4]], " ,")
+    print(['%.4f' % i for i in list_matrix[4:8]], " ,")
+    print(['%.4f' % i for i in list_matrix[8:12]], " ,")
+    print(['%.4f' % i for i in list_matrix[12:16]], " ,")
+
+
+def get_mirror_vector(pointed_vector, base_vector=(0.0, 0.0, 0.0), normal=None):
     """mirror vector math: r = a -2 *(a)n*n;
     :param pointed_vector: (tuple, list, ) the vector to mirror
     :param base_vector: (tuple, list, ) the base vector to mirror against
@@ -1193,7 +1386,180 @@ def mirror_vector_math(pointed_vector, base_vector, normal=None):
         normal = MVector(*normal)
     # wrong: 2.0 * MVector(0.0, 1.0, 0.0)
     # right: MVector(0.0, 1.0, 0.0) * 2.0
-    mirror_vector = pointed_vector - (normal * ((pointed_vector * 2.0) * normal))
-    return mirror_vector.x, mirror_vector.y, mirror_vector.z 
+    mirror_vector = pointed_vector - \
+        (normal * ((pointed_vector * 2.0) * normal))
+    return mirror_vector.x, mirror_vector.y, mirror_vector.z
+
+
+def get_mirror_axis_vector(pointed_vector, base_vector=(0.0, 0.0, 0.0), normal=(0.0, 1.0, 0.0)):
+    """mirror vector math: for normalized rotational axes
+    :param pointed_vector: (tuple, list, ) the vector to mirror
+    :param base_vector: (tuple, list, ) the base vector to mirror against
+    :param normal: (tuple, list, ) the direction of the reflected vector
+    :return: (tuple, list) mirror, reflected vector
+    """
+    mirror_vector = get_mirror_vector(
+        pointed_vector, base_vector=(0.0, 0.0, 0.0), normal=normal)
+    base_vector = MVector(*base_vector)
+    axis_vector = MVector(*mirror_vector)
+    axis_vector -= base_vector
+    axis_vector.normalize()
+    return axis_vector.x, axis_vector.y, axis_vector.z,
+
+
+def get_matrix_from_vectors(axis_x, axis_y, axis_z, base_vector):
+    """construct a rotation vector based from 4 vectors:
+    :param axis_x: (tuple, list, ) vector axis x
+    :param axis_y: (tuple, list, ) vector axis y
+    :param axis_z: (tuple, list, ) vector axis z
+    :param base_vector: (tuple, list, ) the base vector to transform the x, y, z axis vectors
+    :return: (list, ) matrix_from_vector_axes
+    """
+    m = MMatrix()
+    m.setToIdentity()
+    data = list_from_MMatrix(m)
+    for i in range(0, 3):
+        data[i] = axis_x[i]
+    for i in range(0, 3):
+        data[4 + i] = axis_y[i]
+    for i in range(0, 3):
+        data[8 + i] = axis_z[i]
+    for i in range(0, 3):
+        data[12 + i] = base_vector[i]
+    MScriptUtil.createMatrixFromList([*data], m)
+    matrix_from_vector_axes = list_from_MMatrix(m)
+    return matrix_from_vector_axes
+
+
+def mirror_matrix_xz(transform_node, apply_xform_to_node=None):
+    """Mirror the node's matrix
+    :param transform_node: (str, ) the transform node to extract vector information from
+    :param apply_xform_to_node: (str, ) apply xform information to this transform node instead
+    :return: (list, ) matrix list
+    """
+    normal = (1.0, 0.0, 0.0)
+    matrix = cmds.xform(transform_node, m=1, ws=1, q=True)
+    axis_x = matrix[0:3]
+    axis_y = matrix[4:7]
+    axis_z = matrix[8:11]
+    translate_vector = matrix[12:15]
+    base_mirror = get_mirror_vector(translate_vector, normal=normal)
+    axis_x = MVector(*axis_x) + MVector(*base_mirror)
+    axis_y = MVector(*axis_y) + MVector(*base_mirror)
+    axis_z = MVector(*axis_z) + MVector(*base_mirror)
+    mirror_x = get_mirror_axis_vector(
+        mvector_to_list(axis_x), translate_vector, normal=normal)
+    mirror_y = get_mirror_axis_vector(
+        mvector_to_list(axis_y), translate_vector, normal=normal)
+    mirror_z = get_mirror_axis_vector(
+        mvector_to_list(axis_z), translate_vector, normal=normal)
+    m = get_matrix_from_vectors(
+        mirror_x, mirror_y, mirror_z, base_mirror)
+    if apply_xform_to_node:
+        cmds.xform(apply_xform_to_node, m=m)
+        identity_scale(apply_xform_to_node)
+        identity_shear(apply_xform_to_node)
+    else:
+        cmds.xform(transform_node, m=m)
+        identity_scale(transform_node)
+        identity_shear(transform_node)
+    return mirror_x, mirror_y, mirror_z, base_mirror
+
+
+def mirror_matrix_at_axis_xy(transform_node, apply_xform_to_node=None,
+                             x_normal=(0.0, 1.0, 0.0), y_normal=(1.0, 0.0, 0.0)):
+    """locally mirrors the x axis at base vector
+    """
+    matrix = cmds.xform(transform_node, m=1, ws=1, q=True)
+    axis_x = matrix[0:3]
+    axis_y = matrix[4:7]
+    axis_z = matrix[8:11]
+    translate_vector = matrix[12:15]
+    mirror_x = get_mirror_vector(
+        axis_x, (0.0, 0.0, 0.0), normal=x_normal)
+    mirror_y = get_mirror_vector(
+        axis_y, (0.0, 0.0, 0.0), normal=y_normal)
+    mirror_x = normalize_float_vector(mirror_x)
+    mirror_y = normalize_float_vector(mirror_y)
+    m = get_matrix_from_vectors(
+        mirror_x, mirror_y, axis_z, translate_vector)
+    if apply_xform_to_node:
+        cmds.xform(apply_xform_to_node, m=m)
+        identity_scale(apply_xform_to_node)
+        identity_shear(apply_xform_to_node)
+    else:
+        cmds.xform(transform_node, m=m)
+        identity_scale(transform_node)
+        identity_shear(transform_node)
+    return mirror_x, mirror_y, axis_z, translate_vector
+
+
+def mirror_matrix_at_axis_zx(transform_node, apply_xform_to_node=None,
+                             z_normal=(1.0, 0.0, 0.0), x_normal=(0.0, 0.0, 1.0)):
+    """locally mirrors the x axis at base vector
+    """
+    matrix = cmds.xform(transform_node, m=1, ws=1, q=True)
+    axis_x = matrix[0:3]
+    axis_y = matrix[4:7]
+    axis_z = matrix[8:11]
+    translate_vector = matrix[12:15]
+    mirror_x = get_mirror_vector(
+        axis_x, (0.0, 0.0, 0.0), normal=x_normal)
+    mirror_z = get_mirror_vector(
+        axis_z, (0.0, 0.0, 0.0), normal=z_normal)
+    mirror_x = normalize_float_vector(mirror_x)
+    mirror_z = normalize_float_vector(mirror_z)
+    m = get_matrix_from_vectors(
+        mirror_x, axis_y, mirror_z, translate_vector)
+    if apply_xform_to_node:
+        cmds.xform(apply_xform_to_node, m=m)
+        identity_scale(apply_xform_to_node)
+        identity_shear(apply_xform_to_node)
+    else:
+        cmds.xform(transform_node, m=m)
+        identity_scale(transform_node)
+        identity_shear(transform_node)
+    return mirror_x, axis_y, mirror_z, translate_vector
+
+
+def mirror_matrix_at_axis_zy(transform_node, apply_xform_to_node=None,
+                             z_normal=(1.0, 0.0, 0.0), y_normal=(0.0, 0.0, 1.0)):
+    """locally mirrors the x axis at base vector
+    """
+    matrix = cmds.xform(transform_node, m=1, ws=1, q=True)
+    axis_x = matrix[0:3]
+    axis_y = matrix[4:7]
+    axis_z = matrix[8:11]
+    translate_vector = matrix[12:15]
+    mirror_y = get_mirror_vector(
+        axis_y, (0.0, 0.0, 0.0), normal=y_normal)
+    mirror_z = get_mirror_vector(
+        axis_z, (0.0, 0.0, 0.0), normal=z_normal)
+    mirror_y = normalize_float_vector(mirror_y)
+    mirror_z = normalize_float_vector(mirror_z)
+    m = get_matrix_from_vectors(
+        axis_x, mirror_y, mirror_z, translate_vector)
+    if apply_xform_to_node:
+        cmds.xform(apply_xform_to_node, m=m)
+        identity_scale(apply_xform_to_node)
+        identity_shear(apply_xform_to_node)
+    else:
+        cmds.xform(transform_node, m=m)
+        identity_scale(transform_node)
+        identity_shear(transform_node)
+    return axis_x, mirror_y, mirror_z, translate_vector
+
+
+def normalize_float_vector(float_vector):
+    """normalize a float vector by the magnitude of each value
+    :param float_vector: (tuple, list) a vector of 3 float values of xyz co-ordinates
+    """
+    x = float_vector[0]
+    y = float_vector[1]
+    z = float_vector[2]
+    mag = ((x * x) + (y * y) + (z * z)) ** 0.5
+    normalized_float_vector = x / mag, y / mag, z / mag,
+    return normalized_float_vector
+
 # ______________________________________________________________________________________________________________________
 # math_utils.py
