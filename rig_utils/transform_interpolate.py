@@ -538,7 +538,7 @@ def mirror(transfrom_node, normal=(0.0, 1.0, 0.0), flip_rot_x=False, flip_rot_y=
     data = math_utils.list_from_MMatrix(m_flip)
     rotation_x = data[0:3]  # x-axis vector
     rotation_y = data[4:7]  # y-axis vector
-    rotation_z = data[8:11] # z-axis vector
+    rotation_z = data[8:11]  # z-axis vector
     # ...mirror against the origin at the grid
     mirror_base = math_utils.mirror_vector_math(
         (base_x, base_y, base_z), (0.0, 0.0, 0.0), normal=normal)

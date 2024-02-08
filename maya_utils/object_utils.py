@@ -68,7 +68,7 @@ node_types = {
     'wrap':                 OpenMaya.MFn.kWrapFilter,
     'shrinkWrap':           OpenMaya.MFn.kShrinkWrapFilter,
     'lambert':              OpenMaya.MFn.kLambert
-    }
+}
 
 # define private variables
 __verbosity__ = 0
@@ -156,6 +156,7 @@ def get_dag(object_name="", shape=False):
     m_sel.getDagPath(0, m_dag)
     return m_dag
 
+
 def get_selection_iter():
     """
     returns the selection iterator.
@@ -193,6 +194,7 @@ def get_m_selection(objects_array=(), as_strings=False):
         return m_string_array
     return m_list
 
+
 def get_m_selection_iter(objects_array=()):
     """
     gets an selection list iter.
@@ -207,6 +209,7 @@ def get_m_selection_iter(objects_array=()):
             m_list.add(obj_name)
     mIt_list = OpenMaya.MItSelectionList(m_list)
     return mIt_list
+
 
 def iterate_items(objects_array=()):
     """
@@ -463,7 +466,8 @@ def get_k_space(space='world'):
     elif space == 'transform':
         return space_k_transform()
     else:
-        raise NotImplementedError("[GetKSpace] :: {}, is invalid.".format(space))
+        raise NotImplementedError(
+            "[GetKSpace] :: {}, is invalid.".format(space))
 
 
 def space_k_world():
@@ -790,7 +794,8 @@ def delete_node(object_name):
         else:
             return False
     except TypeError:
-        OpenMaya.MGlobal.displayWarning("[UnableToRemove] :: {}".format(object_name))
+        OpenMaya.MGlobal.displayWarning(
+            "[UnableToRemove] :: {}".format(object_name))
     return True
 
 
@@ -811,9 +816,9 @@ def remove_node(object_name):
                 # object  already deleted
                 continue
     elif isinstance(object_name, (str, unicode)) and is_exists(object_name):
-            node = get_m_obj(object_name)
-            m_dag_mod.deleteNode(node)
-            m_dag_mod.doIt()
+        node = get_m_obj(object_name)
+        m_dag_mod.deleteNode(node)
+        m_dag_mod.doIt()
     return True
 
 
@@ -856,13 +861,14 @@ def get_m_anim_from_sel(object_node="", as_strings=False):
         object_node = get_selected_node()
     anim_nodes = {}
     anim_curve_nodes = get_connected_nodes(
-            object_name=object_node, find_node_type=OpenMaya.MFn.kAnimCurve, as_strings=as_strings,
-            down_stream=False, up_stream=True)
+        object_name=object_node, find_node_type=OpenMaya.MFn.kAnimCurve, as_strings=as_strings,
+        down_stream=False, up_stream=True)
     for anim in anim_curve_nodes:
         if as_strings:
             anim_nodes[anim] = get_m_obj(anim)
         else:
-            anim_nodes[get_m_object_name(anim)] = OpenMayaAnim.MFnAnimCurve(anim)
+            anim_nodes[get_m_object_name(
+                anim)] = OpenMayaAnim.MFnAnimCurve(anim)
     return anim_nodes
 
 
@@ -1170,7 +1176,8 @@ def get_m_parent(m_object=None, find_parent='', with_shape='', as_strings=False)
             for i in range(length):
                 m_path = o_arr[i]
                 p_node_ls = m_path.fullPathName().split('|')
-                found = filter(lambda x: find_parent in x.rpartition(':')[-1], p_node_ls)
+                found = filter(
+                    lambda x: find_parent in x.rpartition(':')[-1], p_node_ls)
                 if found:
                     if as_strings:
                         return_data += found,
@@ -1315,9 +1322,11 @@ def get_transform_relatives(object_name='', find_parent='', find_child=False, wi
     """
     # transform_objects = get_scene_objects(node_type='kTransform')
     if not object_name:
-        raise ValueError("[GetTransformRelatives] :: object_name parameter is empty.")
+        raise ValueError(
+            "[GetTransformRelatives] :: object_name parameter is empty.")
     if not find_parent and not find_child:
-        raise ValueError("[GetTransformRelatives] :: Please supply either find_parent or find_child parameters.")
+        raise ValueError(
+            "[GetTransformRelatives] :: Please supply either find_parent or find_child parameters.")
 
     # define variables
     return_data = ()
@@ -1448,7 +1457,8 @@ def get_connected_anim(object_name=""):
     anim_curves = ()
     if not anim_c and anim_b:
         for blend_node in anim_b:
-            anim_curves += tuple(cmds.listConnections(blend_node, s=1, d=0, type='animCurve'))
+            anim_curves += tuple(cmds.listConnections(blend_node,
+                                 s=1, d=0, type='animCurve'))
         return anim_curves
     else:
         return anim_c
@@ -1507,7 +1517,8 @@ def get_m_obj(object_str):
             om_sel.getDependNode(0, node)
             return node
         except:
-            raise RuntimeError('[Get MObject] :: failed on {}'.format(object_str))
+            raise RuntimeError(
+                '[Get MObject] :: failed on {}'.format(object_str))
     return object_str
 
 
@@ -1624,7 +1635,8 @@ def get_mesh_fn(target):
         ground_node = target.node()
         ground_path = target
     else:
-        raise TypeError('Must be of type str, MObject or MDagPath, is type: {}'.format(type(target)))
+        raise TypeError(
+            'Must be of type str, MObject or MDagPath, is type: {}'.format(type(target)))
 
     if ground_node.hasFn(OpenMaya.MFn.kMesh):
         return OpenMaya.MFnMesh(ground_path), ground_node, ground_path
@@ -1807,7 +1819,7 @@ def get_plugs(o_node=None, source=True, ignore_nodes=(), ignore_attrs=(), attr_n
         if ignore_attrs:
             if [a for a in ignore_attrs if a in m_plug_name]:
                 continue
-        print(m_plug_name, "isArray: ", m_plug.isArray(), "isCompound", m_plug.isCompound())
+        # print(m_plug_name, "isArray: ", m_plug.isArray(), "isCompound", m_plug.isCompound())
         m_plug_array = OpenMaya.MPlugArray()
         m_plug.connectedTo(m_plug_array, source, not source)
         plug_array_len = m_plug_array.length()
@@ -1819,7 +1831,8 @@ def get_plugs(o_node=None, source=True, ignore_nodes=(), ignore_attrs=(), attr_n
                 plug_names += plug_name,
             elif ignore_nodes:
                 if [ig for ig in ignore_nodes if has_fn(plug_node, ig)]:
-                    plug_names += get_plugs(plug_name, source=source, ignore_nodes=ignore_nodes),
+                    plug_names += get_plugs(plug_name, source=source,
+                                            ignore_nodes=ignore_nodes),
                 else:
                     plug_names += plug_name,
     return plug_names
@@ -1910,7 +1923,8 @@ class Item(OpenMaya.MObject):
             if full_name:
                 plugs += OpenMaya.MPlug(self, a_obj).name(),
             else:
-                plugs += OpenMaya.MPlug(self, a_obj).name().rpartition('.')[-1],
+                plugs += OpenMaya.MPlug(self,
+                                        a_obj).name().rpartition('.')[-1],
         return plugs
 
     @staticmethod
@@ -2019,7 +2033,8 @@ def create_locator(name="", position=()):
     node = create_node("locator", name+"Shape")
     # returns as locator shape, so we need to get the transform node.
     if has_fn(node, 'locator'):
-        node = get_transform_relatives(node, find_parent=True, as_strings=True)[0]
+        node = get_transform_relatives(
+            node, find_parent=True, as_strings=True)[0]
     if position and len(position) == 3:
         set_object_transform(node, t=position)
     elif position and len(position) > 3:
@@ -2098,7 +2113,8 @@ def do_parent(child_obj, parent_obj):
     try:
         return cmds.parent(child_obj, parent_obj)
     except RuntimeError:
-        cmds.warning("[Could not parent: {} -> {}]".format(child_obj, parent_obj))
+        cmds.warning(
+            "[Could not parent: {} -> {}]".format(child_obj, parent_obj))
         return False
 
 

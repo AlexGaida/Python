@@ -12,12 +12,14 @@ import ast
 import shutil
 import pickle
 
+
 # import maya modules
 from maya import cmds
 
 # define local variables
 # re_slash = re.compile(r'[^\\/]+|[\\/]')
 re_slash = re.compile('(\\\\|/)')
+temp_dir = posixpath.join(os.environ["HOME"], "Temp")
 
 
 def read_json_file(json_file_name):
@@ -27,7 +29,7 @@ def read_json_file(json_file_name):
     :return: <dict> json file contents
     """
     with open(json_file_name, 'r') as f:
-      json_file_contents = json.load(f)
+        json_file_contents = json.load(f)
     return json_file_contents
 
 
@@ -95,7 +97,8 @@ def get_directories(path_name, full_path=False):
         directories = [f for f in files if os.path.isdir(f)]
         return directories
     else:
-        directories = tuple(map(lambda x: os.path.split(x)[-1] if os.path.isdir(x) else None, files))
+        directories = tuple(map(lambda x: os.path.split(
+            x)[-1] if os.path.isdir(x) else None, files))
         directories = filter(None, directories)
         return directories
 
@@ -335,18 +338,25 @@ def concatenate_path(*args):
 
 class Serializer:
     """Abstract class for use as a base for context-specific data serialization"""
+
     def __init__(self):
         pass
+
     def save_file():
         pass
+
     def load_file():
         pass
+
     def insert_data():
         pass
+
     def append_data():
         pass
+
     def delete_file():
         pass
+
 
 class DataSerializer(Serializer):
     """Data Serializer class for the basis of serializing python objects"""
@@ -356,23 +366,29 @@ class DataSerializer(Serializer):
     EXT_NAME = ""
     SOURCE_DIR_PATH = ""
     DESTINATION_DIR_PATH = ""
+
     def __init__(self, destination_dir_path=None, source_dir_path=None, source_file=None):
         DataSerializer.SOURCE_DIR_PATH = source_dir_path
         DataSerializer.DESTINATION_DIR_PATH = destination_dir_path
         DataSerializer.FILE_NAME = source_file
         Serializer.__init__(self)
+
     def save_file():
         """save the updated data to a file if changes are made to the original data"""
         pass
+
     def load_file():
         """load the file and read the contents of the file"""
         pass
+
     def insert_data():
         """update the contents of the data file"""
         pass
+
     def append_data():
         """add new contents of data to the file"""
         pass
+
     def delete_data():
         """deletes the contents of data inside the file"""
         pass
@@ -385,12 +401,14 @@ class PickleSerializer(DataSerializer):
     UPDATE_DATA = {}
     EXT_NAME = "json"
 
+
 class CSVSerializer(DataSerializer):
     """CSV serializer for manipulation of data files."""
     READ_DATA = {}
     FILE_NAME = ""
     UPDATE_DATA = {}
     EXT_NAME = "json"
+
 
 class JSONSerializer:
     """
@@ -461,7 +479,8 @@ class JSONSerializer:
             # now write the file from the start
             write_file.seek(0)
             # then write the file
-            json.dump(self._get_data(data), write_file, indent=4, sort_keys=True)
+            json.dump(self._get_data(data), write_file,
+                      indent=4, sort_keys=True)
 
     def read(self, file_name=""):
         """
@@ -520,7 +539,8 @@ class XMLSerializer:
         :return: <xml.Element> data.
         """
         if not isinstance(dictionary_data, dict):
-            raise ValueError("[InterpretDictionaryData] :: Must have a dictionary type as input parameter.")
+            raise ValueError(
+                "[InterpretDictionaryData] :: Must have a dictionary type as input parameter.")
 
         self.xml_data = ET.Element("DataInformation")
         items = ET.SubElement(self.xml_data, 'Data')
