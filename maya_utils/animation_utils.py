@@ -1,5 +1,6 @@
 """
 Animation data tools, manipulating animation settings.
+Written in both cmds and OpenMaya way.
 """
 # import standard modules
 from math import atan, cos
@@ -14,6 +15,7 @@ from maya import OpenMayaAnim as OpenMayaAnim
 from . import object_utils
 from maya_utils import math_utils
 from maya_utils import file_utils
+from ui_tools import list_tool
 
 
 # define private variables
@@ -60,6 +62,48 @@ __anim_infinityType = {
 }
 
 
+def write_anim_data():
+    """writes keyframe data, from selected objects onto a JSON file into a local temp directory
+    """
+    objects = object_utils.get_selected_objects_gen()
+    directory_name = file_utils.temp_dir
+    for anim_obj_name in objects:
+        data = get_anim_curve_data(anim_obj_name)
+        file_name = file_utils.posixpath.join(directory_name, anim_obj_name)
+        file_handler = file_utils.JSONSerializer(file_name, data)
+        file_handler.write()
+
+
+def _get_file_from_dir(dir_name):
+    files_list = file_utils.get_files(dir_name)
+    print(files_list)
+    ui = list_tool.openUI(objects_list=files_list)
+    anim_obj_file_name = ui.__str__()
+    file_path = file_utils.posixpath.join(
+        dir_name, anim_obj_file_name)
+    return file_path
+
+
+def read_anim_data(file_path=""):
+    """reads the keyframe data, from a specified file_path
+    """
+    if not file_path:
+        dir_name = file_utils.temp_dir
+        file_name = _get_file_from_dir(dir_name)
+    else:
+        if file_utils.is_dir(file_path):
+            file_name = _get_file_from_dir(file_path)
+        elif file_utils.is_file(file_path):
+            if file_utils.has_ext(file_path, 'json'):
+                pass
+            else:
+                raise IOError("File Invalid")
+    # ...choose the animation file name
+    file_handler = file_utils.JSONSerializer(file_name)
+    data = file_handler.read()
+    # add_keys_from_data(data)
+
+
 def connect_anim(source_object_name, source_attribute_name, dest_object_name, dest_attribute_name, driver_value=1.0):
     """
     connects an attribute using set driven keys.
@@ -75,7 +119,6 @@ def connect_anim(source_object_name, source_attribute_name, dest_object_name, de
     set_driven_key(source_object_name, source_attribute_name, dest_object_name, dest_attribute_name,
                    driven_value=1.0, driver_value=driver_value)
     # ...
-
     return True
 
 
@@ -107,8 +150,7 @@ def set_driven_key(driver_node='',
                    driver_value=None,
                    in_tangent='linear',
                    out_tangent='linear',
-                   insert_blend=True
-                   ):
+                   insert_blend=True):
     """
     perform set driven keyframe command.
     :param driver_node: <str>
@@ -125,21 +167,16 @@ def set_driven_key(driver_node='',
     """
     driver_str = '.'.join([driver_node, driver_attr])
     driven_str = '.'.join([driven_node, driven_attr])
-
     if not driven_value:
         driven_value = round(cmds.getAttr(driven_str), 3)
     if not driver_value:
         driver_value = round(cmds.getAttr(driver_str), 3)
-
     # understanding limitations: set driven keyframe does not set the keys well when both the controller
     # and the driven object has values.
     cmds.setDrivenKeyframe(driven_str, cd=driver_str,
                            driverValue=driver_value, value=driven_value,
                            inTangentType=in_tangent, outTangentType=out_tangent,
                            insertBlend=insert_blend)
-    # print('cmds.setDrivenKeyframe("{}", cd="{}", driverValue={}, '
-    #       'value={}, inTangentType="{}", outTangentType="{}", insertBlend={})'.format(
-    #     driven_str, driver_str, driver_value, driven_value, in_tangent, out_tangent, insert_blend))
     if __verbosity__:
         print("[Set Driven Key] :: {}: {} >> {}: {}".format(
             driver_str, driver_value, driven_str, driven_value))
@@ -175,9 +212,11 @@ def get_value_from_time(a_node="", idx=0):
     :param idx: <int> the time index.
     :return: <tuple> data.
     """
-    # return OpenMaya.MTime(a_node.time(idx), OpenMaya.MTime.kFilm).value(), a_node.value(idx),
+    data = {}
     m_time = a_node.time(idx)
-    return m_time.asUnits(OpenMaya.MTime.kFilm), a_node.value(idx),
+    data.update({'time': m_time.asUnits(OpenMaya.MTime.kFilm)})
+    data.update({'value': a_node.value(idx)})
+    return data
 
 
 def get_properties_from_time(a_node="", idx=0):
@@ -205,25 +244,23 @@ def get_tangents_angle_from_time(a_node, idx=0):
     angle = atan(y/x)
     weight = x/(3*cos(angle))
 
-
     :param a_node: MFn.kAnimCurve node.
     :param idx: <int> the time index.
     :return: <dict> in, out tangents.
     """
-    i_angle = OpenMaya.MAngle()
-    i_weight = __m_util.asDoublePtr()
-    o_angle = OpenMaya.MAngle()
-    o_weight = __m_util.asDoublePtr()
-    # isInTangent = True
-    a_node.getTangent(idx, i_angle, i_weight, True)
-    # isInTangent = False
-    a_node.getTangent(idx, o_angle, o_weight, False)
+    data = {}
     # tangent types
     in_type = a_node.inTangentType(idx)
     out_type = a_node.outTangentType(idx)
-    return {'in': (in_type, i_angle.value(), __m_util.getDouble(i_weight)),
-            'out': (out_type, o_angle.value(),  __m_util.getDouble(o_weight))
-            }
+    weight = object_utils.ScriptUtil(as_double_ptr=True)
+    angle = OpenMaya.MAngle()
+    # isInTangent = True
+    a_node.getTangent(idx, angle, weight.ptr, True)
+    data.update({'in': (in_type, angle.value(), weight.get_double())})
+    # isInTangent = False
+    a_node.getTangent(idx, angle, weight.ptr, False)
+    data.update({'out': (out_type, angle.value(), weight.get_double())})
+    return data
 
 
 def get_tangents_from_time(a_node="", idx=0):
@@ -233,44 +270,45 @@ def get_tangents_from_time(a_node="", idx=0):
     :param idx: <int> the time index.
     :return: <dict> in, out tangents.
     """
-    i_x = __m_util.asDoublePtr()
-    o_x = __m_util.asDoublePtr()
-    i_y = __m_util.asDoublePtr()
-    o_y = __m_util.asDoublePtr()
-    # isInTangent = True
-    a_node.getTangent(idx, i_x, i_y, True)
-    # isInTangent = False
-    a_node.getTangent(idx, o_x, o_y, False)
+    data = {}
+    # get tangent types
     in_type = a_node.inTangentType(idx)
     out_type = a_node.outTangentType(idx)
-    # now we have to convert the x-value into Maya time
-    convert = OpenMaya.MTime(1.0, OpenMaya.MTime.kSeconds)
-    i_x = __m_util.getDouble(i_x) * convert.uiUnit()
-    o_x = __m_util.getDouble(o_x) * convert.uiUnit()
-    i_y = __m_util.getDouble(i_y) * convert.uiUnit()
-    o_y = __m_util.getDouble(o_y) * convert.uiUnit()
-    return {'in': (in_type, i_x, i_y),
-            'out': (out_type, o_x, o_y)
-            }
+    # get time conversion
+    # convert_x = OpenMaya.MTime(1.0, OpenMaya.MTime.kSeconds).uiUnit()
+    # get (x, y) float pointers
+    x = __m_util.asFloatPtr()
+    y = __m_util.asFloatPtr()
+    # isInTangent = True
+    a_node.getTangent(idx, x, y, True)
+    x_value = __m_util.getFloat(x)
+    y_value = __m_util.getFloat(y)
+    data.update({'in': (in_type, x_value, y_value)})
+    # isInTangent = False
+    a_node.getTangent(idx, x, y, False)
+    x_value = __m_util.getFloat(x)
+    y_value = __m_util.getFloat(y)
+    data.update({'out': (out_type, x_value, y_value)})
+    return data
 
 
-def get_anim_fn_data(a_node=""):
+def get_anim_fn_data(a_node="", as_xy=False):
     """
     get animation data from MFnAnimCurve nodes.
     :return: <dict> animCurve data. <bool> False for failure.
     """
     k_len = a_node.numKeys()
-    collection = ()
+    collection = []
     for i in range(k_len):
-        collection += (get_value_from_time(a_node, i),
-                       # get_tangents_from_time(a_node, i),
-                       get_tangents_angle_from_time(a_node, i),
-                       get_properties_from_time(a_node, i)
-                       )
+        collection.append({i: (get_value_from_time(a_node, i),
+                               get_tangents_angle_from_time(a_node, i),
+                               get_properties_from_time(a_node, i))}),
     return collection
 
 
 def get_anim_curve_data(object_name=""):
+    """
+    """
     # get the anim curve object nodes
     data = {}
     anim_nodes = get_anim_connections(object_name)
@@ -280,19 +318,8 @@ def get_anim_curve_data(object_name=""):
     return data
 
 
-def write_anim_data():
-    objects = object_utils.get_selected_objects_gen()
-    directory_name = file_utils.temp_dir
-    for anim_obj_name in objects:
-        data = get_anim_curve_data(anim_obj_name)
-        file_name = file_utils.posixpath.join(directory_name, anim_obj_name)
-        file_handler = file_utils.JSONSerializer(file_name, data)
-        file_handler.write()
-
-
 def __round(x):
-    """
-    rounds to the nearest 0.25
+    """rounds to the nearest 0.25
     :param x: <float> number.
     :return: <float> rounded number.
     """
@@ -300,8 +327,7 @@ def __round(x):
 
 
 def set_anim_data(anim_data={}, rounded=False):
-    """
-    sets the existing animation data. This does not create new data.
+    """sets the existing animation data. This does not create new data.
     :param anim_data: <dict> animation data from get_anim_data function.
     :param rounded: <bool> flattens the animation data.
     :return: <bool> True for success. <bool> False for failure.
@@ -325,16 +351,8 @@ def set_anim_data(anim_data={}, rounded=False):
     return True
 
 
-def add_keys_from_data(object_name, anim_data={}):
-    """sets the animation data onto the object name
-    """
-    for node_name, a_data in anim_data.items():
-        pass
-
-
 def connections_gen(object_name="", attribute="", direction='kDownstream', level='kPlugLevel', ftype=''):
-    """
-    get plug connections
+    """get plug connections
     :param object_name: <str> object to check connections frOpenMaya.
     :param direction: <str> specify which direction to traverse.
     :param attribute: <str> find nodes connected to this attribute.
@@ -375,8 +393,7 @@ def connections_gen(object_name="", attribute="", direction='kDownstream', level
 
 
 def get_anim_connections(object_name=""):
-    """
-    get plug connections
+    """get plug connections
     :param object_name: <str> object name to get animation data from.
     :return: <dict> found animation connection plugs.
     """
@@ -416,8 +433,7 @@ def get_anim_connections(object_name=""):
 
 
 def get_animation_data_from_node(object_node=""):
-    """
-    get the animation data from the node specified.
+    """get the animation data from the node specified.
     :param object_node: <str> the object to check the data frOpenMaya.
     :return: <dict> key data.
     """
@@ -452,24 +468,7 @@ def get_animation_data_from_node(object_node=""):
                                   'targetAttr': destination_attr
                                   }
         for i_key in range(number_of_keys):
-            # this is a lie
-            # i_x = _float_ptr.get_double_ptr()
-            # i_y = _float_ptr.get_double_ptr()
-            #
-            # o_x = _float_ptr.get_double_ptr()
-            # o_y = _float_ptr.get_double_ptr()
-            #
-            # o_anim.getTangent(i_key, i_x, i_y, True)
-            # o_anim.getTangent(i_key, o_x, o_y, True)
-            # this is a lie
-            # v_float = o_anim.value(i_key)
-
-            # this will get me the values that I want.
-            # anim_data[object_node]['tangents'][i_key] = (ScriptUtil(i_x).asFloat(), ScriptUtil(i_y).asFloat(),
-            #                                              ScriptUtil(o_x).asFloat(), ScriptUtil(o_y).asFloat())
-            # anim_data[object_node]['tangents'][i_key] = (ScriptUtil(o_x).asFloat(), ScriptUtil(o_y).asFloat())
-
-            # get the information the standard way
+            # get the information the old way
             v_float = cmds.keyframe(object_node, q=1, valueChange=1)[i_key]
             try:
                 t_float = cmds.keyframe(object_node, floatChange=1, q=1)[i_key]
@@ -488,12 +487,15 @@ def get_animation_data_from_node(object_node=""):
 
 
 def attribute_name(node_name, target_attr):
+    """return an attribute name from node_name and target_attr
+    :param node_name: str, name of the node
+    :param target_attr: str, name of the attribute
+    """
     return node_name + '.' + target_attr
 
 
 def get_connected_blend_weighted_node(node_name="", target_attr=""):
-    """
-    get connected blend weighted node from the node name and the attribute provided.
+    """get connected blend weighted node from the node name and the attribute provided.
     :param node_name: <str> the node name to check.
     :param target_attr: <str> the connected target attribute to get the blendWeighted node from.
     :return: <>
@@ -503,8 +505,7 @@ def get_connected_blend_weighted_node(node_name="", target_attr=""):
 
 
 def get_blend_weighted_values(node_name="", target_attr=""):
-    """
-    get the values of the blendWeighted node and calculate the new difference value.
+    """get the values of the blendWeighted node and calculate the new difference value.
     :param node_name: <str> the name of the node to get the plug connections from
     :param target_attr: find the blendWeighted node from the target attribute.
     :return: <float> difference value.
@@ -520,8 +521,7 @@ def get_blend_weighted_values(node_name="", target_attr=""):
 
 
 def get_sum(value_data=[]):
-    """
-    gets the difference in values.
+    """gets the difference in values.
     :param value_data: <list> the values to get the
     :return: <float> sum of numbers.
     """
@@ -529,13 +529,60 @@ def get_sum(value_data=[]):
 
 
 def get_blend_weighted_sum(node_name="", target_attr=""):
-    """
-    get the sum of all values given by the blend weighted node found from the parameters given.
+    """get the sum of all values given by the blend weighted node found from the parameters given.
     :param node_name: <str> the node name to get the blend weighted node frOpenMaya.
     :param target_attr: <str> the attribute to get blendWeighted values frOpenMaya.
     :return: <float> the sum of all values.
     """
     return get_sum(get_blend_weighted_values(node_name, target_attr))
 
+
+def add_keys_from_data(anim_data={}):
+    """sets the animation data onto the object name
+    :param object_name: <str> the name of the object to add keyframes to
+    """
+    for node_name, a_data in anim_data.items():
+        m_curve_change = OpenMayaAnim.MAnimCurveChange()
+        for str_index, data in a_data.items():
+            node_data, tangent_data, property_data = data
+            m_time = OpenMaya.MTime(node_data["time"], OpenMaya.MTime.kFilm)
+            anim_fn, m_dag_mod = add_keyframe_node(node_name)
+            anim_fn.addKeyframe(m_time, node_data["value"], m_curve_change)
+            in_type = tangent_data["in"][0]
+            in_angle = tangent_data["in"][1]
+            in_weight = tangent_data["in"][2]
+            out_type = tangent_data["out"][0]
+            out_angle = tangent_data["out"][1]
+            out_weight = tangent_data["out"][2]
+            anim_fn.setInTangentType(in_type)
+            anim_fn.setOutTangentType(out_type)
+            # inTangent
+            anim_fn.setTangent(int(str_index), in_angle, in_weight, True)
+            # outTangent
+            anim_fn.setTangent(int(str_index), out_angle, out_weight, False)
+            # set key properties
+            anim_fn.setBreakdown(property_data["isBreakdown"])
+            anim_fn.setIsWeighted(property_data["isWeighted"])
+            anim_fn.setWeightsLocked(property_data["weightsLocked"])
+            anim_fn.setTangentsLocked(property_data["tangentsLocked"])
+            anim_fn.setPreInfinityType(property_data["preInfinityType"])
+            anim_fn.setPostInfinityType(property_data["postInfinityType"])
+    # MS::kSuccess
+    return True
+
+
+def add_keyframe_node(keyframe_name=""):
+    """adds a keyframe node to a plug
+    :param keyframe_name: str, nodeName_attributeName
+    :return: <tuple> MFnAnimCurve, MDagModifier
+    """
+    anim_fn = OpenMayaAnim.MFnAnimCurve()
+    m_dag_mod = OpenMaya.MDagModifier()
+    object_name = keyframe_name[:keyframe_name.rfind('_')]
+    attribute_name = keyframe_name[keyframe_name.rfind('_') + 1:]
+    node = object_utils.get_m_obj(object_name)
+    attr_plug = object_utils.get_plug(node, attribute_name)
+    anim_fn.create(node, attr_plug, m_dag_mod)
+    return anim_fn, m_dag_mod,
 # ______________________________________________________________________________________________________________________
 # animation_utils.py

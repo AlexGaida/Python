@@ -1,9 +1,11 @@
-from importlib import reload
-from maya_utils import ui_utils;reload(ui_utils)
-# Imports
-import os
 from PySide2 import QtWidgets
+import os
+from importlib import reload
+from maya_utils import ui_utils
+reload(ui_utils)
+# Imports
 ui = None
+
 
 def openUI(targets_list=[]):
     '''
@@ -15,25 +17,32 @@ def openUI(targets_list=[]):
     parent_window = ui_utils.get_maya_parent_window()
     ui = OrganizerUI(parent=parent_window, targets_list=targets_list)
     ui.show()
+    return ui
+
 
 def get_organized_list():
     return os.environ["__TEMP_TARGETS_LIST"].split(';')
 
+
 def clear_cache():
     del os.environ["__TEMP_TARGETS_LIST"]
 
+
 class OrganizerUI(QtWidgets.QMainWindow):
     key_index = "{}: {}"
-    def __init__( self, parent=None, targets_list=[]):
-        ## Init:
-        super(OrganizerUI, self).__init__( parent )
+
+    def __init__(self, parent=None, targets_list=[]):
+        # Init:
+        super(OrganizerUI, self).__init__(parent)
         self.centralwidget = QtWidgets.QWidget(self)
         self.verticalLayout = QtWidgets.QVBoxLayout(self.centralwidget)
-        self.verticalLayout.addWidget(QtWidgets.QLabel("Please organize the targets in an descending order:"))
+        self.verticalLayout.addWidget(QtWidgets.QLabel(
+            "Please organize the targets in an descending order:"))
         self.treeWidget = QtWidgets.QListWidget(self.centralwidget)
-        #...add test targets
+        # ...add test targets
         for idx, item in enumerate(targets_list):
-            q_item = QtWidgets.QListWidgetItem(OrganizerUI.key_index.format(idx, item))
+            q_item = QtWidgets.QListWidgetItem(
+                OrganizerUI.key_index.format(idx, item))
             self.treeWidget.addItem(q_item)
             self.set_targets_from_list()
         self.verticalLayout.addWidget(self.treeWidget)
@@ -51,7 +60,7 @@ class OrganizerUI(QtWidgets.QMainWindow):
         self.down_button.clicked.connect(self.re_organize_item_down)
         self.remove_button.clicked.connect(self.remove_item)
         self.setCentralWidget(self.centralwidget)
-        #...
+        # ...
         self.treeWidget.setAlternatingRowColors(True)
         self.close_window.clicked.connect(self.deleteLater)
 
@@ -71,10 +80,12 @@ class OrganizerUI(QtWidgets.QMainWindow):
             item = item.split(': ')[-1]
             if text in item:
                 found_idx = idx
-            q_item = QtWidgets.QListWidgetItem(OrganizerUI.key_index.format(idx, item))
+            q_item = QtWidgets.QListWidgetItem(
+                OrganizerUI.key_index.format(idx, item))
             self.treeWidget.addItem(q_item)
         items = self._get_item_list()
-        cur_item_idx = items.index(OrganizerUI.key_index.format(found_idx, selected_item.split(': ')[-1]))
+        cur_item_idx = items.index(OrganizerUI.key_index.format(
+            found_idx, selected_item.split(': ')[-1]))
         self.treeWidget.setCurrentRow(cur_item_idx)
         self.set_targets_from_list()
 
@@ -94,10 +105,12 @@ class OrganizerUI(QtWidgets.QMainWindow):
             item = item.split(': ')[-1]
             if text in item:
                 found_idx = idx
-            q_item = QtWidgets.QListWidgetItem(OrganizerUI.key_index.format(idx, item))
+            q_item = QtWidgets.QListWidgetItem(
+                OrganizerUI.key_index.format(idx, item))
             self.treeWidget.addItem(q_item)
         items = self._get_item_list()
-        cur_item_idx = items.index(OrganizerUI.key_index.format(found_idx, selected_item.split(': ')[-1]))
+        cur_item_idx = items.index(OrganizerUI.key_index.format(
+            found_idx, selected_item.split(': ')[-1]))
         self.treeWidget.setCurrentRow(cur_item_idx)
         self.set_targets_from_list()
 
@@ -109,7 +122,8 @@ class OrganizerUI(QtWidgets.QMainWindow):
         self.treeWidget.clear()
         for idx, item in enumerate(items):
             item = item.split(': ')[-1]
-            q_item = QtWidgets.QListWidgetItem(OrganizerUI.key_index.format(idx, item))
+            q_item = QtWidgets.QListWidgetItem(
+                OrganizerUI.key_index.format(idx, item))
             self.treeWidget.addItem(q_item)
         self.set_targets_from_list()
 
@@ -119,7 +133,7 @@ class OrganizerUI(QtWidgets.QMainWindow):
             item = self.treeWidget.item(idx).text()
             items.append(item)
         return items
-    
+
     def set_targets_from_list(self):
         items = []
         for idx in range(self.treeWidget.count()):
@@ -127,10 +141,13 @@ class OrganizerUI(QtWidgets.QMainWindow):
             items.append(item)
         items = ';'.join(items)
         os.environ["__TEMP_TARGETS_LIST"] = items
+
     def get_targets_from_list(self):
         return os.environ["__TEMP_TARGETS_LIST"].split(';')
+
+
 # __name__
 if __name__ == '__main__':
     openUI()
 # ______________________________________________________________________________
-#organizer tool
+# organizer tool

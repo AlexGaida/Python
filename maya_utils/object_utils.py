@@ -595,6 +595,9 @@ class ScriptUtil(OpenMaya.MScriptUtil):
     def as_matrix(self):
         return self.matrix_om
 
+    def __repr__(self):
+        return self.ptr
+
 
 def get_world_position(object_name):
     """
@@ -815,7 +818,7 @@ def remove_node(object_name):
             except RuntimeError:
                 # object  already deleted
                 continue
-    elif isinstance(object_name, (str, unicode)) and is_exists(object_name):
+    elif isinstance(object_name, str) and is_exists(object_name):
         node = get_m_obj(object_name)
         m_dag_mod.deleteNode(node)
         m_dag_mod.doIt()
@@ -838,7 +841,7 @@ def get_plug(object_name, attr_str):
     :param attr_str: <str> attribute name to find.
     :return: <OpenMaya.MPlug>
     """
-    return get_fn(get_m_obj(object_name)).findPlug(attr_str)
+    return get_fn(get_m_obj(object_name)).findPlug(attr_str, False)
 
 
 def get_object_types(find_str=""):
@@ -2158,5 +2161,8 @@ def unlock_attribute(source_attr):
 def lock_attribute(source_attr):
     return cmds.setAttr(source_attr, l=True)
 
+
+def get_mdg_modifier():
+    return OpenMaya.MDagModifier()
 # ______________________________________________________________________________________________________________________
 # object_utils.py
