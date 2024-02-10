@@ -12,7 +12,6 @@ import ast
 import shutil
 import pickle
 
-
 # import maya modules
 from maya import cmds
 
@@ -60,6 +59,15 @@ def make_py_file(dir_name, file_name):
     return file_path
 
 
+def get_file_name_from_file_path(file_name):
+    """split the file name from the full path name
+    :param file_name: <str> full path name
+    :return: <str> file_name
+    """
+    file_name = os.path.basename(file_name)
+    return file_name
+
+
 def copy_file(src_file, dst_file):
     return shutil.copyfile(src_file, dst_file)
 
@@ -75,14 +83,20 @@ def remove_directory(dir_name):
     return True
 
 
-def get_files(path_name, file_ext='json'):
+def get_files(path_name, file_ext='json', strip_dir=False):
     """
     get the list of files in the path name
     :param path_name: <str> file path name to search.
     :param file_ext: <str> file extension to save.
     :return: <list> array of files found.
     """
-    return glob.glob(path_name + '/*{}'.format(file_ext))
+    files = glob.glob(path_name + '/*{}'.format(file_ext))
+    if strip_dir:
+        file_names = ()
+        for f in files:
+            file_names += get_file_name_from_file_path(f),
+        return file_names
+    return files
 
 
 def get_directories(path_name, full_path=False):
