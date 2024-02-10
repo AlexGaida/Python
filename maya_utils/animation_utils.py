@@ -311,18 +311,26 @@ def add_keys_from_data(anim_data={}, offset_value=0):
         anim_fn = None
         for a_data_dict in a_list:
             for anim_index, a_data_list in a_data_dict.items():
-                node_data, tangent_data, property_data, key_type = a_data_list
+                node_data, xy_tangent_data, angle_tangent_data, property_data, key_type = a_data_list
                 m_time = OpenMaya.MTime(
                     node_data["time"] + offset_value, OpenMaya.MTime.kFilm)
                 if not anim_fn:
                     anim_fn, m_dag_mod = add_keyframe_node(
                         node_name, key_type["type"])
-                anim_fn.addKeyframe(m_time, node_data["value"], m_curve_change)
+                anim_fn.addKeyframe(
+                    m_time, node_data["value"], angle_tangent_data["in"][0], angle_tangent_data["out"][0], m_curve_change)
+                # anim_fn.addKey(
+                #     m_time, node_data["value"], angle_tangent_data["in"][0], angle_tangent_data["out"][0], m_curve_change)
+                anim_fn.evaluate(m_time)
                 # unlock the tangents first, if there are any
-                set_properties_at_time(anim_fn, property_data, int(anim_index))
-                # then set the tangent information
+                set_properties_at_time(
+                    anim_fn, property_data, int(anim_index))
+                # set the XY coordinate to tangents
+                set_tangent_XY_at_time(
+                    anim_fn, xy_tangent_data, int(anim_index))
+                # set the angles to tangents
                 set_tangents_angle_at_time(
-                    anim_fn, tangent_data, int(anim_index))
+                    anim_fn, angle_tangent_data, int(anim_index))
     # MS::kSuccess
     return True
 
@@ -340,7 +348,6 @@ def add_keyframe_node(keyframe_name="", key_type=None):
     attribute_name = keyframe_name[keyframe_name.rfind('_') + 1:]
     node = object_utils.get_m_obj(object_name)
     attr_plug_node = object_utils.get_plug(node, attribute_name)
-    print("--> ", keyframe_name)
     anim_fn.create(attr_plug_node, key_type, m_dag_mod)
     return anim_fn, m_dag_mod,
 
@@ -350,10 +357,9 @@ def set_properties_at_time(a_node, property_data, idx=0):
     :param a_node: <OpenMaya.MFnAnimCurve> Animation curve node
     :param idx: <int> key index
     """
-    a_node.setIsBreakdown(property_data["isBreakdown"], idx)
+    a_node.setIsBreakdown(idx, property_data["isBreakdown"])
     a_node.setIsWeighted(property_data["isWeighted"])
-    a_node.setWeightsLocked(property_data["weightsLocked"], idx)
-    print("IsTangentsLocked: ", idx)
+    a_node.setWeightsLocked(idx, property_data["weightsLocked"])
     a_node.setTangentsLocked(idx, property_data["tangentsLocked"])
     a_node.setPreInfinityType(property_data["preInfinityType"])
     a_node.setPostInfinityType(property_data["postInfinityType"])
@@ -365,18 +371,30 @@ def set_tangents_angle_at_time(a_node, data, idx=0):
     :param data: <dict> tangent data dictionary
     :param idx: <int> key index
     """
-    in_type = data["in"][0]
     in_angle = data["in"][1]
     in_weight = data["in"][2]
-    out_type = data["out"][0]
     out_angle = data["out"][1]
     out_weight = data["out"][2]
-    a_node.setInTangentType(idx, in_type)
-    a_node.setOutTangentType(idx, out_type)
     # inTangent
     a_node.setTangent(idx, in_angle, in_weight, True)
     # outTangent
     a_node.setTangent(idx, out_angle, out_weight, False)
+
+
+def set_tangent_XY_at_time(a_node, data, idx=0):
+    """set the tangent information onto a keyframe node
+    :param a_node: <OpenMaya.MFnAnimCurve> Animation curve node
+    :param data: <dict> tangent data dictionary
+    :param idx: <int> key index
+    """
+    in_x = data["xy_in"][1]
+    in_y = data["xy_in"][2]
+    out_x = data["xy_out"][1]
+    out_y = data["xy_out"][2]
+    # inTangent
+    a_node.setTangent(idx, in_x, in_y, True)
+    # outTangent
+    a_node.setTangent(idx, out_x, out_y, False)
 
 
 def get_tangents_from_time(a_node="", idx=0):
@@ -391,7 +409,7 @@ def get_tangents_from_time(a_node="", idx=0):
     in_type = a_node.inTangentType(idx)
     out_type = a_node.outTangentType(idx)
     # get time conversion
-    # convert_x = OpenMaya.MTime(1.0, OpenMaya.MTime.kSeconds).uiUnit()
+    convert_x = OpenMaya.MTime(1.0, OpenMaya.MTime.kSeconds).uiUnit()
     # get (x, y) float pointers
     x = __m_util.asFloatPtr()
     y = __m_util.asFloatPtr()
@@ -399,12 +417,12 @@ def get_tangents_from_time(a_node="", idx=0):
     a_node.getTangent(idx, x, y, True)
     x_value = __m_util.getFloat(x)
     y_value = __m_util.getFloat(y)
-    data.update({'in': (in_type, x_value, y_value)})
+    data.update({'xy_in': (in_type, x_value * convert_x, y_value)})
     # isInTangent = False
     a_node.getTangent(idx, x, y, False)
     x_value = __m_util.getFloat(x)
     y_value = __m_util.getFloat(y)
-    data.update({'out': (out_type, x_value, y_value)})
+    data.update({'xy_out': (out_type, x_value * convert_x, y_value)})
     return data
 
 
@@ -417,6 +435,7 @@ def get_anim_fn_data(a_node="", as_xy=False):
     collection = []
     for i in range(k_len):
         collection.append({i: (get_value_from_time(a_node, i),
+                               get_tangents_from_time(a_node, i),
                                get_tangents_angle_from_time(a_node, i),
                                get_properties_from_time(a_node, i),
                                get_type_from_node(a_node)
@@ -554,7 +573,7 @@ def get_anim_connections(object_name=""):
 
 def get_animation_data_from_node(object_node=""):
     """get the animation data from the node specified.
-    :param object_node: <str> the object to check the data frOpenMaya.
+    :param object_node: <str> the object to check the data.
     :return: <dict> key data.
     """
     if not object_node:
@@ -598,9 +617,15 @@ def get_animation_data_from_node(object_node=""):
             o_y = cmds.getAttr('{}.keyTanOutY[{}]'.format(object_node, i_key))
             i_x = cmds.getAttr('{}.keyTanInX[{}]'.format(object_node, i_key))
             i_y = cmds.getAttr('{}.keyTanInY[{}]'.format(object_node, i_key))
+            angle = cmds.keyTangent("{}".format(object_node), time=(
+                t_float, t_float), query=True, inAngle=True)
+            weight = cmds.keyTangent("{}".format(object_node), time=(
+                t_float, t_float), query=True, inWeight=True)
             # save the information
             anim_data[object_node]['tangents'][t_float] = {'out': (o_x, o_y),
                                                            'in': (i_x, i_y),
+                                                           'angle': (angle),
+                                                           'weight': (weight),
                                                            'keyNum': i_key}
             anim_data[object_node]['data'][t_float] = v_float
     return anim_data
