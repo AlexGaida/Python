@@ -21,7 +21,7 @@ reload(list_tool)
 
 
 # define private variables
-__version__ = '1.1.0'
+__version__ = '1.2.0'
 __verbosity__ = 0
 __m_util = OpenMaya.MScriptUtil()
 
@@ -66,6 +66,7 @@ __anim_infinityType = {
 
 def write_anim_data():
     """writes keyframe data, from selected objects onto a JSON file into a local temp directory
+    !for demonstration purposes only
     """
     objects = object_utils.get_selected_objects_gen()
     directory_name = file_utils.temp_dir
@@ -76,23 +77,9 @@ def write_anim_data():
         file_handler.write()
 
 
-def _get_file_from_dir(dir_name=""):
-    """return file name from directory
-    """
-    if not dir_name:
-        dir_name = file_utils.temp_dir
-    files_list = file_utils.get_files(dir_name, strip_dir=True)
-    ui = list_tool.openUI(objects_list=files_list, modal=True)
-    anim_obj_file_name = ui.selected
-    if not anim_obj_file_name:
-        return False
-    file_path = file_utils.posixpath.join(
-        dir_name, anim_obj_file_name)
-    return file_path
-
-
-def read_anim_data(file_path=""):
+def read_anim_data(file_path="", apply_angles=True, apply_xy=False):
     """reads the keyframe data, from a specified file_path
+    !for demonstration purposes only
     :param file_path: <str> the file path name
     """
     if not file_path:
@@ -114,7 +101,61 @@ def read_anim_data(file_path=""):
     data = check_obj_names_from_data(data)
     if not data:
         raise KeyError("Empty Dictionary, Aborting procedure!")
-    add_keys_from_data(data)
+    add_keys_from_data(data, apply_angles=apply_angles, apply_xy=apply_xy)
+
+
+def write_anim_data_cmd():
+    """writes keyframe data, from selected objects onto a JSON file into a local temp directory
+    !for demonstration purposes only
+    """
+    objects = object_utils.get_selected_objects_gen()
+    directory_name = file_utils.temp_dir
+    for anim_obj_name in objects:
+        data = get_anim_connections(anim_obj_name)
+        file_name = file_utils.posixpath.join(directory_name, anim_obj_name)
+        file_handler = file_utils.JSONSerializer(file_name, data)
+        file_handler.write()
+
+
+def read_anim_data_cmd(file_path=""):
+    """writes keyframe data, from selected objects onto a JSON file into a local temp directory
+    !for demonstration purposes only
+    """
+    if not file_path:
+        file_name = _get_file_from_dir()
+        if not file_name:
+            return False
+    else:
+        if file_utils.is_dir(file_path):
+            file_name = _get_file_from_dir(file_path)
+        elif file_utils.is_file(file_path):
+            if file_utils.has_ext(file_path, 'json'):
+                pass
+            else:
+                raise IOError("File Invalid")
+    print("file chosen: {}".format(file_name))
+    # ...choose the animation file name
+    file_handler = file_utils.JSONSerializer(file_name)
+    data = file_handler.read()
+    data = check_obj_names_from_data(data)
+    if not data:
+        raise KeyError("Empty Dictionary, Aborting procedure!")
+    add_keyframes(data)
+
+
+def _get_file_from_dir(dir_name=""):
+    """return file name from directory
+    """
+    if not dir_name:
+        dir_name = file_utils.temp_dir
+    files_list = file_utils.get_files(dir_name, strip_dir=True)
+    ui = list_tool.openUI(objects_list=files_list, modal=True)
+    anim_obj_file_name = ui.selected
+    if not anim_obj_file_name:
+        return False
+    file_path = file_utils.posixpath.join(
+        dir_name, anim_obj_file_name)
+    return file_path
 
 
 def check_obj_names_from_data(data):
@@ -123,8 +164,12 @@ def check_obj_names_from_data(data):
     :return: <dict> pruned dictionary
     """
     strip_data = ()
+    if 'animNodes' in data:
+        data = data['animNodes']
+    else:
+        data = data
     for keyframe_name in data:
-        object_name = keyframe_name[:keyframe_name.rfind('_')]
+        object_name = keyframe_name.rsplit('_', 1)[0]
         if not cmds.objExists(object_name):
             strip_data += keyframe_name,
     for key_name in strip_data:
@@ -211,7 +256,7 @@ def set_driven_key(driver_node='',
     return True
 
 
-def change_anim_nodes(node_object="", in_tangent='linear', out_tangent='linear'):
+def change_anim_tangents(node_object="", in_tangent='linear', out_tangent='linear'):
     """
     Changes the setting on all anim nodes.
     :param node_object:
@@ -233,6 +278,24 @@ def get_selected_timeslider_anim():
     return cmds.timeControl(a_time_slider, q=True, rangeArray=True)
 
 
+def get_time_range():
+    """return a range of time from min to max
+    """
+    min_time = cmds.playbackOptions(min=1, query=True)
+    max_time = cmds.playbackOptions(max=1, query=True)
+    return min_time, max_time
+
+
+def get_time_from_idx(a_node="", idx=0):
+    """gets time from node and index supplied.
+    :param a_node: MFn.kAnimCurve node.
+    :param idx: <int> the time index.
+    """
+    m_time = a_node.time(idx)
+    time = m_time.asUnits(OpenMaya.MTime.kFilm)
+    return time
+
+
 def get_value_from_time(a_node="", idx=0):
     """
     gets the value from the time supplied.
@@ -241,8 +304,8 @@ def get_value_from_time(a_node="", idx=0):
     :return: <tuple> data.
     """
     data = {}
-    m_time = a_node.time(idx)
-    data.update({'time': m_time.asUnits(OpenMaya.MTime.kFilm)})
+    time = get_time_from_idx(a_node, idx)
+    data.update({'time': time})
     data.update({'value': a_node.value(idx)})
     return data
 
@@ -266,7 +329,8 @@ def get_properties_from_time(a_node="", idx=0):
     """
     data = {
         "weightsLocked": a_node.weightsLocked(idx),
-        "tangentsLocked": a_node.tangentsLocked(idx),
+        # "tangentsLocked": a_node.tangentsLocked(idx),
+        "tangentsLocked": False,
         "preInfinityType": a_node.preInfinityType(),
         "postInfinityType": a_node.postInfinityType(),
         "isWeighted": a_node.isWeighted(),
@@ -290,49 +354,104 @@ def get_tangents_angle_from_time(a_node, idx=0):
     # tangent types
     in_type = a_node.inTangentType(idx)
     out_type = a_node.outTangentType(idx)
+    in_type = 3
+    out_type = 3
     weight = object_utils.ScriptUtil(as_double_ptr=True)
     angle = OpenMaya.MAngle()
+    out_angle = OpenMaya.MAngle()
+    angle.setUnit(OpenMaya.MAngle.kRadians)
     # isInTangent = True
     a_node.getTangent(idx, angle, weight.ptr, True)
-    data.update({'in': (in_type, angle.value(), weight.get_double())})
+    # print(idx, angle.asRadians(), True)
+    data.update({'in': (in_type, angle.asRadians(), weight.get_double())})
     # isInTangent = False
-    a_node.getTangent(idx, angle, weight.ptr, False)
-    data.update({'out': (out_type, angle.value(), weight.get_double())})
+    a_node.getTangent(idx, out_angle, weight.ptr, False)
+    # print(idx, out_angle.asRadians(), False)
+    data.update({'out': (out_type, out_angle.asRadians(), weight.get_double())})
     return data
 
 
-def add_keys_from_data(anim_data={}, offset_value=0):
+def add_keys_from_data(anim_data={}, offset_value=0, add_key=True, apply_angles=True, apply_xy=True):
     """sets the animation data onto the object name
     :param object_name: <str> the name of the object to add keyframes to
     """
+    anim_indices = {}
     for node_name, a_list in anim_data.items():
         # use this node for the undo/ redo behavior
         m_curve_change = OpenMayaAnim.MAnimCurveChange()
         anim_fn = None
+        anim_indices[node_name] = {
+            'indices': (), 'anim_nodes': (), 'angle_tangents': (), 'property_data': (), 'xy_tangent_data': ()}
         for a_data_dict in a_list:
             for anim_index, a_data_list in a_data_dict.items():
                 node_data, xy_tangent_data, angle_tangent_data, property_data, key_type = a_data_list
                 m_time = OpenMaya.MTime(
                     node_data["time"] + offset_value, OpenMaya.MTime.kFilm)
                 if not anim_fn:
-                    anim_fn, m_dag_mod = add_keyframe_node(
-                        node_name, key_type["type"])
-                anim_fn.addKeyframe(
-                    m_time, node_data["value"], angle_tangent_data["in"][0], angle_tangent_data["out"][0], m_curve_change)
-                # anim_fn.addKey(
-                #     m_time, node_data["value"], angle_tangent_data["in"][0], angle_tangent_data["out"][0], m_curve_change)
+                    # get anim_fn instead of finding a key at time
+                    object_name = node_name[:node_name.rfind('_')]
+                    anim_fn = find_keyframe(object_name, m_time, anim_index)
+                    if not anim_fn:
+                        anim_fn, m_dag_mod = add_keyframe_node(
+                            node_name, key_type["type"])
+                if add_key:
+                    anim_fn.addKeyframe(
+                        m_time, node_data["value"], angle_tangent_data["in"][0], angle_tangent_data["out"][0], m_curve_change)
+                anim_indices[node_name]['indices'] += int(anim_index),
+                anim_indices[node_name]['anim_nodes'] += anim_fn,
+                anim_indices[node_name]['property_data'] += property_data,
+                anim_indices[node_name]['angle_tangents'] += angle_tangent_data,
+                anim_indices[node_name]['xy_tangent_data'] += xy_tangent_data,
                 anim_fn.evaluate(m_time)
+    # the argument is that the tangents aren't created until all the keys have been made
+    for anim_node, anim_data in anim_indices.items():
+        anim_idxs = anim_data['indices']
+        anim_nodes = anim_data['anim_nodes']
+        property_data = anim_data['property_data']
+        angle_tangent_data = anim_data['angle_tangents']
+        xy_tangent_data = anim_data['xy_tangent_data']
+        for node_fn in anim_nodes:
+            # anim indices start at 1, we want the system to start counting from 0
+            for idx, anim_idx in enumerate(anim_idxs):
                 # unlock the tangents first, if there are any
                 set_properties_at_time(
-                    anim_fn, property_data, int(anim_index))
+                    node_fn, property_data[idx], anim_idx)
                 # set the XY coordinate to tangents
-                set_tangent_XY_at_time(
-                    anim_fn, xy_tangent_data, int(anim_index))
+                if apply_xy:
+                    set_tangent_XY_at_time(
+                        node_fn, xy_tangent_data[idx], anim_idx)
                 # set the angles to tangents
-                set_tangents_angle_at_time(
-                    anim_fn, angle_tangent_data, int(anim_index))
+                if apply_angles:
+                    set_tangents_angle_at_time(
+                        node_fn, angle_tangent_data[idx], anim_idx)
     # MS::kSuccess
     return True
+
+
+def find_keyframe(keyframe_name, m_time=None, anim_idx=1):
+    """finds a keyframe at time
+    :param m_time: <OpenMaya.MTime>
+    """
+    object_name = keyframe_name[:keyframe_name.rfind('_')]
+    attribute_name = keyframe_name[keyframe_name.rfind('_') + 1:]
+    anim_data = get_anim_connections(keyframe_name)
+    if "animNodes" not in anim_data:
+        return False
+    nodes = anim_data["animNodes"]
+    anim_fn = None
+    for anim_node, anim_data in nodes.items():
+        if keyframe_name in anim_node:
+            value_data = anim_data['values']
+            if anim_idx in value_data:
+                plug_node = object_utils.get_plug(object_name, attribute_name)
+                anim_fn = OpenMayaAnim.MFnAnimCurve(plug_node)
+                # try:
+                #     # find out if there is a key set at a specified time
+                #     key_bool = anim_fn.find(m_time, anim_idx)
+                # except BaseException:
+                #     pass
+            break
+    return anim_fn
 
 
 def add_keyframe_node(keyframe_name="", key_type=None):
@@ -375,10 +494,20 @@ def set_tangents_angle_at_time(a_node, data, idx=0):
     in_weight = data["in"][2]
     out_angle = data["out"][1]
     out_weight = data["out"][2]
+    angle = OpenMaya.MAngle()
+    angle.setUnit(OpenMaya.MAngle.kRadians)
     # inTangent
-    a_node.setTangent(idx, in_angle, in_weight, True)
+    angle.setValue(in_angle)
+    # print("in_angle", idx, in_angle, angle.value())
+    a_node.setTangent(idx, angle, in_weight, True)
+    a_node.setAngle(idx, angle, True)
+    a_node.setWeight(idx, in_weight, True)
     # outTangent
-    a_node.setTangent(idx, out_angle, out_weight, False)
+    angle.setValue(out_angle)
+    # print("out_angle", idx, out_angle, angle.value())
+    a_node.setTangent(idx, angle, out_weight, False)
+    a_node.setAngle(idx, angle, False)
+    a_node.setWeight(idx, out_weight, False)
 
 
 def set_tangent_XY_at_time(a_node, data, idx=0):
@@ -397,7 +526,7 @@ def set_tangent_XY_at_time(a_node, data, idx=0):
     a_node.setTangent(idx, out_x, out_y, False)
 
 
-def get_tangents_from_time(a_node="", idx=0):
+def get_tangents_from_time(a_node="", idx=0, time=1.0):
     """
     gets the value from the time supplied.
     :param a_node: MFn.kAnimCurve node.
@@ -408,21 +537,18 @@ def get_tangents_from_time(a_node="", idx=0):
     # get tangent types
     in_type = a_node.inTangentType(idx)
     out_type = a_node.outTangentType(idx)
-    # get time conversion
-    convert_x = OpenMaya.MTime(1.0, OpenMaya.MTime.kSeconds).uiUnit()
-    # get (x, y) float pointers
     x = __m_util.asFloatPtr()
     y = __m_util.asFloatPtr()
     # isInTangent = True
     a_node.getTangent(idx, x, y, True)
     x_value = __m_util.getFloat(x)
     y_value = __m_util.getFloat(y)
-    data.update({'xy_in': (in_type, x_value * convert_x, y_value)})
+    data.update({'xy_in': (in_type, x_value, y_value)})
     # isInTangent = False
     a_node.getTangent(idx, x, y, False)
     x_value = __m_util.getFloat(x)
     y_value = __m_util.getFloat(y)
-    data.update({'xy_out': (out_type, x_value * convert_x, y_value)})
+    data.update({'xy_out': (out_type, x_value, y_value)})
     return data
 
 
@@ -451,6 +577,8 @@ def get_anim_curve_data(object_name=""):
     # get the anim curve object nodes
     data = {}
     anim_nodes = get_anim_connections(object_name)
+    if "animNodes" not in anim_nodes:
+        raise ValueError("No Keys Found on Object!")
     for a_node in anim_nodes["animNodes"]:
         entry = {a_node: get_anim_fn_data(get_mfn_anim_node(a_node))}
         data.update(entry)
@@ -465,8 +593,8 @@ def __round(x):
     print(round(x*4)/4)
 
 
-def set_anim_data(anim_data={}, rounded=False):
-    """sets the existing animation data. This does not create new data.
+def set_anim_data(anim_data={}, set_tangents_angle=False, set_tangents_xy=False):
+    """sets the existing animation data. This does not create a new key.
     :param anim_data: <dict> animation data from get_anim_data function.
     :param rounded: <bool> flattens the animation data.
     :return: <bool> True for success. <bool> False for failure.
@@ -482,11 +610,10 @@ def set_anim_data(anim_data={}, rounded=False):
         mfn_anim = OpenMayaAnim.MFnAnimCurve(node_name)
         for i in range(num_keys):
             a_val, a_time = anim_data[i]
-            if rounded:
-                mfn_anim.setTime(i, __round(a_time))
-            else:
-                mfn_anim.setTime(i, a_time)
+            mfn_anim.setTime(i, a_time)
             mfn_anim.setValue(i, a_val)
+            if set_tangents_angle:
+                set_tangent_XY_at_time(mfn_anim, a_time)
     return True
 
 
@@ -583,11 +710,9 @@ def get_animation_data_from_node(object_node=""):
     if isinstance(object_node, str):
         m_object = object_utils.get_m_obj(object_node)
         o_anim = OpenMayaAnim.MFnAnimCurve(m_object)
-
     if isinstance(object_node, OpenMayaAnim.MFnAnimCurve):
         o_anim = object_node
         object_node = o_anim.name()
-
     if isinstance(object_node, OpenMaya.MObject):
         o_anim = OpenMayaAnim.MFnAnimCurve(object_node)
         object_node = o_anim.name()
@@ -601,7 +726,7 @@ def get_animation_data_from_node(object_node=""):
     number_of_keys = o_anim.numKeys()
     anim_data = {}
     if number_of_keys > 1:
-        anim_data[object_node] = {'data': {},
+        anim_data[object_node] = {'values': {},
                                   'tangents': {},
                                   'sourceAttr': source_attr,
                                   'targetAttr': destination_attr
@@ -613,22 +738,102 @@ def get_animation_data_from_node(object_node=""):
                 t_float = cmds.keyframe(object_node, floatChange=1, q=1)[i_key]
             except TypeError:
                 t_float = i_key
+            time = cmds.keyframe(object_node,
+                                 q=True, index=(i_key, i_key))[0]
+            time = int(time)
             o_x = cmds.getAttr('{}.keyTanOutX[{}]'.format(object_node, i_key))
             o_y = cmds.getAttr('{}.keyTanOutY[{}]'.format(object_node, i_key))
             i_x = cmds.getAttr('{}.keyTanInX[{}]'.format(object_node, i_key))
             i_y = cmds.getAttr('{}.keyTanInY[{}]'.format(object_node, i_key))
-            angle = cmds.keyTangent("{}".format(object_node), time=(
-                t_float, t_float), query=True, inAngle=True)
-            weight = cmds.keyTangent("{}".format(object_node), time=(
-                t_float, t_float), query=True, inWeight=True)
+            in_angle = cmds.keyTangent("{}".format(object_node), time=(
+                time, time), query=True, inAngle=True)
+            in_weight = cmds.keyTangent("{}".format(object_node), time=(
+                time, time), query=True, inWeight=True)
+            out_angle = cmds.keyTangent("{}".format(object_node), time=(
+                time, time), query=True, outAngle=True)
+            out_weight = cmds.keyTangent("{}".format(object_node), time=(
+                time, time), query=True, outWeight=True)
+            # ...tangent properties
+            lock_tangents = cmds.keyTangent("{}".format(object_node),
+                                            time=(time, time), query=True, lock=True)
+            out_tangent = cmds.keyTangent("{}".format(object_node), time=(
+                time, time), query=True, outTangentType=True)
+            in_tangent = cmds.keyTangent("{}".format(object_node), time=(
+                time, time), query=True, inTangentType=True)
+            weight_lock = cmds.keyTangent("{}".format(object_node), time=(
+                time, time), query=True, weightLock=True)
+            weight_tangent = cmds.keyTangent("{}".format(object_node), time=(
+                time, time), query=True, weightedTangents=True)
             # save the information
-            anim_data[object_node]['tangents'][t_float] = {'out': (o_x, o_y),
-                                                           'in': (i_x, i_y),
-                                                           'angle': (angle),
-                                                           'weight': (weight),
-                                                           'keyNum': i_key}
-            anim_data[object_node]['data'][t_float] = v_float
+            anim_data[object_node]['tangents'][t_float] = {'time': time,
+                                                           'xy_out': (o_x, o_y),
+                                                           'xy_in': (i_x, i_y),
+                                                           'in_angle': (in_angle),
+                                                           'in_weight': (in_weight),
+                                                           'out_angle': (out_angle),
+                                                           'out_weight': (out_weight),
+                                                           'keyNum': i_key,
+                                                           'lock': lock_tangents,
+                                                           'out_tangent': out_tangent,
+                                                           'in_tangent': in_tangent,
+                                                           'weight_lock': weight_lock,
+                                                           'weight_tangent': weight_tangent}
+            anim_data[object_node]['values'][t_float] = v_float
     return anim_data
+
+
+def add_keyframes(data):
+    """add keyframe from data provided
+    :param data: <dict> 
+    """
+    anim_dict = data["animNodes"]
+    for anim_node, anim_data in anim_dict.items():
+        node_name = anim_node.rsplit('_', 1)[0]
+        node_attr = anim_node.rsplit('_', 1)[1]
+        # set keyframes
+        values = anim_data["values"]
+        for anim_idx, val in values.items():
+            tangent_data = anim_data["tangents"][anim_idx]
+            out_tangent = tangent_data['out_tangent']
+            if out_tangent:
+                out_tangent = out_tangent[0]
+                if "fixed" in out_tangent:
+                    out_tangent = "auto"
+            in_tangent = tangent_data['in_tangent']
+            if in_tangent:
+                in_tangent = in_tangent[0]
+                if "fixed" in in_tangent:
+                    in_tangent = "auto"
+            time = tangent_data['time']
+            # add keyframe
+            if not in_tangent and not out_tangent:
+                cmds.setKeyframe(node_name, attribute=node_attr, time=[
+                    time, time], value=val)
+            else:
+                cmds.setKeyframe(node_name, attribute=node_attr, time=[
+                    time, time], ott=out_tangent, itt=in_tangent, value=val)
+        # set key tangents
+        for anim_idx, val in values.items():
+            tangent_data = anim_data["tangents"][anim_idx]
+            time = tangent_data['time']
+            lock = tangent_data['lock']
+            if lock:
+                lock = lock[0]
+            if not lock:
+                lock = False
+            in_angle = tangent_data['in_angle'][0]
+            in_weight = tangent_data['in_weight'][0]
+            out_angle = tangent_data['out_angle'][0]
+            out_weight = tangent_data['out_weight'][0]
+            weight_tangent = tangent_data['weight_tangent'][0]
+            # set tangents
+            cmds.keyTangent(node_name, attribute=node_attr,
+                            time=(time, time), edit=True, lock=False)
+            cmds.keyTangent(node_name, attribute=node_attr,
+                            time=(time, time), edit=True, weightedTangents=weight_tangent)
+            # edit key tangents
+            cmds.keyTangent(node_name, absolute=True, edit=True, inAngle=in_angle, inWeight=in_weight,
+                            time=(time, time), attribute=node_attr, outAngle=out_angle, outWeight=out_weight)
 
 
 def attribute_name(node_name, target_attr):
@@ -681,5 +886,33 @@ def get_blend_weighted_sum(node_name="", target_attr=""):
     """
     return get_sum(get_blend_weighted_values(node_name, target_attr))
 
+
+def break_tangent(object_name, time_int, attribute_name=None):
+    """break the key-tangent
+    :param object_name: <str>
+    :param time: <int>
+    :param attribute_name: <str>
+    """
+    if not attribute_name:
+        attribute_name = 'translateX'
+    cmds.keyTangent(object_name, lock=False, edit=True,
+                    time=(time_int, time_int), attribute=attribute_name)
+
+
+def change_tangent_in_angle(anim_node, time_int, in_angle, in_weight, attribute_name=None):
+    """change the tangent angle
+    :param anim_node: <str>
+    :param time: <int>
+    :param attribute_name: <str>
+    """
+    if not attribute_name:
+        attribute_name = 'translateX'
+    cmds.keyTangent(anim_node, absolute=True, lock=False, edit=True, inAngle=in_angle, inWeight=in_weight,
+                    time=(time_int, time_int), attribute=attribute_name)
+
+
+def change_tangent_xy_in():
+    """
+    """
 # ______________________________________________________________________________________________________________________
 # animation_utils.py

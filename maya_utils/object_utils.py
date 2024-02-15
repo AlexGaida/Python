@@ -543,7 +543,10 @@ class ScriptUtil(OpenMaya.MScriptUtil):
             self.createFromList([0.0, 0.0, 0.0], 3)
             self.ptr = self.asFloat3Ptr()
         if as_int_ptr:
-            self.ptr = self.asIntPtr()
+            if isinstance(as_int_ptr, int):
+                self.ptr = self.createFromInt(as_int_ptr)
+            else:
+                self.ptr = self.asIntPtr()
         if as_uint_ptr:
             self.ptr = self.asUintPtr()
         if matrix_from_list:

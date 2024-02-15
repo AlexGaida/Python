@@ -69,7 +69,13 @@ def get_file_name_from_file_path(file_name):
 
 
 def copy_file(src_file, dst_file):
-    return shutil.copyfile(src_file, dst_file)
+    """copy a source file name to a destination file name
+    :param src_file: <str>
+    :param dst_file: <str>
+    :return: <str> destination file name
+    """
+    copied_file = shutil.copyfile(src_file, dst_file)
+    return copied_file
 
 
 def remove_directory(dir_name):
@@ -252,6 +258,15 @@ def split_file_ext(file_name):
     :return:
     """
     return os.path.splitext(file_name)[1]
+
+
+def remove_file_ext(file_name):
+    """
+    splits the extension from the file name.
+    :param file_name:
+    :return:
+    """
+    return os.path.splitext(file_name)[0]
 
 
 def split_file_name(file_name):
